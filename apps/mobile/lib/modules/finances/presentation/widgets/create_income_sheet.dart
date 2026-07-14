@@ -83,7 +83,7 @@ class _CreateIncomeSheetState extends State<CreateIncomeSheet> {
   Widget build(BuildContext context) {
     return AppBottomSheet(
       title: 'Nuevo ingreso',
-      subtitle: 'Registra un ingreso rápido para el prototipo.',
+      subtitle: 'Registra un ingreso y actualiza tu disponible.',
       primaryActionLabel: 'Guardar ingreso',
       onPrimaryAction: _saveIncome,
       secondaryActionLabel: 'Cancelar',

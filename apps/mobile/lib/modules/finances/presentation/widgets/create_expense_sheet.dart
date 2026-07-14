@@ -83,7 +83,7 @@ class _CreateExpenseSheetState extends State<CreateExpenseSheet> {
   Widget build(BuildContext context) {
     return AppBottomSheet(
       title: 'Nuevo gasto',
-      subtitle: 'Registra un gasto rápido para el prototipo.',
+      subtitle: 'Registra un gasto y actualiza tu disponible.',
       primaryActionLabel: 'Guardar gasto',
       onPrimaryAction: _saveExpense,
       secondaryActionLabel: 'Cancelar',

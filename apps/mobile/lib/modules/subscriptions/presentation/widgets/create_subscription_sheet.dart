@@ -98,7 +98,7 @@ class _CreateSubscriptionSheetState extends State<CreateSubscriptionSheet> {
       title: widget.initialDraft == null
           ? 'Nueva suscripción'
           : 'Editar suscripción',
-      subtitle: 'Registra un cobro recurrente para el prototipo.',
+      subtitle: 'Registra un cobro recurrente y su próximo vencimiento.',
       primaryActionLabel: widget.initialDraft == null
           ? 'Guardar suscripción'
           : 'Guardar cambios',

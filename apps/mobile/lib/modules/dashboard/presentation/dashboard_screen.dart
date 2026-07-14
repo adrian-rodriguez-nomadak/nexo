@@ -53,7 +53,8 @@ class DashboardScreen extends ConsumerWidget {
           );
           ref
             ..invalidate(financeSummaryProvider)
-            ..invalidate(financeMovementsProvider);
+            ..invalidate(financeMovementsProvider)
+            ..invalidate(financeBudgetsProvider);
           if (context.mounted) _showSnackBar(context, 'Guardado localmente');
         },
       );
@@ -118,7 +119,31 @@ class DashboardScreen extends ConsumerWidget {
       return;
     }
 
-    _showSnackBar(context, '${action.label} simulado');
+    context.go('/inbox');
+  }
+
+  Future<void> _toggleTask(
+    BuildContext context,
+    WidgetRef ref,
+    MockDashboardTask task,
+  ) async {
+    if (task.id == null) {
+      context.go('/calendar');
+      return;
+    }
+    final repository = ref.read(tasksRepositoryProvider);
+    if (repository is! LocalTasksRepository) return;
+    await repository.updateStatus(
+      task.id!,
+      task.done ? 'pending' : 'completed',
+    );
+    ref.invalidate(tasksProvider);
+    if (context.mounted) {
+      _showSnackBar(
+        context,
+        task.done ? 'Tarea reabierta' : 'Tarea completada',
+      );
+    }
   }
 
   @override
@@ -193,8 +218,7 @@ class DashboardScreen extends ConsumerWidget {
                   const SizedBox(height: AppSpacing.md),
                   _TasksCard(
                     tasks: data.tasks,
-                    onTaskTap: (task) =>
-                        _showSnackBar(context, '${task.title} simulado'),
+                    onTaskTap: (task) => _toggleTask(context, ref, task),
                   ),
                   const SizedBox(height: AppSpacing.xxl),
                   const SectionHeader(title: 'Finanzas rápidas'),

@@ -19,7 +19,6 @@ import '../../../shared/presentation/widgets/quick_action_button.dart';
 import '../../../shared/presentation/widgets/section_header.dart';
 import '../../../shared/presentation/widgets/summary_chip.dart';
 import '../../../shared/presentation/widgets/empty_state_card.dart';
-import 'widgets/create_debt_sheet.dart';
 import 'widgets/create_expense_sheet.dart';
 import 'widgets/create_income_sheet.dart';
 import 'widgets/create_payment_sheet.dart';
@@ -149,10 +148,7 @@ class FinancesScreen extends ConsumerWidget {
   }
 
   void _openCreateDebtSheet(BuildContext context) {
-    CreateDebtSheet.show(
-      context: context,
-      onSaved: () => _showSnackBar(context, 'Deuda simulada guardada'),
-    );
+    context.go('/debts');
   }
 
   void _openMovementDetail(

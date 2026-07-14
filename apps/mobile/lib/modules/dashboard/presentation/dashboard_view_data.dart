@@ -67,6 +67,7 @@ MockDashboardData buildDashboardViewData({
         : tasks
               .map(
                 (task) => MockDashboardTask(
+                  id: task.id,
                   title: task.title,
                   detail: task.priority,
                   done: task.status == 'completed',

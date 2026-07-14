@@ -117,7 +117,7 @@ class _CreateEventSheetState extends State<CreateEventSheet> {
   Widget build(BuildContext context) {
     return AppBottomSheet(
       title: widget.initialDraft == null ? 'Nuevo evento' : 'Editar evento',
-      subtitle: 'Agenda una actividad para el prototipo.',
+      subtitle: 'Agenda una actividad en tu calendario.',
       primaryActionLabel: widget.initialDraft == null
           ? 'Guardar evento'
           : 'Guardar cambios',

@@ -84,7 +84,7 @@ class _CreatePaymentSheetState extends State<CreatePaymentSheet> {
   Widget build(BuildContext context) {
     return AppBottomSheet(
       title: 'Nuevo pago próximo',
-      subtitle: 'Agenda un pago pendiente para el prototipo.',
+      subtitle: 'Agenda un pago pendiente para darle seguimiento.',
       primaryActionLabel: 'Guardar pago',
       onPrimaryAction: _savePayment,
       secondaryActionLabel: 'Cancelar',

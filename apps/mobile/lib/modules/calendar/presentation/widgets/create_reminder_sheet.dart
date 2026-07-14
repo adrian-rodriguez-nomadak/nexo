@@ -103,7 +103,7 @@ class _CreateReminderSheetState extends State<CreateReminderSheet> {
       title: widget.initialDraft == null
           ? 'Nuevo recordatorio'
           : 'Editar recordatorio',
-      subtitle: 'Crea un aviso rápido para el prototipo.',
+      subtitle: 'Crea un aviso para no olvidar lo importante.',
       primaryActionLabel: widget.initialDraft == null
           ? 'Guardar recordatorio'
           : 'Guardar cambios',
