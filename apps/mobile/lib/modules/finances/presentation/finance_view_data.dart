@@ -71,7 +71,7 @@ MockFinanceMovement _movementView(FinanceMovement movement) {
   return MockFinanceMovement(
     id: movement.id,
     title: movement.description ?? (isIncome ? 'Ingreso' : 'Gasto'),
-    category: movement.paymentMethod ?? 'General',
+    category: movement.categoryName ?? 'General',
     dateLabel: shortDate(movement.movementDate),
     amount: '${isIncome ? '+' : '-'}${money(movement.amount)}',
     icon: isIncome ? Icons.account_balance_rounded : Icons.receipt_long_rounded,

@@ -35,6 +35,18 @@ class LocalFinanceAccount {
   final double initialBalance;
 }
 
+class LocalFinanceBudget {
+  const LocalFinanceBudget({
+    required this.id,
+    required this.category,
+    required this.amount,
+  });
+
+  final String id;
+  final String category;
+  final double amount;
+}
+
 @DriftAccessor(tables: [FinanceMovements, UpcomingPayments])
 class FinancesDao extends DatabaseAccessor<AppDatabase>
     with _$FinancesDaoMixin {
@@ -100,6 +112,39 @@ class FinancesDao extends DatabaseAccessor<AppDatabase>
 
   Future<void> deleteAccount(String id) =>
       customStatement('DELETE FROM finance_accounts WHERE id = ?', [id]);
+
+  Future<List<LocalFinanceBudget>> getBudgets() async {
+    final rows = await customSelect(
+      'SELECT id, category, amount FROM finance_budgets ORDER BY category',
+      readsFrom: const {},
+    ).get();
+    return rows
+        .map(
+          (row) => LocalFinanceBudget(
+            id: row.read<String>('id'),
+            category: row.read<String>('category'),
+            amount: row.read<double>('amount'),
+          ),
+        )
+        .toList();
+  }
+
+  Future<void> insertBudget(LocalFinanceBudget budget) => customStatement(
+    '''INSERT INTO finance_budgets
+       (id, category, amount, created_at, updated_at) VALUES (?, ?, ?, ?, ?)
+       ON CONFLICT(category) DO UPDATE SET amount = excluded.amount,
+       updated_at = excluded.updated_at''',
+    [
+      budget.id,
+      budget.category,
+      budget.amount,
+      DateTime.now().millisecondsSinceEpoch,
+      DateTime.now().millisecondsSinceEpoch,
+    ],
+  );
+
+  Future<void> deleteBudget(String id) =>
+      customStatement('DELETE FROM finance_budgets WHERE id = ?', [id]);
 
   Future<List<FinanceMovement>> getMovements() {
     return (select(financeMovements)..orderBy([

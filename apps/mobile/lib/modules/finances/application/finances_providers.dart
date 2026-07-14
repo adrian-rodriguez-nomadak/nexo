@@ -9,6 +9,8 @@ import '../data/repositories/local_finances_repository.dart';
 import '../data/repositories/mock_finances_repository.dart';
 import '../domain/models/finance_movement.dart';
 import '../domain/models/finance_account.dart';
+import '../domain/models/finance_budget.dart';
+import '../../settings/application/settings_providers.dart';
 import '../domain/models/finance_summary.dart';
 import '../domain/models/upcoming_payment.dart';
 import '../domain/repositories/finances_repository.dart';
@@ -59,6 +61,16 @@ final financeAccountsProvider = FutureProvider<List<FinanceAccount>>((ref) {
   final repository = ref.watch(financesRepositoryProvider);
   if (repository is LocalFinancesRepository) return repository.getAccounts();
   return const <FinanceAccount>[];
+});
+
+final financeBudgetsProvider = FutureProvider<List<FinanceBudget>>((ref) {
+  final repository = ref.watch(financesRepositoryProvider);
+  final period =
+      ref.watch(appSettingsProvider).value?.budgetPeriod ?? 'Quincenal';
+  if (repository is LocalFinancesRepository) {
+    return repository.getBudgets(period: period);
+  }
+  return const <FinanceBudget>[];
 });
 
 final financeMovementsProvider = FutureProvider<List<FinanceMovement>>((

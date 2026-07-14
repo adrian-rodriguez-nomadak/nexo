@@ -5,6 +5,7 @@ import '../../../../core/database/daos/finances_dao.dart';
 import '../../../../core/utils/id_generator.dart';
 import '../../domain/models/finance_movement.dart';
 import '../../domain/models/finance_account.dart';
+import '../../domain/models/finance_budget.dart';
 import '../../domain/models/finance_summary.dart';
 import '../../domain/models/upcoming_payment.dart';
 import '../../domain/repositories/finances_repository.dart';
@@ -64,6 +65,49 @@ class LocalFinancesRepository implements FinancesRepository {
 
   Future<void> deleteAccount(String id) =>
       database.financesDao.deleteAccount(id);
+
+  Future<List<FinanceBudget>> getBudgets({required String period}) async {
+    final budgets = await database.financesDao.getBudgets();
+    final movements = await database.financesDao.getMovements();
+    final start = _periodStart(period, DateTime.now());
+    return budgets.map((budget) {
+      final spent = movements
+          .where(
+            (movement) =>
+                movement.type == 'expense' &&
+                !movement.movementDate.isBefore(start) &&
+                (movement.categoryName ?? 'General').toLowerCase() ==
+                    budget.category.toLowerCase(),
+          )
+          .fold<double>(0, (sum, movement) => sum + movement.amount);
+      return FinanceBudget(
+        id: budget.id,
+        category: budget.category,
+        limit: budget.amount,
+        spent: spent,
+      );
+    }).toList();
+  }
+
+  Future<void> saveBudget({required String category, required double amount}) =>
+      database.financesDao.insertBudget(
+        LocalFinanceBudget(
+          id: localId('budget'),
+          category: category.trim(),
+          amount: amount,
+        ),
+      );
+
+  Future<void> deleteBudget(String id) => database.financesDao.deleteBudget(id);
+
+  DateTime _periodStart(String period, DateTime now) {
+    if (period == 'Mensual') return DateTime(now.year, now.month);
+    if (period == 'Semanal') {
+      final day = DateTime(now.year, now.month, now.day);
+      return day.subtract(Duration(days: now.weekday - DateTime.monday));
+    }
+    return DateTime(now.year, now.month, now.day <= 15 ? 1 : 16);
+  }
 
   @override
   Future<List<UpcomingPayment>> getUpcomingPayments() async {
@@ -245,6 +289,7 @@ class LocalFinancesRepository implements FinancesRepository {
       amount: row.amount,
       movementDate: row.movementDate,
       categoryId: row.categoryId,
+      categoryName: row.categoryName,
       description: row.description,
       paymentMethod: row.paymentMethod,
     );

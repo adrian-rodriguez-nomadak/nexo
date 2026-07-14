@@ -54,6 +54,10 @@ class AppDatabase extends _$AppDatabase {
         id TEXT PRIMARY KEY, name TEXT NOT NULL, type TEXT NOT NULL,
         initial_balance REAL NOT NULL DEFAULT 0,
         created_at INTEGER NOT NULL, updated_at INTEGER NOT NULL)''');
+      await customStatement('''CREATE TABLE IF NOT EXISTS finance_budgets (
+        id TEXT PRIMARY KEY, category TEXT NOT NULL COLLATE NOCASE UNIQUE,
+        amount REAL NOT NULL, created_at INTEGER NOT NULL,
+        updated_at INTEGER NOT NULL)''');
       await customStatement('''CREATE TABLE IF NOT EXISTS sync_queue (
         operation_id TEXT PRIMARY KEY, entity TEXT NOT NULL,
         record_id TEXT NOT NULL, operation TEXT NOT NULL,

@@ -7,6 +7,7 @@ class FinanceMovement {
     required this.amount,
     required this.movementDate,
     this.categoryId,
+    this.categoryName,
     this.description,
     this.paymentMethod,
   });
@@ -16,6 +17,7 @@ class FinanceMovement {
   final double amount;
   final DateTime movementDate;
   final String? categoryId;
+  final String? categoryName;
   final String? description;
   final String? paymentMethod;
 
@@ -26,6 +28,7 @@ class FinanceMovement {
       amount: readDouble(json['amount']),
       movementDate: readDateTime(json['movement_date'] ?? json['movementDate']),
       categoryId: json['category_id']?.toString(),
+      categoryName: json['category_name']?.toString(),
       description: json['description']?.toString(),
       paymentMethod: json['payment_method']?.toString(),
     );
@@ -38,6 +41,7 @@ class FinanceMovement {
       'amount': amount,
       'movement_date': movementDate.toIso8601String().split('T').first,
       if (categoryId != null) 'category_id': categoryId,
+      if (categoryName != null) 'category_name': categoryName,
       if (description != null) 'description': description,
       if (paymentMethod != null) 'payment_method': paymentMethod,
     };

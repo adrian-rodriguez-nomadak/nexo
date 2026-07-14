@@ -246,7 +246,8 @@ class _InboxScreenState extends ConsumerState<InboxScreen> {
     );
     ref
       ..invalidate(financeSummaryProvider)
-      ..invalidate(financeMovementsProvider);
+      ..invalidate(financeMovementsProvider)
+      ..invalidate(financeBudgetsProvider);
     _saved();
   }
 

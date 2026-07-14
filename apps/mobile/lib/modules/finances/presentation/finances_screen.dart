@@ -8,6 +8,8 @@ import '../../../core/utils/formatters.dart';
 import '../application/finances_providers.dart';
 import '../data/repositories/local_finances_repository.dart';
 import '../domain/models/finance_account.dart';
+import '../domain/models/finance_budget.dart';
+import '../../settings/application/settings_providers.dart';
 import '../../../shared/mock/mock_finances.dart';
 import '../../../shared/presentation/widgets/app_back_button.dart';
 import '../../../shared/presentation/widgets/app_card.dart';
@@ -22,6 +24,7 @@ import 'widgets/create_expense_sheet.dart';
 import 'widgets/create_income_sheet.dart';
 import 'widgets/create_payment_sheet.dart';
 import 'widgets/create_account_sheet.dart';
+import 'widgets/create_budget_sheet.dart';
 import 'finance_view_data.dart';
 import 'widgets/finance_movement_detail_sheet.dart';
 import 'widgets/upcoming_payment_detail_sheet.dart';
@@ -80,6 +83,29 @@ class FinancesScreen extends ConsumerWidget {
         if (context.mounted) _showSnackBar(context, 'Cuenta guardada');
       },
     );
+  }
+
+  void _openCreateBudgetSheet(BuildContext context, WidgetRef ref) {
+    CreateBudgetSheet.show(
+      context: context,
+      onSave: (draft) async {
+        final repository = ref.read(financesRepositoryProvider);
+        if (repository is! LocalFinancesRepository) return;
+        await repository.saveBudget(
+          category: draft.category,
+          amount: draft.amount,
+        );
+        ref.invalidate(financeBudgetsProvider);
+        if (context.mounted) _showSnackBar(context, 'Presupuesto guardado');
+      },
+    );
+  }
+
+  Future<void> _deleteBudget(WidgetRef ref, FinanceBudget budget) async {
+    final repository = ref.read(financesRepositoryProvider);
+    if (repository is! LocalFinancesRepository) return;
+    await repository.deleteBudget(budget.id);
+    ref.invalidate(financeBudgetsProvider);
   }
 
   Future<void> _deleteAccount(
@@ -174,7 +200,8 @@ class FinancesScreen extends ConsumerWidget {
     await repository.deleteMovement(movement.id!);
     ref
       ..invalidate(financeSummaryProvider)
-      ..invalidate(financeMovementsProvider);
+      ..invalidate(financeMovementsProvider)
+      ..invalidate(financeBudgetsProvider);
     if (context.mounted) _showSnackBar(context, 'Movimiento eliminado');
   }
 
@@ -306,7 +333,8 @@ class FinancesScreen extends ConsumerWidget {
     );
     ref
       ..invalidate(financeSummaryProvider)
-      ..invalidate(financeMovementsProvider);
+      ..invalidate(financeMovementsProvider)
+      ..invalidate(financeBudgetsProvider);
     if (context.mounted) _showSnackBar(context, 'Movimiento actualizado');
   }
 
@@ -344,6 +372,7 @@ class FinancesScreen extends ConsumerWidget {
       if (!context.mounted) return;
       ref.invalidate(financeSummaryProvider);
       ref.invalidate(financeMovementsProvider);
+      ref.invalidate(financeBudgetsProvider);
       _showSnackBar(context, 'Guardado localmente');
     } catch (_) {
       _showSnackBar(context, 'No se pudo guardar localmente');
@@ -382,6 +411,9 @@ class FinancesScreen extends ConsumerWidget {
     final movements = ref.watch(financeMovementsProvider);
     final payments = ref.watch(upcomingPaymentsProvider);
     final accounts = ref.watch(financeAccountsProvider);
+    final budgets = ref.watch(financeBudgetsProvider);
+    final budgetPeriod =
+        ref.watch(appSettingsProvider).value?.budgetPeriod ?? 'Quincenal';
     final hasError =
         summary.hasError || movements.hasError || payments.hasError;
     final isLoading =
@@ -457,6 +489,18 @@ class FinancesScreen extends ConsumerWidget {
             ),
             const SizedBox(height: AppSpacing.xxl),
             _SummaryGrid(items: data.summaryItems),
+            const SizedBox(height: AppSpacing.xxl),
+            SectionHeader(
+              title: 'Presupuestos · $budgetPeriod',
+              actionLabel: 'Agregar',
+              onActionTap: () => _openCreateBudgetSheet(context, ref),
+            ),
+            const SizedBox(height: AppSpacing.md),
+            _BudgetsCard(
+              budgets: budgets.value ?? const [],
+              onAdd: () => _openCreateBudgetSheet(context, ref),
+              onDelete: (budget) => _deleteBudget(ref, budget),
+            ),
             const SizedBox(height: AppSpacing.xxl),
             const SectionHeader(title: 'Movimientos recientes'),
             const SizedBox(height: AppSpacing.md),
@@ -586,6 +630,93 @@ class _AccountsCard extends StatelessWidget {
     'Ahorro' => Icons.savings_rounded,
     _ => Icons.payments_rounded,
   };
+}
+
+class _BudgetsCard extends StatelessWidget {
+  const _BudgetsCard({
+    required this.budgets,
+    required this.onAdd,
+    required this.onDelete,
+  });
+
+  final List<FinanceBudget> budgets;
+  final VoidCallback onAdd;
+  final ValueChanged<FinanceBudget> onDelete;
+
+  @override
+  Widget build(BuildContext context) {
+    if (budgets.isEmpty) {
+      return EmptyStateCard(
+        icon: Icons.donut_large_rounded,
+        title: 'Sin presupuestos',
+        description:
+            'Define un límite por categoría para saber cuánto puedes gastar.',
+        actionLabel: 'Crear presupuesto',
+        onAction: onAdd,
+      );
+    }
+    return AppCard(
+      child: Column(
+        children: [
+          for (final budget in budgets) ...[
+            Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Row(
+                  children: [
+                    Expanded(
+                      child: Text(
+                        budget.category,
+                        style: Theme.of(context).textTheme.titleMedium,
+                      ),
+                    ),
+                    Text(
+                      '${money(budget.spent)} de ${money(budget.limit)}',
+                      style: Theme.of(context).textTheme.bodySmall,
+                    ),
+                    IconButton(
+                      tooltip: 'Eliminar presupuesto',
+                      onPressed: () => onDelete(budget),
+                      icon: const Icon(Icons.close_rounded, size: 20),
+                    ),
+                  ],
+                ),
+                ClipRRect(
+                  borderRadius: BorderRadius.circular(99),
+                  child: LinearProgressIndicator(
+                    value: budget.progress,
+                    minHeight: 9,
+                    color: budget.exceeded
+                        ? AppColors.danger
+                        : budget.progress >= .8
+                        ? AppColors.warning
+                        : AppColors.finance,
+                    backgroundColor: AppColors.borderLight,
+                  ),
+                ),
+                const SizedBox(height: AppSpacing.sm),
+                Text(
+                  budget.exceeded
+                      ? '${money(budget.remaining.abs())} por encima del límite'
+                      : '${money(budget.remaining)} disponibles',
+                  style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                    color: budget.exceeded
+                        ? AppColors.danger
+                        : AppColors.textMuted,
+                  ),
+                ),
+              ],
+            ),
+            if (budget != budgets.last)
+              const Padding(
+                padding: EdgeInsets.symmetric(vertical: AppSpacing.md),
+                child: Divider(),
+              ),
+          ],
+        ],
+      ),
+    );
+  }
 }
 
 class _AvailableCard extends StatelessWidget {
