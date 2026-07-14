@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 
 import '../../../../core/constants/app_spacing.dart';
+import '../../../../core/utils/formatters.dart';
 
 class AccountDraft {
   const AccountDraft({
@@ -87,7 +88,7 @@ class _CreateAccountSheetState extends State<CreateAccountSheet> {
             const SizedBox(height: AppSpacing.lg),
             TextFormField(
               controller: _name,
-              decoration: const InputDecoration(
+              decoration: InputDecoration(
                 labelText: 'Nombre',
                 hintText: 'Ej. Cuenta principal',
               ),
@@ -112,9 +113,9 @@ class _CreateAccountSheetState extends State<CreateAccountSheet> {
               keyboardType: const TextInputType.numberWithOptions(
                 decimal: true,
               ),
-              decoration: const InputDecoration(
+              decoration: InputDecoration(
                 labelText: 'Saldo inicial',
-                prefixText: r'$ ',
+                prefixText: '$currencySymbol ',
                 hintText: '0',
               ),
               validator: (value) {

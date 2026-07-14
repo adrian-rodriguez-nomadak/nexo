@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import '../../../../core/utils/formatters.dart';
 
 import '../../../../core/constants/app_colors.dart';
 import '../../../../core/constants/app_spacing.dart';
@@ -118,7 +119,7 @@ class _CreateDebtFromDebtsSheetState extends State<CreateDebtFromDebtsSheet> {
           const SizedBox(height: AppSpacing.lg),
           AppTextField(
             label: 'Monto',
-            hint: r'$0.00',
+            hint: moneyInputHint,
             controller: _amountController,
             keyboardType: TextInputType.number,
             prefixIcon: Icons.payments_rounded,

@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 
 import '../../../../core/constants/app_spacing.dart';
+import '../../../../core/utils/formatters.dart';
 
 class BudgetDraft {
   const BudgetDraft({required this.category, required this.amount});
@@ -81,7 +82,7 @@ class _CreateBudgetSheetState extends State<CreateBudgetSheet> {
             TextFormField(
               controller: _category,
               textCapitalization: TextCapitalization.sentences,
-              decoration: const InputDecoration(
+              decoration: InputDecoration(
                 labelText: 'Categoría',
                 hintText: 'Ej. Comida',
               ),
@@ -95,9 +96,9 @@ class _CreateBudgetSheetState extends State<CreateBudgetSheet> {
               keyboardType: const TextInputType.numberWithOptions(
                 decimal: true,
               ),
-              decoration: const InputDecoration(
+              decoration: InputDecoration(
                 labelText: 'Límite del periodo',
-                prefixText: r'$ ',
+                prefixText: '$currencySymbol ',
               ),
               validator: (value) {
                 final amount = double.tryParse(

@@ -13,7 +13,7 @@ void main() {
     );
 
     expect(data.user.name, 'María');
-    expect(data.summary.availableAmount, r'$0.00');
+    expect(data.summary.availableAmount, r'$0');
     expect(data.tasks, isEmpty);
     expect(data.upcomingPayments, isEmpty);
     expect(data.nextEvent.title, 'Sin eventos próximos');

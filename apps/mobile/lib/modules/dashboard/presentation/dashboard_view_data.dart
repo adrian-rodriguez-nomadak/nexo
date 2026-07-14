@@ -32,8 +32,8 @@ MockDashboardData buildDashboardViewData({
   return MockDashboardData(
     user: MockDashboardUser(name: userName, todayLabel: todayLabel),
     summary: summary == null
-        ? const MockDailySummary(
-            availableAmount: r'$0.00',
+        ? MockDailySummary(
+            availableAmount: money(0),
             availableLabel: 'Disponible real',
             subtitle: 'Agrega movimientos para construir tu resumen.',
             chips: [],
@@ -74,14 +74,14 @@ MockDashboardData buildDashboardViewData({
               )
               .toList(),
     finances: summary == null
-        ? const [
+        ? [
             MockFinanceQuickItem(
-              amount: r'$0.00',
+              amount: money(0),
               label: 'Ingresos del mes',
               color: AppColors.finance,
             ),
             MockFinanceQuickItem(
-              amount: r'$0.00',
+              amount: money(0),
               label: 'Gastos registrados',
               color: AppColors.danger,
             ),

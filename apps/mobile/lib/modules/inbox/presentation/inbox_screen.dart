@@ -3,6 +3,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../../core/constants/app_colors.dart';
 import '../../../core/constants/app_spacing.dart';
+import '../../../core/utils/formatters.dart';
 import '../application/inbox_providers.dart';
 import '../domain/models/interpreted_action.dart';
 import '../../../shared/presentation/widgets/app_back_button.dart';
@@ -99,11 +100,131 @@ class _InboxScreenState extends ConsumerState<InboxScreen> {
             actions.map((action) => _fromInterpretedAction(action, value)),
           );
       });
+      if (settings?.confirmBeforeSave == false) {
+        await _saveWithoutConfirmation();
+      }
     } catch (_) {
       if (!mounted) return;
       _showSnackBar('No se pudo interpretar. Intenta nuevamente.');
     } finally {
       if (mounted) setState(() => _isInterpreting = false);
+    }
+  }
+
+  Future<void> _saveWithoutConfirmation() async {
+    final saved = <InterpretedAction>[];
+    final pairs = List.generate(
+      _actions.length,
+      (index) => (_actions[index], _results[index]),
+    );
+    for (final pair in pairs) {
+      if (await _persistDetected(pair.$1, pair.$2)) saved.add(pair.$1);
+    }
+    if (!mounted || saved.isEmpty) return;
+    setState(() {
+      for (final action in saved) {
+        final index = _actions.indexOf(action);
+        if (index >= 0) {
+          _actions.removeAt(index);
+          _results.removeAt(index);
+        }
+      }
+      if (_actions.isEmpty) _controller.clear();
+    });
+    _showSnackBar(
+      saved.length == 1
+          ? 'Guardado automáticamente'
+          : '${saved.length} elementos guardados automáticamente',
+    );
+  }
+
+  Future<bool> _persistDetected(
+    InterpretedAction action,
+    InboxInterpretation result,
+  ) async {
+    final payload = action.payload;
+    final amount =
+        (payload['amount'] as num?)?.toDouble() ??
+        (payload['total_amount'] as num?)?.toDouble() ??
+        0;
+    switch (result.type) {
+      case 'expense' || 'income':
+        if (amount <= 0) return false;
+        final repository = ref.read(financesRepositoryProvider);
+        if (repository is! LocalFinancesRepository) return false;
+        await repository.createMovement(
+          type: result.type,
+          amount: amount,
+          description: payload['description']?.toString() ?? action.title,
+          categoryName: payload['category']?.toString() ?? 'General',
+        );
+        ref
+          ..invalidate(financeSummaryProvider)
+          ..invalidate(financeMovementsProvider)
+          ..invalidate(financeBudgetsProvider);
+        return true;
+      case 'task':
+        final repository = ref.read(tasksRepositoryProvider);
+        if (repository is! LocalTasksRepository) return false;
+        await repository.createTask(
+          title: action.title,
+          description: payload['description']?.toString() ?? '',
+          priority: payload['priority']?.toString() ?? 'medium',
+        );
+        ref.invalidate(tasksProvider);
+        return true;
+      case 'reminder':
+        final date = _date(payload['remind_at']);
+        if (date == null) return false;
+        final repository = ref.read(remindersRepositoryProvider);
+        if (repository is! LocalRemindersRepository) return false;
+        await repository.createReminder(
+          title: action.title,
+          description: payload['description']?.toString() ?? '',
+          remindAt: date,
+        );
+        ref.invalidate(remindersProvider);
+        return true;
+      case 'debtInFavor':
+        if (amount <= 0) return false;
+        final repository = ref.read(debtsRepositoryProvider);
+        if (repository is! LocalDebtsRepository) return false;
+        await repository.createDebt(
+          name: payload['name']?.toString() ?? action.title,
+          type: payload['debt_type'] == 'i_owe' ? 'i_owe' : 'they_owe_me',
+          amount: amount,
+          notes: payload['notes']?.toString() ?? '',
+        );
+        ref.invalidate(debtsProvider);
+        return true;
+      case 'event':
+        final start = _date(payload['start_at']);
+        if (start == null) return false;
+        final repository = ref.read(calendarRepositoryProvider);
+        if (repository is! LocalCalendarRepository) return false;
+        await repository.createEvent(
+          title: action.title,
+          description: payload['description']?.toString() ?? '',
+          locationName: payload['location_name']?.toString() ?? '',
+          startAt: start,
+          endAt: _date(payload['end_at']),
+        );
+        ref.invalidate(calendarEventsProvider);
+        return true;
+      case 'subscription':
+        if (amount <= 0) return false;
+        final repository = ref.read(subscriptionsRepositoryProvider);
+        if (repository is! LocalSubscriptionsRepository) return false;
+        await repository.createSubscription(
+          name: payload['name']?.toString() ?? action.title,
+          amount: amount,
+          billingDay: (payload['billing_day'] as num?)?.toInt() ?? 1,
+          category: payload['category']?.toString() ?? '',
+        );
+        ref.invalidate(subscriptionsProvider);
+        return true;
+      default:
+        return false;
     }
   }
 
@@ -346,7 +467,7 @@ class _InboxScreenState extends ConsumerState<InboxScreen> {
     String rawText,
   ) {
     final amount = action.payload['amount'];
-    final secondaryAmount = amount == null ? 'Pendiente' : '\$$amount';
+    final secondaryAmount = amount is num ? money(amount) : 'Pendiente';
 
     final base = switch (action.intent) {
       'create_expense' || 'expense' => InboxInterpretation(
