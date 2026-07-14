@@ -27,12 +27,14 @@ class LocalFinanceAccount {
     required this.name,
     required this.type,
     required this.initialBalance,
+    required this.currentBalance,
   });
 
   final String id;
   final String name;
   final String type;
   final double initialBalance;
+  final double currentBalance;
 }
 
 class LocalFinanceBudget {
@@ -81,7 +83,16 @@ class FinancesDao extends DatabaseAccessor<AppDatabase>
 
   Future<List<LocalFinanceAccount>> getAccounts() async {
     final rows = await customSelect(
-      'SELECT id, name, type, initial_balance FROM finance_accounts ORDER BY created_at',
+      '''SELECT a.id, a.name, a.type, a.initial_balance,
+         a.initial_balance
+         + COALESCE((SELECT SUM(CASE WHEN m.type = 'income' THEN m.amount ELSE -m.amount END)
+           FROM finance_movements m JOIN finance_movement_accounts ma
+           ON ma.movement_id = m.id WHERE ma.account_id = a.id), 0)
+         + COALESCE((SELECT SUM(t.amount) FROM finance_transfers t
+           WHERE t.to_account_id = a.id), 0)
+         - COALESCE((SELECT SUM(t.amount) FROM finance_transfers t
+           WHERE t.from_account_id = a.id), 0) AS current_balance
+         FROM finance_accounts a ORDER BY a.created_at''',
       readsFrom: const {},
     ).get();
     return rows
@@ -91,6 +102,7 @@ class FinancesDao extends DatabaseAccessor<AppDatabase>
             name: row.read<String>('name'),
             type: row.read<String>('type'),
             initialBalance: row.read<double>('initial_balance'),
+            currentBalance: row.read<double>('current_balance'),
           ),
         )
         .toList();
@@ -110,8 +122,44 @@ class FinancesDao extends DatabaseAccessor<AppDatabase>
     ],
   );
 
-  Future<void> deleteAccount(String id) =>
-      customStatement('DELETE FROM finance_accounts WHERE id = ?', [id]);
+  Future<void> assignMovementToAccount(String movementId, String accountId) =>
+      customStatement(
+        '''INSERT OR REPLACE INTO finance_movement_accounts
+       (movement_id, account_id) VALUES (?, ?)''',
+        [movementId, accountId],
+      );
+
+  Future<void> insertTransfer({
+    required String id,
+    required String fromAccountId,
+    required String toAccountId,
+    required double amount,
+    String? notes,
+  }) => customStatement(
+    '''INSERT INTO finance_transfers
+       (id, from_account_id, to_account_id, amount, notes, created_at)
+       VALUES (?, ?, ?, ?, ?, ?)''',
+    [
+      id,
+      fromAccountId,
+      toAccountId,
+      amount,
+      notes,
+      DateTime.now().millisecondsSinceEpoch,
+    ],
+  );
+
+  Future<void> deleteAccount(String id) async {
+    await customStatement(
+      'DELETE FROM finance_movement_accounts WHERE account_id = ?',
+      [id],
+    );
+    await customStatement(
+      'DELETE FROM finance_transfers WHERE from_account_id = ? OR to_account_id = ?',
+      [id, id],
+    );
+    await customStatement('DELETE FROM finance_accounts WHERE id = ?', [id]);
+  }
 
   Future<List<LocalFinanceBudget>> getBudgets() async {
     final rows = await customSelect(

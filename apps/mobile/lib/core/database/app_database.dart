@@ -61,6 +61,14 @@ class AppDatabase extends _$AppDatabase {
       await customStatement('''CREATE TABLE IF NOT EXISTS finance_categories (
         id TEXT PRIMARY KEY, name TEXT NOT NULL COLLATE NOCASE UNIQUE,
         created_at INTEGER NOT NULL)''');
+      await customStatement(
+        '''CREATE TABLE IF NOT EXISTS finance_movement_accounts (
+        movement_id TEXT PRIMARY KEY, account_id TEXT NOT NULL)''',
+      );
+      await customStatement('''CREATE TABLE IF NOT EXISTS finance_transfers (
+        id TEXT PRIMARY KEY, from_account_id TEXT NOT NULL,
+        to_account_id TEXT NOT NULL, amount REAL NOT NULL,
+        notes TEXT, created_at INTEGER NOT NULL)''');
       for (final category in [
         'Alimentos',
         'Transporte',

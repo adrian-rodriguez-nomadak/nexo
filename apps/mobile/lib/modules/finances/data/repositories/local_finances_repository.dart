@@ -43,6 +43,7 @@ class LocalFinancesRepository implements FinancesRepository {
             name: row.name,
             type: row.type,
             initialBalance: row.initialBalance,
+            currentBalance: row.currentBalance,
           ),
         )
         .toList();
@@ -59,6 +60,7 @@ class LocalFinancesRepository implements FinancesRepository {
         name: name,
         type: type,
         initialBalance: initialBalance,
+        currentBalance: initialBalance,
       ),
     );
   }
@@ -121,6 +123,7 @@ class LocalFinancesRepository implements FinancesRepository {
     String? description,
     String? categoryName,
     String? paymentMethod,
+    String? accountId,
   }) async {
     final now = DateTime.now();
     final id = localId('movement');
@@ -137,6 +140,9 @@ class LocalFinancesRepository implements FinancesRepository {
         updatedAt: now,
       ),
     );
+    if (accountId != null) {
+      await database.financesDao.assignMovementToAccount(id, accountId);
+    }
     await syncQueue?.enqueue(
       entity: 'finance_movement',
       recordId: id,
@@ -151,6 +157,19 @@ class LocalFinancesRepository implements FinancesRepository {
       },
     );
   }
+
+  Future<void> createTransfer({
+    required String fromAccountId,
+    required String toAccountId,
+    required double amount,
+    String? notes,
+  }) => database.financesDao.insertTransfer(
+    id: localId('transfer'),
+    fromAccountId: fromAccountId,
+    toAccountId: toAccountId,
+    amount: amount,
+    notes: notes,
+  );
 
   Future<(String, DateTime)> createUpcomingPayment({
     required String name,

@@ -48,10 +48,12 @@ class DashboardScreen extends ConsumerWidget {
       final categories = await CategoriesService(
         ref.read(appDatabaseProvider),
       ).getAll();
+      final accounts = await ref.read(financeAccountsProvider.future);
       if (!context.mounted) return;
       CreateExpenseSheet.show(
         context: context,
         categories: categories.map((item) => item.name).toList(),
+        accounts: accounts,
         onSave: (draft) async {
           final repository = ref.read(financesRepositoryProvider);
           if (repository is! LocalFinancesRepository) return;
@@ -60,11 +62,13 @@ class DashboardScreen extends ConsumerWidget {
             amount: draft.amount,
             description: draft.description,
             categoryName: draft.category,
+            accountId: draft.accountId,
           );
           ref
             ..invalidate(financeSummaryProvider)
             ..invalidate(financeMovementsProvider)
             ..invalidate(financeBudgetsProvider);
+          ref.invalidate(financeAccountsProvider);
           if (context.mounted) _showSnackBar(context, 'Guardado localmente');
         },
       );

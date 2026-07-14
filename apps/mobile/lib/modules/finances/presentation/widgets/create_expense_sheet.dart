@@ -6,16 +6,19 @@ import '../../../../core/constants/app_spacing.dart';
 import '../../../../shared/presentation/widgets/app_bottom_sheet.dart';
 import '../../../../shared/presentation/widgets/app_text_field.dart';
 import '../../../../shared/presentation/widgets/module_badge.dart';
+import '../../domain/models/finance_account.dart';
 
 class ExpenseDraft {
   const ExpenseDraft({
     required this.amount,
     required this.category,
     required this.description,
+    this.accountId,
   });
   final double amount;
   final String category;
   final String description;
+  final String? accountId;
 }
 
 class CreateExpenseSheet extends StatefulWidget {
@@ -23,18 +26,21 @@ class CreateExpenseSheet extends StatefulWidget {
     this.onSave,
     this.initialValue,
     this.categories = const [],
+    this.accounts = const [],
     super.key,
   });
 
   final ValueChanged<ExpenseDraft>? onSave;
   final ExpenseDraft? initialValue;
   final List<String> categories;
+  final List<FinanceAccount> accounts;
 
   static Future<void> show({
     required BuildContext context,
     ValueChanged<ExpenseDraft>? onSave,
     ExpenseDraft? initialValue,
     List<String> categories = const [],
+    List<FinanceAccount> accounts = const [],
   }) {
     return AppBottomSheet.show<void>(
       context: context,
@@ -42,6 +48,7 @@ class CreateExpenseSheet extends StatefulWidget {
         onSave: onSave,
         initialValue: initialValue,
         categories: categories,
+        accounts: accounts,
       ),
     );
   }
@@ -54,11 +61,13 @@ class _CreateExpenseSheetState extends State<CreateExpenseSheet> {
   final _amountController = TextEditingController();
   final _categoryController = TextEditingController();
   final _descriptionController = TextEditingController();
+  String? _accountId;
 
   @override
   void initState() {
     super.initState();
     final initial = widget.initialValue;
+    _accountId = initial?.accountId ?? widget.accounts.firstOrNull?.id;
     if (initial != null) {
       _amountController.text = initial.amount.toString();
       _categoryController.text = initial.category;
@@ -84,6 +93,7 @@ class _CreateExpenseSheetState extends State<CreateExpenseSheet> {
         amount: amount,
         category: _categoryController.text.trim(),
         description: _descriptionController.text.trim(),
+        accountId: _accountId,
       ),
     );
     Navigator.of(context).pop();
@@ -108,6 +118,22 @@ class _CreateExpenseSheetState extends State<CreateExpenseSheet> {
             keyboardType: TextInputType.number,
             prefixIcon: Icons.payments_rounded,
           ),
+          if (widget.accounts.isNotEmpty) ...[
+            const SizedBox(height: AppSpacing.lg),
+            DropdownButtonFormField<String>(
+              initialValue: _accountId,
+              decoration: const InputDecoration(labelText: 'Cuenta'),
+              items: widget.accounts
+                  .map(
+                    (account) => DropdownMenuItem(
+                      value: account.id,
+                      child: Text(account.name),
+                    ),
+                  )
+                  .toList(),
+              onChanged: (value) => setState(() => _accountId = value),
+            ),
+          ],
           const SizedBox(height: AppSpacing.lg),
           AppTextField(
             label: 'Categoría',

@@ -6,33 +6,46 @@ import '../../../../core/constants/app_spacing.dart';
 import '../../../../shared/presentation/widgets/app_bottom_sheet.dart';
 import '../../../../shared/presentation/widgets/app_text_field.dart';
 import '../../../../shared/presentation/widgets/module_badge.dart';
+import '../../domain/models/finance_account.dart';
 
 class IncomeDraft {
   const IncomeDraft({
     required this.amount,
     required this.source,
     required this.description,
+    this.accountId,
   });
   final double amount;
   final String source;
   final String description;
+  final String? accountId;
 }
 
 class CreateIncomeSheet extends StatefulWidget {
-  const CreateIncomeSheet({this.onSave, this.initialValue, super.key});
+  const CreateIncomeSheet({
+    this.onSave,
+    this.initialValue,
+    this.accounts = const [],
+    super.key,
+  });
 
   final ValueChanged<IncomeDraft>? onSave;
   final IncomeDraft? initialValue;
+  final List<FinanceAccount> accounts;
 
   static Future<void> show({
     required BuildContext context,
     ValueChanged<IncomeDraft>? onSave,
     IncomeDraft? initialValue,
+    List<FinanceAccount> accounts = const [],
   }) {
     return AppBottomSheet.show<void>(
       context: context,
-      builder: (context) =>
-          CreateIncomeSheet(onSave: onSave, initialValue: initialValue),
+      builder: (context) => CreateIncomeSheet(
+        onSave: onSave,
+        initialValue: initialValue,
+        accounts: accounts,
+      ),
     );
   }
 
@@ -44,11 +57,13 @@ class _CreateIncomeSheetState extends State<CreateIncomeSheet> {
   final _amountController = TextEditingController();
   final _sourceController = TextEditingController();
   final _descriptionController = TextEditingController();
+  String? _accountId;
 
   @override
   void initState() {
     super.initState();
     final initial = widget.initialValue;
+    _accountId = initial?.accountId ?? widget.accounts.firstOrNull?.id;
     if (initial != null) {
       _amountController.text = initial.amount.toString();
       _sourceController.text = initial.source;
@@ -74,6 +89,7 @@ class _CreateIncomeSheetState extends State<CreateIncomeSheet> {
         amount: amount,
         source: _sourceController.text.trim(),
         description: _descriptionController.text.trim(),
+        accountId: _accountId,
       ),
     );
     Navigator.of(context).pop();
@@ -98,6 +114,22 @@ class _CreateIncomeSheetState extends State<CreateIncomeSheet> {
             keyboardType: TextInputType.number,
             prefixIcon: Icons.payments_rounded,
           ),
+          if (widget.accounts.isNotEmpty) ...[
+            const SizedBox(height: AppSpacing.lg),
+            DropdownButtonFormField<String>(
+              initialValue: _accountId,
+              decoration: const InputDecoration(labelText: 'Cuenta'),
+              items: widget.accounts
+                  .map(
+                    (account) => DropdownMenuItem(
+                      value: account.id,
+                      child: Text(account.name),
+                    ),
+                  )
+                  .toList(),
+              onChanged: (value) => setState(() => _accountId = value),
+            ),
+          ],
           const SizedBox(height: AppSpacing.lg),
           AppTextField(
             label: 'Fuente',

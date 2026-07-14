@@ -18,6 +18,7 @@ class LocalDataService {
     'Cuentas': 'finance_accounts',
     'Presupuestos': 'finance_budgets',
     'Categorías': 'finance_categories',
+    'Transferencias': 'finance_transfers',
     'Movimientos': 'finance_movements',
     'Pagos próximos': 'upcoming_payments',
     'Eventos': 'calendar_events',

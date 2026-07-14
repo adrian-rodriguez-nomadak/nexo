@@ -217,6 +217,8 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
       await db.customStatement('DELETE FROM finance_accounts');
       await db.customStatement('DELETE FROM finance_budgets');
       await db.customStatement('DELETE FROM finance_categories');
+      await db.customStatement('DELETE FROM finance_movement_accounts');
+      await db.customStatement('DELETE FROM finance_transfers');
       await db.delete(db.financeMovements).go();
       await db.delete(db.upcomingPayments).go();
       await db.delete(db.calendarEvents).go();

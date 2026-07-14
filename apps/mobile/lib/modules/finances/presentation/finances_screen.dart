@@ -27,6 +27,7 @@ import 'widgets/create_income_sheet.dart';
 import 'widgets/create_payment_sheet.dart';
 import 'widgets/create_account_sheet.dart';
 import 'widgets/create_budget_sheet.dart';
+import 'widgets/create_transfer_sheet.dart';
 import 'finance_view_data.dart';
 import 'widgets/finance_movement_detail_sheet.dart';
 import 'widgets/upcoming_payment_detail_sheet.dart';
@@ -47,10 +48,12 @@ class FinancesScreen extends ConsumerWidget {
     final categories = await CategoriesService(
       ref.read(appDatabaseProvider),
     ).getAll();
+    final accounts = await ref.read(financeAccountsProvider.future);
     if (!context.mounted) return;
     CreateExpenseSheet.show(
       context: context,
       categories: categories.map((item) => item.name).toList(),
+      accounts: accounts,
       onSave: (draft) => _saveMovement(
         context,
         ref,
@@ -58,13 +61,20 @@ class FinancesScreen extends ConsumerWidget {
         amount: draft.amount,
         description: draft.description,
         categoryName: draft.category,
+        accountId: draft.accountId,
       ),
     );
   }
 
-  void _openCreateIncomeSheet(BuildContext context, WidgetRef ref) {
+  Future<void> _openCreateIncomeSheet(
+    BuildContext context,
+    WidgetRef ref,
+  ) async {
+    final accounts = await ref.read(financeAccountsProvider.future);
+    if (!context.mounted) return;
     CreateIncomeSheet.show(
       context: context,
+      accounts: accounts,
       onSave: (draft) => _saveMovement(
         context,
         ref,
@@ -72,6 +82,7 @@ class FinancesScreen extends ConsumerWidget {
         amount: draft.amount,
         description: draft.description,
         categoryName: draft.source,
+        accountId: draft.accountId,
       ),
     );
   }
@@ -157,6 +168,32 @@ class FinancesScreen extends ConsumerWidget {
     ref
       ..invalidate(financeAccountsProvider)
       ..invalidate(financeSummaryProvider);
+  }
+
+  Future<void> _openTransfer(
+    BuildContext context,
+    WidgetRef ref,
+    List<FinanceAccount> accounts,
+  ) async {
+    if (accounts.length < 2) {
+      _showSnackBar(context, 'Agrega al menos dos cuentas');
+      return;
+    }
+    await CreateTransferSheet.show(
+      context: context,
+      accounts: accounts,
+      onSave: (draft) async {
+        final repository = ref.read(financesRepositoryProvider);
+        if (repository is! LocalFinancesRepository) return;
+        await repository.createTransfer(
+          fromAccountId: draft.fromAccountId,
+          toAccountId: draft.toAccountId,
+          amount: draft.amount,
+          notes: draft.notes,
+        );
+        ref.invalidate(financeAccountsProvider);
+      },
+    );
   }
 
   void _openCreatePaymentSheet(BuildContext context, WidgetRef ref) {
@@ -369,6 +406,7 @@ class FinancesScreen extends ConsumerWidget {
     required double amount,
     required String description,
     required String categoryName,
+    String? accountId,
   }) async {
     final repository = ref.read(financesRepositoryProvider);
     if (repository is! LocalFinancesRepository) {
@@ -383,11 +421,13 @@ class FinancesScreen extends ConsumerWidget {
         description: description,
         categoryName: categoryName,
         paymentMethod: 'local',
+        accountId: accountId,
       );
       if (!context.mounted) return;
       ref.invalidate(financeSummaryProvider);
       ref.invalidate(financeMovementsProvider);
       ref.invalidate(financeBudgetsProvider);
+      ref.invalidate(financeAccountsProvider);
       _showSnackBar(context, 'Guardado localmente');
     } catch (_) {
       _showSnackBar(context, 'No se pudo guardar localmente');
@@ -511,6 +551,8 @@ class FinancesScreen extends ConsumerWidget {
               accounts: accounts.value ?? const [],
               onAdd: () => _openCreateAccountSheet(context, ref),
               onDelete: (account) => _deleteAccount(context, ref, account),
+              onTransfer: () =>
+                  _openTransfer(context, ref, accounts.value ?? const []),
             ),
             const SizedBox(height: AppSpacing.xxl),
             _SummaryGrid(items: data.summaryItems),
@@ -596,11 +638,13 @@ class _AccountsCard extends StatelessWidget {
     required this.accounts,
     required this.onAdd,
     required this.onDelete,
+    required this.onTransfer,
   });
 
   final List<FinanceAccount> accounts;
   final VoidCallback onAdd;
   final ValueChanged<FinanceAccount> onDelete;
+  final VoidCallback onTransfer;
 
   @override
   Widget build(BuildContext context) {
@@ -617,6 +661,14 @@ class _AccountsCard extends StatelessWidget {
     return AppCard(
       child: Column(
         children: [
+          Align(
+            alignment: Alignment.centerRight,
+            child: TextButton.icon(
+              onPressed: onTransfer,
+              icon: const Icon(Icons.swap_horiz_rounded),
+              label: const Text('Transferir'),
+            ),
+          ),
           for (final account in accounts) ...[
             ListTile(
               contentPadding: EdgeInsets.zero,
@@ -626,12 +678,14 @@ class _AccountsCard extends StatelessWidget {
                 size: 40,
               ),
               title: Text(account.name),
-              subtitle: Text('${account.type} · Saldo inicial'),
+              subtitle: Text(
+                '${account.type} · Inicial ${money(account.initialBalance)}',
+              ),
               trailing: Row(
                 mainAxisSize: MainAxisSize.min,
                 children: [
                   Text(
-                    money(account.initialBalance),
+                    money(account.currentBalance),
                     style: Theme.of(context).textTheme.titleMedium,
                   ),
                   IconButton(
