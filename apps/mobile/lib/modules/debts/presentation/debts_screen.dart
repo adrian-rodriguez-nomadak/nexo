@@ -22,12 +22,6 @@ import 'debts_view_data.dart';
 class DebtsScreen extends ConsumerWidget {
   const DebtsScreen({super.key});
 
-  void _showSimulatedAction(BuildContext context, String label) {
-    ScaffoldMessenger.of(
-      context,
-    ).showSnackBar(SnackBar(content: Text('$label simulado')));
-  }
-
   void _showSnackBar(BuildContext context, String message) {
     ScaffoldMessenger.of(
       context,
@@ -138,7 +132,10 @@ class DebtsScreen extends ConsumerWidget {
   ) async {
     final repository = ref.read(debtsRepositoryProvider);
     if (repository is! LocalDebtsRepository) {
-      _showSnackBar(context, 'Deuda simulada guardada');
+      _showSnackBar(
+        context,
+        'No se puede guardar con la fuente de datos actual',
+      );
       return;
     }
 
@@ -183,9 +180,7 @@ class DebtsScreen extends ConsumerWidget {
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final debts = ref.watch(debtsProvider);
-    final data = debts.value == null
-        ? mockDebts
-        : buildDebtsViewData(debts.value!);
+    final data = buildDebtsViewData(debts.value ?? const []);
     final textTheme = Theme.of(context).textTheme;
 
     return Scaffold(
@@ -229,7 +224,7 @@ class DebtsScreen extends ConsumerWidget {
               const SizedBox(height: AppSpacing.xl),
             ],
             if (debts.hasError) ...[
-              const AppCard(child: Text('Usando datos de prototipo')),
+              const AppCard(child: Text('No se pudieron cargar las deudas.')),
               const SizedBox(height: AppSpacing.xl),
             ],
             _DebtHeroCard(data: data),
@@ -279,7 +274,7 @@ class DebtsScreen extends ConsumerWidget {
                           return;
                         }
 
-                        _showSimulatedAction(context, action.label);
+                        _showSnackBar(context, 'Acción no disponible.');
                       },
                     ),
                   )

@@ -61,12 +61,12 @@ class OnboardingScreen extends StatelessWidget {
               runSpacing: AppSpacing.sm,
               children: [
                 SummaryChip(
-                  label: 'UI prototipo',
+                  label: 'Datos bajo tu control',
                   icon: Icons.visibility_rounded,
                   color: AppColors.info,
                 ),
                 SummaryChip(
-                  label: 'Sin datos reales',
+                  label: 'Almacenamiento seguro',
                   icon: Icons.verified_user_rounded,
                   color: AppColors.primaryDark,
                 ),
@@ -276,7 +276,7 @@ class _InitialSetupCard extends StatelessWidget {
                     Text('Configuración inicial', style: textTheme.titleLarge),
                     const SizedBox(height: AppSpacing.xs),
                     Text(
-                      'Simulada para el prototipo',
+                      'Personaliza Nexo al crear tu cuenta',
                       style: textTheme.bodySmall,
                     ),
                   ],

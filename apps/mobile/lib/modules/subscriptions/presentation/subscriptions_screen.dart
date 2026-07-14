@@ -21,12 +21,6 @@ import 'subscriptions_view_data.dart';
 class SubscriptionsScreen extends ConsumerWidget {
   const SubscriptionsScreen({super.key});
 
-  void _showSimulatedAction(BuildContext context, String label) {
-    ScaffoldMessenger.of(
-      context,
-    ).showSnackBar(SnackBar(content: Text('$label simulado')));
-  }
-
   void _showSnackBar(BuildContext context, String message) {
     ScaffoldMessenger.of(
       context,
@@ -47,7 +41,10 @@ class SubscriptionsScreen extends ConsumerWidget {
   ) async {
     final repository = ref.read(subscriptionsRepositoryProvider);
     if (repository is! LocalSubscriptionsRepository) {
-      _showSnackBar(context, 'Suscripción simulada guardada');
+      _showSnackBar(
+        context,
+        'No se puede guardar con la fuente de datos actual',
+      );
       return;
     }
 
@@ -139,9 +136,7 @@ class SubscriptionsScreen extends ConsumerWidget {
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final subscriptions = ref.watch(subscriptionsProvider);
-    final data = subscriptions.value == null
-        ? mockSubscriptions
-        : buildSubscriptionsViewData(subscriptions.value!);
+    final data = buildSubscriptionsViewData(subscriptions.value ?? const []);
     final textTheme = Theme.of(context).textTheme;
 
     return Scaffold(
@@ -185,7 +180,9 @@ class SubscriptionsScreen extends ConsumerWidget {
               const SizedBox(height: AppSpacing.xl),
             ],
             if (subscriptions.hasError) ...[
-              const AppCard(child: Text('Usando datos de prototipo')),
+              const AppCard(
+                child: Text('No se pudieron cargar las suscripciones.'),
+              ),
               const SizedBox(height: AppSpacing.xl),
             ],
             _SubscriptionHeroCard(data: data),
@@ -218,7 +215,10 @@ class SubscriptionsScreen extends ConsumerWidget {
                           return;
                         }
 
-                        _showSimulatedAction(context, action.label);
+                        _showSnackBar(
+                          context,
+                          'Registra el pago desde la sección Finanzas.',
+                        );
                       },
                     ),
                   )

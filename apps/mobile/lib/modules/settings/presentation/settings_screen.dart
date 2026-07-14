@@ -292,6 +292,68 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
     );
   }
 
+  Future<void> _restoreLocalData() async {
+    final clipboard = await Clipboard.getData(Clipboard.kTextPlain);
+    final backup = clipboard?.text;
+    if (backup == null || backup.trim().isEmpty) {
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Copia primero un respaldo JSON.')),
+      );
+      return;
+    }
+    if (!mounted) return;
+    final confirmed = await showDialog<bool>(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: const Text('Restaurar respaldo'),
+        content: const Text(
+          'Esto reemplazará los datos locales actuales por el respaldo del portapapeles.',
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context, false),
+            child: const Text('Cancelar'),
+          ),
+          FilledButton(
+            onPressed: () => Navigator.pop(context, true),
+            child: const Text('Restaurar'),
+          ),
+        ],
+      ),
+    );
+    if (confirmed != true) return;
+    try {
+      final result = await LocalDataService(
+        ref.read(appDatabaseProvider),
+      ).restoreJson(backup);
+      ref.invalidate(calendarEventsProvider);
+      ref.invalidate(tasksProvider);
+      ref.invalidate(remindersProvider);
+      ref.invalidate(debtsProvider);
+      ref.invalidate(subscriptionsProvider);
+      ref.invalidate(financeSummaryProvider);
+      ref.invalidate(financeMovementsProvider);
+      ref.invalidate(upcomingPaymentsProvider);
+      ref.invalidate(financeAccountsProvider);
+      ref.invalidate(financeBudgetsProvider);
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('${result.restored} elementos restaurados.')),
+      );
+    } on FormatException catch (error) {
+      if (!mounted) return;
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(SnackBar(content: Text(error.message.toString())));
+    } catch (_) {
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('No se pudo restaurar el respaldo.')),
+      );
+    }
+  }
+
   Future<void> _syncNow() async {
     if (ref.read(authSessionProvider).value == null) {
       context.push('/login');
@@ -309,6 +371,8 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
       ref.invalidate(financeSummaryProvider);
       ref.invalidate(financeMovementsProvider);
       ref.invalidate(upcomingPaymentsProvider);
+      ref.invalidate(financeAccountsProvider);
+      ref.invalidate(financeBudgetsProvider);
       if (!mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
@@ -567,7 +631,10 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
                     chipIcon: Icons.edit_rounded,
                     onTap: () => CategoriesSheet.show(
                       context: context,
-                      service: CategoriesService(ref.read(appDatabaseProvider)),
+                      service: CategoriesService(
+                        ref.read(appDatabaseProvider),
+                        syncQueue: ref.read(syncQueueStoreProvider),
+                      ),
                     ),
                   ),
                 ],
@@ -609,6 +676,16 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
                     chipLabel: 'Copiar JSON',
                     chipIcon: Icons.copy_all_rounded,
                     onTap: _exportLocalData,
+                  ),
+                  const SizedBox(height: AppSpacing.lg),
+                  _InfoSettingTile(
+                    icon: Icons.settings_backup_restore_rounded,
+                    color: AppColors.calendar,
+                    title: 'Restaurar información',
+                    value: '',
+                    chipLabel: 'Desde portapapeles',
+                    chipIcon: Icons.content_paste_rounded,
+                    onTap: _restoreLocalData,
                   ),
                   const SizedBox(height: AppSpacing.lg),
                   _InfoSettingTile(

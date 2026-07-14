@@ -85,7 +85,7 @@ class DebtDetailSheet extends StatelessWidget {
         _DetailRow(label: 'Nota', value: item.detail),
         const _DetailRow(
           label: 'Último movimiento',
-          value: 'Sin movimientos reales todavía.',
+          value: 'Sin abonos registrados.',
         ),
         const SizedBox(height: AppSpacing.sm),
         OutlinedButton.icon(

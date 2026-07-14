@@ -12,10 +12,12 @@ class PaymentDraft {
     required this.name,
     required this.amount,
     required this.category,
+    required this.dueDate,
   });
   final String name;
   final double amount;
   final String category;
+  final DateTime dueDate;
 }
 
 class CreatePaymentSheet extends StatefulWidget {
@@ -44,11 +46,13 @@ class _CreatePaymentSheetState extends State<CreatePaymentSheet> {
   final _nameController = TextEditingController();
   final _amountController = TextEditingController();
   final _categoryController = TextEditingController();
+  late DateTime _dueDate;
 
   @override
   void initState() {
     super.initState();
     final initial = widget.initialValue;
+    _dueDate = initial?.dueDate ?? DateTime.now().add(const Duration(days: 3));
     if (initial != null) {
       _nameController.text = initial.name;
       _amountController.text = initial.amount.toString();
@@ -75,6 +79,7 @@ class _CreatePaymentSheetState extends State<CreatePaymentSheet> {
         name: name,
         amount: amount,
         category: _categoryController.text.trim(),
+        dueDate: _dueDate,
       ),
     );
     Navigator.of(context).pop();
@@ -107,7 +112,18 @@ class _CreatePaymentSheetState extends State<CreatePaymentSheet> {
             prefixIcon: Icons.payments_rounded,
           ),
           const SizedBox(height: AppSpacing.lg),
-          const _DatePreviewField(),
+          _DatePreviewField(
+            date: _dueDate,
+            onTap: () async {
+              final selected = await showDatePicker(
+                context: context,
+                initialDate: _dueDate,
+                firstDate: DateTime.now(),
+                lastDate: DateTime.now().add(const Duration(days: 3650)),
+              );
+              if (selected != null) setState(() => _dueDate = selected);
+            },
+          ),
           const SizedBox(height: AppSpacing.lg),
           AppTextField(
             label: 'Categoría',
@@ -122,7 +138,10 @@ class _CreatePaymentSheetState extends State<CreatePaymentSheet> {
 }
 
 class _DatePreviewField extends StatelessWidget {
-  const _DatePreviewField();
+  const _DatePreviewField({required this.date, required this.onTap});
+
+  final DateTime date;
+  final VoidCallback onTap;
 
   @override
   Widget build(BuildContext context) {
@@ -133,33 +152,37 @@ class _DatePreviewField extends StatelessWidget {
       children: [
         Text('Fecha', style: textTheme.labelLarge),
         const SizedBox(height: AppSpacing.sm),
-        Container(
-          padding: const EdgeInsets.symmetric(
-            horizontal: AppSpacing.md,
-            vertical: AppSpacing.md,
-          ),
-          decoration: BoxDecoration(
-            color: Theme.of(context).inputDecorationTheme.fillColor,
-            borderRadius: BorderRadius.circular(AppSpacing.inputRadius),
-            border: Border.all(color: AppColors.borderLight),
-          ),
-          child: Row(
-            children: [
-              const ModuleBadge(
-                icon: Icons.event_rounded,
-                color: AppColors.subscription,
-                size: 34,
-              ),
-              const SizedBox(width: AppSpacing.md),
-              Expanded(
-                child: Text('Próximamente', style: textTheme.titleMedium),
-              ),
-              const Icon(
-                Icons.expand_more_rounded,
-                color: AppColors.textMuted,
-                size: 22,
-              ),
-            ],
+        InkWell(
+          onTap: onTap,
+          borderRadius: BorderRadius.circular(AppSpacing.inputRadius),
+          child: Container(
+            padding: const EdgeInsets.symmetric(
+              horizontal: AppSpacing.md,
+              vertical: AppSpacing.md,
+            ),
+            decoration: BoxDecoration(
+              color: Theme.of(context).inputDecorationTheme.fillColor,
+              borderRadius: BorderRadius.circular(AppSpacing.inputRadius),
+              border: Border.all(color: AppColors.borderLight),
+            ),
+            child: Row(
+              children: [
+                const ModuleBadge(
+                  icon: Icons.event_rounded,
+                  color: AppColors.subscription,
+                  size: 34,
+                ),
+                const SizedBox(width: AppSpacing.md),
+                Expanded(
+                  child: Text(shortDate(date), style: textTheme.titleMedium),
+                ),
+                const Icon(
+                  Icons.expand_more_rounded,
+                  color: AppColors.textMuted,
+                  size: 22,
+                ),
+              ],
+            ),
           ),
         ),
       ],

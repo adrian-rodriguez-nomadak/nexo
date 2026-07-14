@@ -28,12 +28,6 @@ import 'calendar_view_data.dart';
 class CalendarScreen extends ConsumerWidget {
   const CalendarScreen({super.key});
 
-  void _showSimulatedAction(BuildContext context, String label) {
-    ScaffoldMessenger.of(
-      context,
-    ).showSnackBar(SnackBar(content: Text('$label simulado')));
-  }
-
   void _showSnackBar(BuildContext context, String message) {
     ScaffoldMessenger.of(
       context,
@@ -75,7 +69,10 @@ class CalendarScreen extends ConsumerWidget {
   ) async {
     final repository = ref.read(calendarRepositoryProvider);
     if (repository is! LocalCalendarRepository) {
-      _showSnackBar(context, 'Evento simulado guardado');
+      _showSnackBar(
+        context,
+        'No se puede guardar con la fuente de datos actual',
+      );
       return;
     }
 
@@ -102,7 +99,10 @@ class CalendarScreen extends ConsumerWidget {
   ) async {
     final repository = ref.read(tasksRepositoryProvider);
     if (repository is! LocalTasksRepository) {
-      _showSnackBar(context, 'Tarea simulada guardada');
+      _showSnackBar(
+        context,
+        'No se puede guardar con la fuente de datos actual',
+      );
       return;
     }
 
@@ -127,7 +127,10 @@ class CalendarScreen extends ConsumerWidget {
   ) async {
     final repository = ref.read(remindersRepositoryProvider);
     if (repository is! LocalRemindersRepository) {
-      _showSnackBar(context, 'Recordatorio simulado guardado');
+      _showSnackBar(
+        context,
+        'No se puede guardar con la fuente de datos actual',
+      );
       return;
     }
 
@@ -306,13 +309,11 @@ class CalendarScreen extends ConsumerWidget {
     final events = ref.watch(calendarEventsProvider);
     final tasks = ref.watch(tasksProvider);
     final reminders = ref.watch(remindersProvider);
-    final data = events.value == null
-        ? mockCalendar
-        : buildCalendarViewData(
-            events.value!,
-            tasks.value ?? const [],
-            reminders.value ?? const [],
-          );
+    final data = buildCalendarViewData(
+      events.value ?? const [],
+      tasks.value ?? const [],
+      reminders.value ?? const [],
+    );
     final textTheme = Theme.of(context).textTheme;
 
     return Scaffold(
@@ -358,7 +359,7 @@ class CalendarScreen extends ConsumerWidget {
               const SizedBox(height: AppSpacing.xl),
             ],
             if (events.hasError) ...[
-              const AppCard(child: Text('Usando datos de prototipo')),
+              const AppCard(child: Text('No se pudo cargar el calendario.')),
               const SizedBox(height: AppSpacing.xl),
             ],
             _DaySummaryCard(data: data),
@@ -377,7 +378,7 @@ class CalendarScreen extends ConsumerWidget {
                   date: 'Hoy',
                   time: event.time,
                   category: event.category,
-                  notes: 'Actividad agendada en el prototipo.',
+                  notes: 'Actividad guardada en tu calendario.',
                   status: 'Próximo',
                   primaryActionLabel: 'Editar evento',
                   secondaryActionLabel: 'Reprogramar',
@@ -402,7 +403,7 @@ class CalendarScreen extends ConsumerWidget {
                   date: 'Hoy',
                   time: 'Durante el día',
                   category: 'Recordatorios',
-                  notes: 'Aviso rápido de prototipo.',
+                  notes: 'Recordatorio guardado localmente.',
                   status: 'Pendiente',
                   primaryActionLabel: 'Marcar como completado',
                   secondaryActionLabel: 'Posponer',
@@ -464,7 +465,7 @@ class CalendarScreen extends ConsumerWidget {
                           return;
                         }
 
-                        _showSimulatedAction(context, action.label);
+                        _showSnackBar(context, 'Acción no disponible.');
                       },
                     ),
                   )

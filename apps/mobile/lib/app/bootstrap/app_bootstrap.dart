@@ -75,6 +75,8 @@ class _AppBootstrapState extends ConsumerState<AppBootstrap>
     ref.invalidate(financeSummaryProvider);
     ref.invalidate(financeMovementsProvider);
     ref.invalidate(upcomingPaymentsProvider);
+    ref.invalidate(financeAccountsProvider);
+    ref.invalidate(financeBudgetsProvider);
   }
 
   @override

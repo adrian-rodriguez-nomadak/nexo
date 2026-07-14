@@ -10,6 +10,7 @@ import '../application/finances_providers.dart';
 import '../data/repositories/local_finances_repository.dart';
 import '../domain/models/finance_account.dart';
 import '../domain/models/finance_budget.dart';
+import '../domain/models/finance_summary.dart';
 import '../../settings/application/settings_providers.dart';
 import '../../settings/data/categories_service.dart';
 import '../../../core/database/database_provider.dart';
@@ -34,12 +35,6 @@ import 'widgets/upcoming_payment_detail_sheet.dart';
 
 class FinancesScreen extends ConsumerWidget {
   const FinancesScreen({super.key});
-
-  void _showSimulatedAction(BuildContext context, String label) {
-    ScaffoldMessenger.of(
-      context,
-    ).showSnackBar(SnackBar(content: Text('$label simulado')));
-  }
 
   Future<void> _openCreateExpenseSheet(
     BuildContext context,
@@ -347,6 +342,7 @@ class FinancesScreen extends ConsumerWidget {
         name: payment.title,
         amount: _amountFromLabel(payment.amount),
         category: 'Pagos próximos',
+        dueDate: DateTime.now().add(const Duration(days: 3)),
       ),
       onSave: (draft) async {
         final repository = ref.read(financesRepositoryProvider);
@@ -441,7 +437,10 @@ class FinancesScreen extends ConsumerWidget {
   ) async {
     final repository = ref.read(financesRepositoryProvider);
     if (repository is! LocalFinancesRepository) {
-      _showSnackBar(context, 'Pago simulado guardado');
+      _showSnackBar(
+        context,
+        'No se puede guardar con la fuente de datos actual',
+      );
       return;
     }
 
@@ -450,6 +449,7 @@ class FinancesScreen extends ConsumerWidget {
         name: draft.name,
         amount: draft.amount,
         category: draft.category,
+        dueDate: draft.dueDate,
       );
       if (ref.read(appSettingsProvider).value?.upcomingPayments == true) {
         await ref
@@ -492,7 +492,16 @@ class FinancesScreen extends ConsumerWidget {
             movements: movements.value!,
             upcomingPayments: payments.value!,
           )
-        : mockFinances;
+        : buildFinancesViewData(
+            summary: const FinanceSummary(
+              availableAmount: 0,
+              incomeTotal: 0,
+              expenseTotal: 0,
+              upcomingPaymentsTotal: 0,
+            ),
+            movements: const [],
+            upcomingPayments: const [],
+          );
     final textTheme = Theme.of(context).textTheme;
 
     return Scaffold(
@@ -620,7 +629,7 @@ class FinancesScreen extends ConsumerWidget {
                           return;
                         }
 
-                        _showSimulatedAction(context, action.label);
+                        _showSnackBar(context, 'Acción no disponible.');
                       },
                     ),
                   )
@@ -850,7 +859,7 @@ class _FallbackNotice extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return const AppCard(child: Text('Usando datos de prototipo'));
+    return const AppCard(child: Text('No se pudieron cargar las finanzas.'));
   }
 }
 

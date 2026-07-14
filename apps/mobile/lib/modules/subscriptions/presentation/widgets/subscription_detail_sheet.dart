@@ -66,11 +66,8 @@ class SubscriptionDetailSheet extends StatelessWidget {
         const _DetailRow(label: 'Frecuencia', value: 'Mensual'),
         _DetailRow(label: 'Estado', value: subscription.status),
         const _DetailRow(label: 'Categoría', value: 'Servicio recurrente'),
-        const _DetailRow(label: 'Próximo cobro', value: 'Próximamente'),
-        const _DetailRow(
-          label: 'Notas',
-          value: 'Detalle visual de suscripción para el prototipo.',
-        ),
+        _DetailRow(label: 'Próximo cobro', value: subscription.billingDay),
+        const _DetailRow(label: 'Notas', value: 'Cobro recurrente registrado.'),
         const SizedBox(height: AppSpacing.sm),
         OutlinedButton.icon(
           onPressed: () => onAction('paused'),

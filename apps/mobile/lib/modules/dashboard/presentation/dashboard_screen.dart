@@ -123,6 +123,7 @@ class DashboardScreen extends ConsumerWidget {
             name: draft.name,
             amount: draft.amount,
             category: draft.category,
+            dueDate: draft.dueDate,
           );
           if (ref.read(appSettingsProvider).value?.upcomingPayments == true) {
             await ref

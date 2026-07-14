@@ -212,8 +212,12 @@ class FinancesDao extends DatabaseAccessor<AppDatabase>
     )..where((table) => table.id.equals(id))).write(movement);
   }
 
-  Future<void> deleteMovement(String id) {
-    return (delete(
+  Future<void> deleteMovement(String id) async {
+    await customStatement(
+      'DELETE FROM finance_movement_accounts WHERE movement_id = ?',
+      [id],
+    );
+    await (delete(
       financeMovements,
     )..where((table) => table.id.equals(id))).go();
   }

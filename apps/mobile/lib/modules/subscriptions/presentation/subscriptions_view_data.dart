@@ -19,7 +19,7 @@ MockSubscriptionsData buildSubscriptionsViewData(List<SubscriptionItem> items) {
         color: AppColors.finance,
       ),
       const MockSubscriptionChip(
-        label: 'Con fallback mock',
+        label: 'Datos locales',
         icon: Icons.cloud_done_rounded,
         color: AppColors.subscription,
       ),

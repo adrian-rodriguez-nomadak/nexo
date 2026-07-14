@@ -54,19 +54,33 @@ class LocalFinancesRepository implements FinancesRepository {
     required String type,
     required double initialBalance,
   }) async {
+    final id = localId('account');
     await database.financesDao.insertAccount(
       LocalFinanceAccount(
-        id: localId('account'),
+        id: id,
         name: name,
         type: type,
         initialBalance: initialBalance,
         currentBalance: initialBalance,
       ),
     );
+    await syncQueue?.enqueue(
+      entity: 'finance_account',
+      recordId: id,
+      operation: 'upsert',
+      payload: {'name': name, 'type': type, 'initial_balance': initialBalance},
+    );
   }
 
-  Future<void> deleteAccount(String id) =>
-      database.financesDao.deleteAccount(id);
+  Future<void> deleteAccount(String id) async {
+    await database.financesDao.deleteAccount(id);
+    await syncQueue?.enqueue(
+      entity: 'finance_account',
+      recordId: id,
+      operation: 'delete',
+      payload: null,
+    );
+  }
 
   Future<List<FinanceBudget>> getBudgets({required String period}) async {
     final budgets = await database.financesDao.getBudgets();
@@ -91,16 +105,31 @@ class LocalFinancesRepository implements FinancesRepository {
     }).toList();
   }
 
-  Future<void> saveBudget({required String category, required double amount}) =>
-      database.financesDao.insertBudget(
-        LocalFinanceBudget(
-          id: localId('budget'),
-          category: category.trim(),
-          amount: amount,
-        ),
-      );
+  Future<void> saveBudget({
+    required String category,
+    required double amount,
+  }) async {
+    final id = localId('budget');
+    await database.financesDao.insertBudget(
+      LocalFinanceBudget(id: id, category: category.trim(), amount: amount),
+    );
+    await syncQueue?.enqueue(
+      entity: 'finance_budget',
+      recordId: id,
+      operation: 'upsert',
+      payload: {'category': category.trim(), 'amount': amount},
+    );
+  }
 
-  Future<void> deleteBudget(String id) => database.financesDao.deleteBudget(id);
+  Future<void> deleteBudget(String id) async {
+    await database.financesDao.deleteBudget(id);
+    await syncQueue?.enqueue(
+      entity: 'finance_budget',
+      recordId: id,
+      operation: 'delete',
+      payload: null,
+    );
+  }
 
   DateTime _periodStart(String period, DateTime now) {
     if (period == 'Mensual') return DateTime(now.year, now.month);
@@ -154,6 +183,7 @@ class LocalFinancesRepository implements FinancesRepository {
         'category_name': categoryName,
         'payment_method': paymentMethod,
         'movement_date': now.toUtc().toIso8601String(),
+        'account_id': accountId,
       },
     );
   }
@@ -163,22 +193,36 @@ class LocalFinancesRepository implements FinancesRepository {
     required String toAccountId,
     required double amount,
     String? notes,
-  }) => database.financesDao.insertTransfer(
-    id: localId('transfer'),
-    fromAccountId: fromAccountId,
-    toAccountId: toAccountId,
-    amount: amount,
-    notes: notes,
-  );
+  }) async {
+    final id = localId('transfer');
+    await database.financesDao.insertTransfer(
+      id: id,
+      fromAccountId: fromAccountId,
+      toAccountId: toAccountId,
+      amount: amount,
+      notes: notes,
+    );
+    await syncQueue?.enqueue(
+      entity: 'finance_transfer',
+      recordId: id,
+      operation: 'upsert',
+      payload: {
+        'from_account_id': fromAccountId,
+        'to_account_id': toAccountId,
+        'amount': amount,
+        'notes': notes,
+      },
+    );
+  }
 
   Future<(String, DateTime)> createUpcomingPayment({
     required String name,
     required double amount,
+    required DateTime dueDate,
     String? category,
   }) async {
     final now = DateTime.now();
     final id = localId('payment');
-    final dueDate = now.add(const Duration(days: 3));
     await database.financesDao.insertUpcomingPayment(
       db.UpcomingPaymentsCompanion.insert(
         id: id,

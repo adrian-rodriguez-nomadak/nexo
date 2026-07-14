@@ -1,5 +1,6 @@
 import '../../../core/database/app_database.dart';
 import '../../../core/utils/id_generator.dart';
+import '../../../core/sync/sync_queue_store.dart';
 
 class FinanceCategory {
   const FinanceCategory({required this.id, required this.name});
@@ -9,9 +10,10 @@ class FinanceCategory {
 }
 
 class CategoriesService {
-  const CategoriesService(this.database);
+  const CategoriesService(this.database, {this.syncQueue});
 
   final AppDatabase database;
+  final SyncQueueStore? syncQueue;
 
   Future<List<FinanceCategory>> getAll() async {
     final rows = await database
@@ -29,14 +31,31 @@ class CategoriesService {
         .toList();
   }
 
-  Future<void> add(String name) => database.customStatement(
-    '''INSERT OR IGNORE INTO finance_categories (id, name, created_at)
+  Future<void> add(String name) async {
+    final id = localId('category');
+    await database.customStatement(
+      '''INSERT OR IGNORE INTO finance_categories (id, name, created_at)
        VALUES (?, ?, ?)''',
-    [localId('category'), name.trim(), DateTime.now().millisecondsSinceEpoch],
-  );
+      [id, name.trim(), DateTime.now().millisecondsSinceEpoch],
+    );
+    await syncQueue?.enqueue(
+      entity: 'finance_category',
+      recordId: id,
+      operation: 'upsert',
+      payload: {'name': name.trim()},
+    );
+  }
 
-  Future<void> delete(String id) => database.customStatement(
-    'DELETE FROM finance_categories WHERE id = ?',
-    [id],
-  );
+  Future<void> delete(String id) async {
+    await database.customStatement(
+      'DELETE FROM finance_categories WHERE id = ?',
+      [id],
+    );
+    await syncQueue?.enqueue(
+      entity: 'finance_category',
+      recordId: id,
+      operation: 'delete',
+      payload: null,
+    );
+  }
 }

@@ -66,11 +66,7 @@ class FinanceMovementDetailSheet extends StatelessWidget {
         _DetailRow(label: 'Monto', value: movement.amount),
         _DetailRow(label: 'Fecha', value: movement.dateLabel),
         _DetailRow(label: 'Categoría', value: movement.category),
-        const _DetailRow(
-          label: 'Descripción',
-          value: 'Movimiento de prototipo para revisar el detalle visual.',
-        ),
-        const _DetailRow(label: 'Método', value: 'Tarjeta / Efectivo'),
+        const _DetailRow(label: 'Descripción', value: 'Movimiento registrado.'),
       ],
     );
   }

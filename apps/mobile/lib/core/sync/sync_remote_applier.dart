@@ -3,6 +3,7 @@ import 'dart:convert';
 import 'package:drift/drift.dart';
 
 import '../database/app_database.dart' as db;
+import '../database/daos/finances_dao.dart';
 import 'sync_queue_store.dart';
 
 class SyncRemoteApplier {
@@ -151,6 +152,47 @@ class SyncRemoteApplier {
             syncStatus: const Value('synced'),
           ),
         );
+        final accountId = p['account_id']?.toString();
+        if (accountId != null && accountId.isNotEmpty) {
+          await database.financesDao.assignMovementToAccount(id, accountId);
+        }
+        return;
+      case 'finance_account':
+        final initial = (p['initial_balance'] as num?)?.toDouble() ?? 0;
+        await database.financesDao.insertAccount(
+          LocalFinanceAccount(
+            id: id,
+            name: p['name']?.toString() ?? 'Cuenta',
+            type: p['type']?.toString() ?? 'Efectivo',
+            initialBalance: initial,
+            currentBalance: initial,
+          ),
+        );
+        return;
+      case 'finance_budget':
+        await database.financesDao.insertBudget(
+          LocalFinanceBudget(
+            id: id,
+            category: p['category']?.toString() ?? 'Otros',
+            amount: (p['amount'] as num?)?.toDouble() ?? 0,
+          ),
+        );
+        return;
+      case 'finance_category':
+        await database.customStatement(
+          '''INSERT OR REPLACE INTO finance_categories (id, name, created_at)
+             VALUES (?, ?, ?)''',
+          [id, p['name']?.toString() ?? 'Otros', now.millisecondsSinceEpoch],
+        );
+        return;
+      case 'finance_transfer':
+        await database.financesDao.insertTransfer(
+          id: id,
+          fromAccountId: p['from_account_id']?.toString() ?? '',
+          toAccountId: p['to_account_id']?.toString() ?? '',
+          amount: (p['amount'] as num?)?.toDouble() ?? 0,
+          notes: p['notes']?.toString(),
+        );
         return;
       case 'upcoming_payment':
         await database.financesDao.insertUpcomingPayment(
@@ -187,6 +229,14 @@ class SyncRemoteApplier {
   }
 
   Future<void> _delete(String entity, String id) async {
+    if (entity == 'finance_account') {
+      await database.financesDao.deleteAccount(id);
+      return;
+    }
+    if (entity == 'finance_movement') {
+      await database.financesDao.deleteMovement(id);
+      return;
+    }
     final table = switch (entity) {
       'calendar_event' => 'calendar_events',
       'task' => 'task_items',
@@ -194,7 +244,9 @@ class SyncRemoteApplier {
       'subscription' => 'subscriptions',
       'debt' => 'debts',
       'debt_payment' => 'debt_payments',
-      'finance_movement' => 'finance_movements',
+      'finance_budget' => 'finance_budgets',
+      'finance_category' => 'finance_categories',
+      'finance_transfer' => 'finance_transfers',
       'upcoming_payment' => 'upcoming_payments',
       'inbox_action' => 'inbox_actions',
       _ => null,
