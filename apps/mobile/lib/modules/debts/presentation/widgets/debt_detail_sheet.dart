@@ -12,23 +12,30 @@ class DebtDetailSheet extends StatelessWidget {
     required this.item,
     required this.type,
     required this.onAction,
+    required this.onPayment,
     super.key,
   });
 
   final MockDebtItem item;
   final String type;
   final ValueChanged<String> onAction;
+  final Future<void> Function(DebtPaymentDraft draft) onPayment;
 
   static Future<void> show({
     required BuildContext context,
     required MockDebtItem item,
     required String type,
     required ValueChanged<String> onAction,
+    required Future<void> Function(DebtPaymentDraft draft) onPayment,
   }) {
     return AppDetailSheet.show<void>(
       context: context,
-      builder: (context) =>
-          DebtDetailSheet(item: item, type: type, onAction: onAction),
+      builder: (context) => DebtDetailSheet(
+        item: item,
+        type: type,
+        onAction: onAction,
+        onPayment: onPayment,
+      ),
     );
   }
 
@@ -43,7 +50,8 @@ class DebtDetailSheet extends StatelessWidget {
       onPrimaryAction: () {
         CreateDebtPaymentSheet.show(
           context: context,
-          onSaved: () => onAction('payment'),
+          debtName: item.name,
+          onSave: onPayment,
         );
       },
       secondaryActionLabel: 'Editar',

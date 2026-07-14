@@ -7,21 +7,32 @@ import '../../../../shared/presentation/widgets/app_bottom_sheet.dart';
 import '../../../../shared/presentation/widgets/app_text_field.dart';
 import '../../../../shared/presentation/widgets/module_badge.dart';
 
-class CreateDebtPaymentSheet extends StatefulWidget {
-  const CreateDebtPaymentSheet({this.onSaved, this.onSave, super.key});
+class DebtPaymentDraft {
+  const DebtPaymentDraft({required this.amount, required this.notes});
 
-  final VoidCallback? onSaved;
-  final VoidCallback? onSave;
+  final double amount;
+  final String notes;
+}
+
+class CreateDebtPaymentSheet extends StatefulWidget {
+  const CreateDebtPaymentSheet({
+    required this.debtName,
+    required this.onSave,
+    super.key,
+  });
+
+  final String debtName;
+  final Future<void> Function(DebtPaymentDraft draft) onSave;
 
   static Future<void> show({
     required BuildContext context,
-    VoidCallback? onSaved,
-    VoidCallback? onSave,
+    required String debtName,
+    required Future<void> Function(DebtPaymentDraft draft) onSave,
   }) {
     return AppBottomSheet.show<void>(
       context: context,
       builder: (context) =>
-          CreateDebtPaymentSheet(onSaved: onSaved, onSave: onSave),
+          CreateDebtPaymentSheet(debtName: debtName, onSave: onSave),
     );
   }
 
@@ -40,16 +51,25 @@ class _CreateDebtPaymentSheetState extends State<CreateDebtPaymentSheet> {
     super.dispose();
   }
 
-  void _savePayment() {
-    Navigator.of(context).pop();
-    (widget.onSave ?? widget.onSaved)?.call();
+  Future<void> _savePayment() async {
+    final amount = double.tryParse(_amountController.text.replaceAll(',', ''));
+    if (amount == null || amount <= 0) {
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(const SnackBar(content: Text('Ingresa un monto válido')));
+      return;
+    }
+    await widget.onSave(
+      DebtPaymentDraft(amount: amount, notes: _noteController.text.trim()),
+    );
+    if (mounted) Navigator.of(context).pop();
   }
 
   @override
   Widget build(BuildContext context) {
     return AppBottomSheet(
       title: 'Registrar pago',
-      subtitle: 'Simula un abono a una deuda.',
+      subtitle: 'Registra un abono y actualiza el monto pendiente.',
       primaryActionLabel: 'Guardar pago',
       onPrimaryAction: _savePayment,
       secondaryActionLabel: 'Cancelar',
@@ -57,9 +77,9 @@ class _CreateDebtPaymentSheetState extends State<CreateDebtPaymentSheet> {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          const _VisualField(
+          _VisualField(
             label: 'Deuda',
-            value: 'Tarjeta Nu',
+            value: widget.debtName,
             icon: Icons.credit_card_rounded,
             color: AppColors.debt,
           ),

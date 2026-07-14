@@ -43,9 +43,16 @@ class DebtsScreen extends ConsumerWidget {
   }
 
   void _openCreateDebtPaymentSheet(BuildContext context, WidgetRef ref) {
+    final debts = ref.read(debtsProvider).value;
+    if (debts == null || debts.isEmpty) {
+      _showSnackBar(context, 'Primero registra una deuda');
+      return;
+    }
+    final debt = debts.first;
     CreateDebtPaymentSheet.show(
       context: context,
-      onSaved: () => _saveDebtPayment(context, ref),
+      debtName: debt.name,
+      onSave: (draft) => _saveDebtPayment(context, ref, debt.id, draft),
     );
   }
 
@@ -60,6 +67,13 @@ class DebtsScreen extends ConsumerWidget {
       item: item,
       type: type,
       onAction: (action) => _handleDebtAction(context, ref, item, action),
+      onPayment: (draft) async {
+        if (item.id == null) {
+          _showSnackBar(context, 'Registra una deuda real primero');
+          return;
+        }
+        await _saveDebtPayment(context, ref, item.id!, draft);
+      },
     );
   }
 
@@ -71,18 +85,10 @@ class DebtsScreen extends ConsumerWidget {
   ) async {
     final repository = ref.read(debtsRepositoryProvider);
     if (item.id == null || repository is! LocalDebtsRepository) return;
-    if (action != 'payment') Navigator.of(context).pop();
+    Navigator.of(context).pop();
     try {
       if (action == 'delete') await repository.deleteDebt(item.id!);
       if (action == 'paid') await repository.markAsPaid(item.id!);
-      if (action == 'payment') {
-        await repository.createPayment(
-          debtId: item.id!,
-          amount: 250,
-          notes: 'Abono local',
-        );
-        if (context.mounted) Navigator.of(context).pop();
-      }
       if (action == 'edit') {
         final source = ref
             .read(debtsProvider)
@@ -151,19 +157,20 @@ class DebtsScreen extends ConsumerWidget {
     }
   }
 
-  Future<void> _saveDebtPayment(BuildContext context, WidgetRef ref) async {
+  Future<void> _saveDebtPayment(
+    BuildContext context,
+    WidgetRef ref,
+    String debtId,
+    DebtPaymentDraft draft,
+  ) async {
     final repository = ref.read(debtsRepositoryProvider);
-    final debts = ref.read(debtsProvider).value;
-    if (repository is! LocalDebtsRepository || debts == null || debts.isEmpty) {
-      _showSnackBar(context, 'Pago de deuda simulado guardado');
-      return;
-    }
+    if (repository is! LocalDebtsRepository) return;
 
     try {
       await repository.createPayment(
-        debtId: debts.first.id,
-        amount: 250,
-        notes: 'Abono local',
+        debtId: debtId,
+        amount: draft.amount,
+        notes: draft.notes,
       );
       if (!context.mounted) return;
       ref.invalidate(debtsProvider);
