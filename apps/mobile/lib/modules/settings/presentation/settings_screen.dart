@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
@@ -20,6 +21,7 @@ import '../../subscriptions/application/subscriptions_providers.dart';
 import '../../tasks/application/tasks_providers.dart';
 import '../application/settings_providers.dart';
 import '../domain/app_settings.dart';
+import '../data/local_data_service.dart';
 
 class SettingsScreen extends ConsumerStatefulWidget {
   const SettingsScreen({super.key});
@@ -121,6 +123,51 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
     ScaffoldMessenger.of(
       context,
     ).showSnackBar(const SnackBar(content: Text('Datos locales eliminados.')));
+  }
+
+  Future<void> _showLocalData() async {
+    final summary = await LocalDataService(
+      ref.read(appDatabaseProvider),
+    ).summary();
+    if (!mounted) return;
+    await showDialog<void>(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: Text('${summary.total} elementos guardados'),
+        content: SizedBox(
+          width: double.maxFinite,
+          child: ListView(
+            shrinkWrap: true,
+            children: [
+              for (final entry in summary.counts.entries)
+                ListTile(
+                  dense: true,
+                  contentPadding: EdgeInsets.zero,
+                  title: Text(entry.key),
+                  trailing: Text(entry.value.toString()),
+                ),
+            ],
+          ),
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context),
+            child: const Text('Cerrar'),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Future<void> _exportLocalData() async {
+    final backup = await LocalDataService(
+      ref.read(appDatabaseProvider),
+    ).exportJson();
+    await Clipboard.setData(ClipboardData(text: backup));
+    if (!mounted) return;
+    ScaffoldMessenger.of(context).showSnackBar(
+      const SnackBar(content: Text('Respaldo JSON copiado al portapapeles.')),
+    );
   }
 
   Future<void> _syncNow() async {
@@ -401,7 +448,7 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
                     value: '',
                     chipLabel: 'Activo',
                     chipIcon: Icons.check_circle_rounded,
-                    onTap: null,
+                    onTap: _showLocalData,
                   ),
                   const SizedBox(height: AppSpacing.lg),
                   _InfoSettingTile(
@@ -421,9 +468,9 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
                     color: AppColors.accent,
                     title: 'Exportar información',
                     value: '',
-                    chipLabel: 'Próximamente',
-                    chipIcon: Icons.schedule_rounded,
-                    onTap: null,
+                    chipLabel: 'Copiar JSON',
+                    chipIcon: Icons.copy_all_rounded,
+                    onTap: _exportLocalData,
                   ),
                   const SizedBox(height: AppSpacing.lg),
                   _InfoSettingTile(
