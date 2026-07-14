@@ -4,6 +4,7 @@ import 'package:go_router/go_router.dart';
 
 import '../../../core/constants/app_colors.dart';
 import '../../../core/constants/app_spacing.dart';
+import '../../../core/database/database_provider.dart';
 import '../../../shared/presentation/widgets/app_back_button.dart';
 import '../../../shared/presentation/widgets/app_card.dart';
 import '../../../shared/presentation/widgets/module_badge.dart';
@@ -17,6 +18,8 @@ import '../../finances/application/finances_providers.dart';
 import '../../reminders/application/reminders_providers.dart';
 import '../../subscriptions/application/subscriptions_providers.dart';
 import '../../tasks/application/tasks_providers.dart';
+import '../application/settings_providers.dart';
+import '../domain/app_settings.dart';
 
 class SettingsScreen extends ConsumerStatefulWidget {
   const SettingsScreen({super.key});
@@ -26,29 +29,96 @@ class SettingsScreen extends ConsumerStatefulWidget {
 }
 
 class _SettingsScreenState extends ConsumerState<SettingsScreen> {
-  final Map<String, bool> _switches = {
-    'pin': true,
-    'biometrics': true,
-    'lockOnExit': false,
-    'reminders': true,
-    'upcomingPayments': true,
-    'dailySummary': true,
-    'nightSummary': false,
-    'smartInbox': true,
-    'confirmBeforeSave': true,
-    'automaticSummaries': false,
-  };
+  Future<void> _update(AppSettings Function(AppSettings) change) =>
+      ref.read(appSettingsProvider.notifier).persist(change);
 
-  void _setSwitch(String key, bool value) {
-    setState(() {
-      _switches[key] = value;
-    });
+  Future<void> _chooseSetting({
+    required String title,
+    required List<String> options,
+    required String selected,
+    required ValueChanged<String> onSelected,
+  }) async {
+    final value = await showModalBottomSheet<String>(
+      context: context,
+      showDragHandle: true,
+      builder: (context) => SafeArea(
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.stretch,
+          children: [
+            Padding(
+              padding: const EdgeInsets.fromLTRB(24, 4, 24, 12),
+              child: Text(title, style: Theme.of(context).textTheme.titleLarge),
+            ),
+            for (final option in options)
+              ListTile(
+                title: Text(option),
+                trailing: option == selected
+                    ? const Icon(
+                        Icons.check_circle_rounded,
+                        color: AppColors.primaryDark,
+                      )
+                    : null,
+                onTap: () => Navigator.pop(context, option),
+              ),
+            const SizedBox(height: 12),
+          ],
+        ),
+      ),
+    );
+    if (value != null) onSelected(value);
   }
 
-  void _showSimulatedAction(BuildContext context, String label) {
+  Future<void> _deleteLocalData() async {
+    final confirmed = await showDialog<bool>(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: const Text('¿Borrar datos locales?'),
+        content: const Text(
+          'Se eliminarán movimientos, eventos, tareas, recordatorios, deudas, suscripciones y elementos del Inbox de este dispositivo. Esta acción no se puede deshacer.',
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context, false),
+            child: const Text('Cancelar'),
+          ),
+          FilledButton(
+            onPressed: () => Navigator.pop(context, true),
+            style: FilledButton.styleFrom(backgroundColor: AppColors.danger),
+            child: const Text('Borrar'),
+          ),
+        ],
+      ),
+    );
+    if (confirmed != true) return;
+    final db = ref.read(appDatabaseProvider);
+    await db.transaction(() async {
+      await db.delete(db.financeMovements).go();
+      await db.delete(db.upcomingPayments).go();
+      await db.delete(db.calendarEvents).go();
+      await db.delete(db.taskItems).go();
+      await db.delete(db.reminderItems).go();
+      await db.delete(db.debtPayments).go();
+      await db.delete(db.debts).go();
+      await db.delete(db.subscriptions).go();
+      await db.delete(db.inboxActions).go();
+      await db.customStatement('DELETE FROM sync_queue');
+      await db.customStatement('DELETE FROM sync_inbox');
+      await db.customStatement('DELETE FROM sync_versions');
+      await db.customStatement('DELETE FROM sync_metadata');
+    });
+    ref.invalidate(calendarEventsProvider);
+    ref.invalidate(tasksProvider);
+    ref.invalidate(remindersProvider);
+    ref.invalidate(debtsProvider);
+    ref.invalidate(subscriptionsProvider);
+    ref.invalidate(financeSummaryProvider);
+    ref.invalidate(financeMovementsProvider);
+    ref.invalidate(upcomingPaymentsProvider);
+    if (!mounted) return;
     ScaffoldMessenger.of(
       context,
-    ).showSnackBar(SnackBar(content: Text('$label simulado')));
+    ).showSnackBar(const SnackBar(content: Text('Datos locales eliminados.')));
   }
 
   Future<void> _syncNow() async {
@@ -90,6 +160,8 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
   @override
   Widget build(BuildContext context) {
     final textTheme = Theme.of(context).textTheme;
+    final settings =
+        ref.watch(appSettingsProvider).value ?? const AppSettings();
     final syncStatus = ref.watch(syncStatusProvider);
     final syncLabel = switch (syncStatus.phase) {
       SyncPhase.idle => 'Listo',
@@ -154,8 +226,10 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
                     color: AppColors.info,
                     title: 'PIN de acceso',
                     description: 'Protege la entrada a Nexo con un código.',
-                    value: _switches['pin']!,
-                    onChanged: (value) => _setSwitch('pin', value),
+                    value: false,
+                    enabled: false,
+                    badge: 'Próximamente',
+                    onChanged: null,
                   ),
                   const SizedBox(height: AppSpacing.lg),
                   _SwitchSettingTile(
@@ -163,8 +237,10 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
                     color: AppColors.primaryDark,
                     title: 'Huella / Face ID',
                     description: 'Acceso rápido con biometría del dispositivo.',
-                    value: _switches['biometrics']!,
-                    onChanged: (value) => _setSwitch('biometrics', value),
+                    value: false,
+                    enabled: false,
+                    badge: 'Próximamente',
+                    onChanged: null,
                   ),
                   const SizedBox(height: AppSpacing.lg),
                   _SwitchSettingTile(
@@ -172,8 +248,10 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
                     color: AppColors.calendar,
                     title: 'Bloquear app al salir',
                     description: 'Vuelve a pedir acceso al regresar.',
-                    value: _switches['lockOnExit']!,
-                    onChanged: (value) => _setSwitch('lockOnExit', value),
+                    value: false,
+                    enabled: false,
+                    badge: 'Próximamente',
+                    onChanged: null,
                   ),
                 ],
               ),
@@ -189,8 +267,10 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
                     color: AppColors.task,
                     title: 'Recordatorios',
                     description: 'Avisos visuales para pendientes importantes.',
-                    value: _switches['reminders']!,
-                    onChanged: (value) => _setSwitch('reminders', value),
+                    value: settings.reminders,
+                    onChanged: (value) => _update(
+                      (current) => current.copyWith(reminders: value),
+                    ),
                   ),
                   const SizedBox(height: AppSpacing.lg),
                   _SwitchSettingTile(
@@ -198,8 +278,10 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
                     color: AppColors.subscription,
                     title: 'Pagos próximos',
                     description: 'Alertas para suscripciones, deudas y pagos.',
-                    value: _switches['upcomingPayments']!,
-                    onChanged: (value) => _setSwitch('upcomingPayments', value),
+                    value: settings.upcomingPayments,
+                    onChanged: (value) => _update(
+                      (current) => current.copyWith(upcomingPayments: value),
+                    ),
                   ),
                   const SizedBox(height: AppSpacing.lg),
                   _SwitchSettingTile(
@@ -207,8 +289,10 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
                     color: AppColors.warning,
                     title: 'Resumen diario',
                     description: 'Una vista breve para iniciar el día.',
-                    value: _switches['dailySummary']!,
-                    onChanged: (value) => _setSwitch('dailySummary', value),
+                    value: settings.dailySummary,
+                    onChanged: (value) => _update(
+                      (current) => current.copyWith(dailySummary: value),
+                    ),
                   ),
                   const SizedBox(height: AppSpacing.lg),
                   _SwitchSettingTile(
@@ -216,8 +300,10 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
                     color: AppColors.secondary,
                     title: 'Resumen nocturno',
                     description: 'Cierre visual con pendientes y movimientos.',
-                    value: _switches['nightSummary']!,
-                    onChanged: (value) => _setSwitch('nightSummary', value),
+                    value: settings.nightSummary,
+                    onChanged: (value) => _update(
+                      (current) => current.copyWith(nightSummary: value),
+                    ),
                   ),
                 ],
               ),
@@ -232,24 +318,61 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
                     icon: Icons.savings_rounded,
                     color: AppColors.finance,
                     title: 'Presupuesto',
-                    value: 'Quincenal',
-                    onTap: () => _showSimulatedAction(context, 'Presupuesto'),
+                    value: settings.budgetPeriod,
+                    onTap: () => _chooseSetting(
+                      title: 'Periodo de presupuesto',
+                      options: const ['Semanal', 'Quincenal', 'Mensual'],
+                      selected: settings.budgetPeriod,
+                      onSelected: (value) => _update(
+                        (current) => current.copyWith(budgetPeriod: value),
+                      ),
+                    ),
                   ),
                   const SizedBox(height: AppSpacing.lg),
                   _InfoSettingTile(
                     icon: Icons.attach_money_rounded,
                     color: AppColors.primaryDark,
                     title: 'Moneda',
-                    value: 'MXN',
-                    onTap: () => _showSimulatedAction(context, 'Moneda'),
+                    value: settings.currency,
+                    onTap: () => _chooseSetting(
+                      title: 'Moneda',
+                      options: const ['MXN', 'USD', 'EUR'],
+                      selected: settings.currency,
+                      onSelected: (value) => _update(
+                        (current) => current.copyWith(currency: value),
+                      ),
+                    ),
                   ),
                   const SizedBox(height: AppSpacing.lg),
                   _InfoSettingTile(
                     icon: Icons.light_mode_rounded,
                     color: AppColors.warning,
                     title: 'Tema',
-                    value: 'Claro',
-                    onTap: () => _showSimulatedAction(context, 'Tema'),
+                    value: switch (settings.themeMode) {
+                      ThemeMode.light => 'Claro',
+                      ThemeMode.dark => 'Oscuro',
+                      ThemeMode.system => 'Del sistema',
+                    },
+                    onTap: () {
+                      final labels = {
+                        'Claro': ThemeMode.light,
+                        'Oscuro': ThemeMode.dark,
+                        'Del sistema': ThemeMode.system,
+                      };
+                      _chooseSetting(
+                        title: 'Tema',
+                        options: labels.keys.toList(),
+                        selected: labels.entries
+                            .firstWhere(
+                              (entry) => entry.value == settings.themeMode,
+                            )
+                            .key,
+                        onSelected: (value) => _update(
+                          (current) =>
+                              current.copyWith(themeMode: labels[value]),
+                        ),
+                      );
+                    },
                   ),
                   const SizedBox(height: AppSpacing.lg),
                   _InfoSettingTile(
@@ -257,7 +380,8 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
                     color: AppColors.accent,
                     title: 'Categorías',
                     value: '',
-                    onTap: () => _showSimulatedAction(context, 'Categorías'),
+                    chipLabel: 'Próximamente',
+                    chipIcon: Icons.schedule_rounded,
                   ),
                 ],
               ),
@@ -275,7 +399,7 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
                     value: '',
                     chipLabel: 'Activo',
                     chipIcon: Icons.check_circle_rounded,
-                    onTap: () => _showSimulatedAction(context, 'Datos locales'),
+                    onTap: null,
                   ),
                   const SizedBox(height: AppSpacing.lg),
                   _InfoSettingTile(
@@ -297,8 +421,7 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
                     value: '',
                     chipLabel: 'Próximamente',
                     chipIcon: Icons.schedule_rounded,
-                    onTap: () =>
-                        _showSimulatedAction(context, 'Exportar información'),
+                    onTap: null,
                   ),
                   const SizedBox(height: AppSpacing.lg),
                   _InfoSettingTile(
@@ -306,7 +429,7 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
                     color: AppColors.danger,
                     title: 'Borrar datos',
                     value: '',
-                    onTap: () => _showSimulatedAction(context, 'Borrar datos'),
+                    onTap: _deleteLocalData,
                   ),
                 ],
               ),
@@ -322,8 +445,10 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
                     color: AppColors.primaryDark,
                     title: 'Inbox inteligente',
                     description: 'Sugiere tareas, pagos y eventos detectados.',
-                    value: _switches['smartInbox']!,
-                    onChanged: (value) => _setSwitch('smartInbox', value),
+                    value: settings.smartInbox,
+                    onChanged: (value) => _update(
+                      (current) => current.copyWith(smartInbox: value),
+                    ),
                   ),
                   const SizedBox(height: AppSpacing.lg),
                   _SwitchSettingTile(
@@ -331,9 +456,10 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
                     color: AppColors.task,
                     title: 'Confirmar antes de guardar',
                     description: 'Revisa cada sugerencia antes de aceptarla.',
-                    value: _switches['confirmBeforeSave']!,
-                    onChanged: (value) =>
-                        _setSwitch('confirmBeforeSave', value),
+                    value: settings.confirmBeforeSave,
+                    onChanged: (value) => _update(
+                      (current) => current.copyWith(confirmBeforeSave: value),
+                    ),
                   ),
                   const SizedBox(height: AppSpacing.lg),
                   _SwitchSettingTile(
@@ -341,9 +467,10 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
                     color: AppColors.secondary,
                     title: 'Resúmenes automáticos',
                     description: 'Prepara síntesis visuales de tu actividad.',
-                    value: _switches['automaticSummaries']!,
-                    onChanged: (value) =>
-                        _setSwitch('automaticSummaries', value),
+                    value: settings.automaticSummaries,
+                    onChanged: (value) => _update(
+                      (current) => current.copyWith(automaticSummaries: value),
+                    ),
                   ),
                 ],
               ),
@@ -357,12 +484,22 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
   }
 }
 
-class _ProfileCard extends StatelessWidget {
+class _ProfileCard extends ConsumerWidget {
   const _ProfileCard();
 
   @override
-  Widget build(BuildContext context) {
+  Widget build(BuildContext context, WidgetRef ref) {
     final textTheme = Theme.of(context).textTheme;
+    final session = ref.watch(authSessionProvider).value;
+    final name = session?.name.trim().isNotEmpty == true
+        ? session!.name.trim()
+        : 'Cuenta local';
+    final initials = name
+        .split(RegExp(r'\s+'))
+        .where((part) => part.isNotEmpty)
+        .take(2)
+        .map((part) => part[0].toUpperCase())
+        .join();
 
     return AppCard(
       padding: const EdgeInsets.all(AppSpacing.xl),
@@ -377,7 +514,7 @@ class _ProfileCard extends StatelessWidget {
             ),
             alignment: Alignment.center,
             child: Text(
-              'AR',
+              initials.isEmpty ? 'N' : initials,
               style: textTheme.titleLarge?.copyWith(color: Colors.white),
             ),
           ),
@@ -386,24 +523,39 @@ class _ProfileCard extends StatelessWidget {
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                Text('Adrián', style: textTheme.titleLarge),
+                Text(name, style: textTheme.titleLarge),
                 const SizedBox(height: AppSpacing.xs),
-                Text('Cuenta local de prototipo', style: textTheme.bodyMedium),
+                Text(
+                  session?.email ?? 'Tus datos permanecen en este dispositivo',
+                  style: textTheme.bodyMedium,
+                ),
                 const SizedBox(height: AppSpacing.md),
-                const Wrap(
+                Wrap(
                   spacing: AppSpacing.sm,
                   runSpacing: AppSpacing.sm,
                   children: [
                     SummaryChip(
-                      label: 'UI prototipo',
-                      icon: Icons.visibility_rounded,
+                      label: session == null
+                          ? 'Cuenta local'
+                          : 'Cuenta conectada',
+                      icon: session == null
+                          ? Icons.phone_android_rounded
+                          : Icons.cloud_done_rounded,
                       color: AppColors.info,
                     ),
-                    SummaryChip(
-                      label: 'Sin datos reales',
-                      icon: Icons.verified_user_rounded,
-                      color: AppColors.primaryDark,
-                    ),
+                    if (session != null)
+                      InkWell(
+                        onTap: () async {
+                          await ref.read(authSessionProvider.notifier).logout();
+                          if (context.mounted) context.go('/login');
+                        },
+                        borderRadius: BorderRadius.circular(999),
+                        child: const SummaryChip(
+                          label: 'Cerrar sesión',
+                          icon: Icons.logout_rounded,
+                          color: AppColors.danger,
+                        ),
+                      ),
                   ],
                 ),
               ],
@@ -423,6 +575,8 @@ class _SwitchSettingTile extends StatelessWidget {
     required this.description,
     required this.value,
     required this.onChanged,
+    this.enabled = true,
+    this.badge,
   });
 
   final IconData icon;
@@ -430,7 +584,9 @@ class _SwitchSettingTile extends StatelessWidget {
   final String title;
   final String description;
   final bool value;
-  final ValueChanged<bool> onChanged;
+  final ValueChanged<bool>? onChanged;
+  final bool enabled;
+  final String? badge;
 
   @override
   Widget build(BuildContext context) {
@@ -444,14 +600,27 @@ class _SwitchSettingTile extends StatelessWidget {
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              Text(title, style: textTheme.titleMedium),
+              Row(
+                children: [
+                  Flexible(child: Text(title, style: textTheme.titleMedium)),
+                  if (badge != null) ...[
+                    const SizedBox(width: AppSpacing.sm),
+                    Text(
+                      badge!,
+                      style: textTheme.labelSmall?.copyWith(
+                        color: AppColors.textMuted,
+                      ),
+                    ),
+                  ],
+                ],
+              ),
               const SizedBox(height: AppSpacing.xs),
               Text(description, style: textTheme.bodySmall),
             ],
           ),
         ),
         const SizedBox(width: AppSpacing.sm),
-        Switch.adaptive(value: value, onChanged: onChanged),
+        Switch.adaptive(value: value, onChanged: enabled ? onChanged : null),
       ],
     );
   }
@@ -532,9 +701,9 @@ class _SettingsFooter extends StatelessWidget {
       children: [
         Text('Nexo', style: textTheme.titleLarge),
         const SizedBox(height: AppSpacing.xs),
-        Text('Versión UI prototype 0.1.0', style: textTheme.bodySmall),
+        Text('Versión 1.0.0', style: textTheme.bodySmall),
         const SizedBox(height: AppSpacing.xs),
-        Text('Sin datos reales todavía.', style: textTheme.bodySmall),
+        Text('Tus datos, bajo tu control.', style: textTheme.bodySmall),
       ],
     );
   }

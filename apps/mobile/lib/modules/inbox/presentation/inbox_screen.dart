@@ -29,6 +29,7 @@ import '../../debts/application/debts_providers.dart';
 import '../../debts/data/repositories/local_debts_repository.dart';
 import '../../subscriptions/application/subscriptions_providers.dart';
 import '../../subscriptions/data/repositories/local_subscriptions_repository.dart';
+import '../../settings/application/settings_providers.dart';
 import 'models/inbox_interpretation.dart';
 import 'widgets/interpreted_result_card.dart';
 
@@ -60,6 +61,13 @@ class _InboxScreenState extends ConsumerState<InboxScreen> {
   }
 
   Future<void> _interpret([String? text]) async {
+    final settings = ref.read(appSettingsProvider).value;
+    if (settings?.smartInbox == false) {
+      _showSnackBar(
+        'El Inbox inteligente está desactivado. Puedes activarlo en Ajustes.',
+      );
+      return;
+    }
     final value = (text ?? _controller.text).trim();
     if (value.isEmpty) {
       ScaffoldMessenger.of(context).showSnackBar(
