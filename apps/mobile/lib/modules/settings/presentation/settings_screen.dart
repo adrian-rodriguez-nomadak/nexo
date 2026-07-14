@@ -56,8 +56,10 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
       context.push('/login');
       return;
     }
+    final status = ref.read(syncStatusProvider.notifier)..markSyncing();
     try {
       final result = await ref.read(syncCoordinatorProvider).run();
+      status.markSuccess(result);
       ref.invalidate(calendarEventsProvider);
       ref.invalidate(tasksProvider);
       ref.invalidate(remindersProvider);
@@ -75,6 +77,7 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
         ),
       );
     } catch (_) {
+      status.markOffline();
       if (!mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(
@@ -87,6 +90,21 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
   @override
   Widget build(BuildContext context) {
     final textTheme = Theme.of(context).textTheme;
+    final syncStatus = ref.watch(syncStatusProvider);
+    final syncLabel = switch (syncStatus.phase) {
+      SyncPhase.idle => 'Listo',
+      SyncPhase.syncing => 'Sincronizando…',
+      SyncPhase.synced => 'Actualizado',
+      SyncPhase.conflict => 'Requiere revisión',
+      SyncPhase.offline => 'Pendiente',
+    };
+    final syncIcon = switch (syncStatus.phase) {
+      SyncPhase.syncing => Icons.sync_rounded,
+      SyncPhase.synced => Icons.cloud_done_rounded,
+      SyncPhase.conflict => Icons.warning_amber_rounded,
+      SyncPhase.offline => Icons.cloud_off_rounded,
+      SyncPhase.idle => Icons.sync_rounded,
+    };
 
     return Scaffold(
       body: SafeArea(
@@ -265,9 +283,11 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
                     color: AppColors.calendar,
                     title: 'Sincronizar ahora',
                     value: '',
-                    chipLabel: 'Disponible',
-                    chipIcon: Icons.sync_rounded,
-                    onTap: _syncNow,
+                    chipLabel: syncLabel,
+                    chipIcon: syncIcon,
+                    onTap: syncStatus.phase == SyncPhase.syncing
+                        ? null
+                        : _syncNow,
                   ),
                   const SizedBox(height: AppSpacing.lg),
                   _InfoSettingTile(
