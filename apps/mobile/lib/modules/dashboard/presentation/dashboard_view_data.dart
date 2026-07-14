@@ -1,0 +1,86 @@
+import '../../../core/constants/app_colors.dart';
+import '../../../core/utils/formatters.dart';
+import '../../../shared/mock/mock_dashboard.dart';
+import '../../calendar/domain/models/calendar_event.dart';
+import '../../finances/domain/models/finance_summary.dart';
+import '../../finances/domain/models/upcoming_payment.dart';
+import '../../tasks/domain/models/task_item.dart';
+
+MockDashboardData buildDashboardViewData({
+  required FinanceSummary? summary,
+  required List<UpcomingPayment>? payments,
+  required List<CalendarEvent>? events,
+  required List<TaskItem>? tasks,
+}) {
+  final base = mockDashboard;
+  final nextEvent = events == null || events.isEmpty
+      ? base.nextEvent
+      : MockDashboardEvent(
+          title: events.first.title,
+          time: shortTime(events.first.startAt),
+          location: events.first.locationName ?? 'Calendario personal',
+        );
+
+  return MockDashboardData(
+    user: base.user,
+    summary: summary == null
+        ? base.summary
+        : MockDailySummary(
+            availableAmount: money(summary.availableAmount),
+            availableLabel: 'Disponible real',
+            subtitle: 'Datos conectados en modo demo con fallback mock.',
+            chips: [
+              base.summary.chips[0],
+              MockSummaryChip(
+                label: '${money(summary.upcomingPaymentsTotal)} pagos próximos',
+                icon: base.summary.chips[1].icon,
+                color: AppColors.subscription,
+              ),
+              MockSummaryChip(
+                label: '${money(summary.availableAmount / 14)} por día',
+                icon: base.summary.chips[2].icon,
+                color: AppColors.finance,
+              ),
+            ],
+          ),
+    nextEvent: nextEvent,
+    tasks: tasks == null
+        ? base.tasks
+        : tasks
+              .map(
+                (task) => MockDashboardTask(
+                  title: task.title,
+                  detail: task.priority,
+                  done: task.status == 'completed',
+                ),
+              )
+              .toList(),
+    finances: summary == null
+        ? base.finances
+        : [
+            MockFinanceQuickItem(
+              amount: money(summary.incomeTotal),
+              label: 'Ingresos del mes',
+              color: AppColors.finance,
+            ),
+            MockFinanceQuickItem(
+              amount: money(summary.expenseTotal),
+              label: 'Gastos registrados',
+              color: AppColors.danger,
+            ),
+          ],
+    upcomingPayments: payments == null
+        ? base.upcomingPayments
+        : payments
+              .map(
+                (payment) => MockUpcomingPayment(
+                  title: payment.name,
+                  amount: money(payment.amount),
+                  dueLabel: shortDate(payment.dueDate),
+                  color: AppColors.subscription,
+                ),
+              )
+              .toList(),
+    quickActions: base.quickActions,
+  );
+}

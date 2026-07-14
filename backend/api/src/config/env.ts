@@ -1,0 +1,16 @@
+import dotenv from "dotenv";
+
+dotenv.config();
+
+export const env = {
+  port: Number(process.env.PORT ?? 3000),
+  nodeEnv: process.env.NODE_ENV ?? "development",
+  databaseUrl:
+    process.env.DATABASE_URL ??
+    "postgres://postgres:postgres@localhost:5432/nexo_db",
+  jwtSecret: process.env.JWT_SECRET ?? "change_me",
+  accessTokenTtl: process.env.ACCESS_TOKEN_TTL ?? "15m",
+  refreshTokenDays: Number(process.env.REFRESH_TOKEN_DAYS ?? 30),
+  openAiApiKey: process.env.OPENAI_API_KEY ?? "change_me",
+  dbSync: process.env.DB_SYNC === "true",
+};

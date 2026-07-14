@@ -1,0 +1,231 @@
+import 'package:drift/drift.dart';
+
+import '../../../../core/database/app_database.dart' as db;
+import '../../../../core/utils/id_generator.dart';
+import '../../domain/models/finance_movement.dart';
+import '../../domain/models/finance_summary.dart';
+import '../../domain/models/upcoming_payment.dart';
+import '../../domain/repositories/finances_repository.dart';
+import '../../../../core/sync/sync_queue_store.dart';
+
+class LocalFinancesRepository implements FinancesRepository {
+  const LocalFinancesRepository(this.database, {this.syncQueue});
+
+  final db.AppDatabase database;
+  final SyncQueueStore? syncQueue;
+
+  @override
+  Future<FinanceSummary> getSummary() async {
+    final summary = await database.financesDao.getSummary();
+    return FinanceSummary(
+      availableAmount: summary.availableReal,
+      incomeTotal: summary.totalIncome,
+      expenseTotal: summary.totalExpenses,
+      upcomingPaymentsTotal: summary.upcomingPayments,
+    );
+  }
+
+  @override
+  Future<List<FinanceMovement>> getMovements() async {
+    final rows = await database.financesDao.getMovements();
+    return rows.map(_movementFromRow).toList();
+  }
+
+  @override
+  Future<List<UpcomingPayment>> getUpcomingPayments() async {
+    final rows = await database.financesDao.getUpcomingPayments();
+    return rows.map(_paymentFromRow).toList();
+  }
+
+  Future<void> createMovement({
+    required String type,
+    required double amount,
+    String? description,
+    String? categoryName,
+    String? paymentMethod,
+  }) async {
+    final now = DateTime.now();
+    final id = localId('movement');
+    await database.financesDao.insertMovement(
+      db.FinanceMovementsCompanion.insert(
+        id: id,
+        type: type,
+        amount: amount,
+        categoryName: Value(categoryName),
+        description: Value(description),
+        movementDate: now,
+        paymentMethod: Value(paymentMethod),
+        createdAt: now,
+        updatedAt: now,
+      ),
+    );
+    await syncQueue?.enqueue(
+      entity: 'finance_movement',
+      recordId: id,
+      operation: 'upsert',
+      payload: {
+        'type': type,
+        'amount': amount,
+        'description': description,
+        'category_name': categoryName,
+        'payment_method': paymentMethod,
+        'movement_date': now.toUtc().toIso8601String(),
+      },
+    );
+  }
+
+  Future<void> createUpcomingPayment({
+    required String name,
+    required double amount,
+    String? category,
+  }) async {
+    final now = DateTime.now();
+    final id = localId('payment');
+    final dueDate = now.add(const Duration(days: 3));
+    await database.financesDao.insertUpcomingPayment(
+      db.UpcomingPaymentsCompanion.insert(
+        id: id,
+        name: name,
+        amount: amount,
+        dueDate: dueDate,
+        category: Value(category),
+        status: 'pending',
+        repeatType: 'none',
+        createdAt: now,
+        updatedAt: now,
+      ),
+    );
+    await syncQueue?.enqueue(
+      entity: 'upcoming_payment',
+      recordId: id,
+      operation: 'upsert',
+      payload: {
+        'name': name,
+        'amount': amount,
+        'category': category,
+        'status': 'pending',
+        'due_date': dueDate.toUtc().toIso8601String(),
+      },
+    );
+  }
+
+  Future<void> updateMovement({
+    required String id,
+    required double amount,
+    required String type,
+    String? description,
+    String? categoryName,
+    String? paymentMethod,
+  }) async {
+    await database.financesDao.updateMovement(
+      id,
+      db.FinanceMovementsCompanion(
+        type: Value(type),
+        amount: Value(amount),
+        description: Value(description),
+        categoryName: Value(categoryName),
+        paymentMethod: Value(paymentMethod),
+        updatedAt: Value(DateTime.now()),
+        syncStatus: const Value('local'),
+      ),
+    );
+    await syncQueue?.enqueue(
+      entity: 'finance_movement',
+      recordId: id,
+      operation: 'upsert',
+      payload: {
+        'type': type,
+        'amount': amount,
+        'description': description,
+        'category_name': categoryName,
+        'payment_method': paymentMethod,
+      },
+    );
+  }
+
+  Future<void> deleteMovement(String id) async {
+    await database.financesDao.deleteMovement(id);
+    await syncQueue?.enqueue(
+      entity: 'finance_movement',
+      recordId: id,
+      operation: 'delete',
+      payload: null,
+    );
+  }
+
+  Future<void> updateUpcomingPayment({
+    required String id,
+    required String name,
+    required double amount,
+    String? category,
+    String status = 'pending',
+  }) async {
+    await database.financesDao.updateUpcomingPayment(
+      id,
+      db.UpcomingPaymentsCompanion(
+        name: Value(name),
+        amount: Value(amount),
+        category: Value(category),
+        status: Value(status),
+        updatedAt: Value(DateTime.now()),
+        syncStatus: const Value('local'),
+      ),
+    );
+    await syncQueue?.enqueue(
+      entity: 'upcoming_payment',
+      recordId: id,
+      operation: 'upsert',
+      payload: {
+        'name': name,
+        'amount': amount,
+        'category': category,
+        'status': status,
+      },
+    );
+  }
+
+  Future<void> updateUpcomingPaymentStatus(String id, String status) async {
+    await database.financesDao.updateUpcomingPaymentStatus(id, status);
+    await syncQueue?.enqueue(
+      entity: 'upcoming_payment',
+      recordId: id,
+      operation: 'upsert',
+      payload: {'status': status},
+    );
+  }
+
+  Future<void> deleteUpcomingPayment(String id) async {
+    await database.financesDao.deleteUpcomingPayment(id);
+    await syncQueue?.enqueue(
+      entity: 'upcoming_payment',
+      recordId: id,
+      operation: 'delete',
+      payload: null,
+    );
+  }
+
+  FinanceMovement _movementFromRow(db.FinanceMovement row) {
+    return FinanceMovement(
+      id: row.id,
+      type: row.type,
+      amount: row.amount,
+      movementDate: row.movementDate,
+      categoryId: row.categoryId,
+      description: row.description,
+      paymentMethod: row.paymentMethod,
+    );
+  }
+
+  UpcomingPayment _paymentFromRow(db.UpcomingPayment row) {
+    return UpcomingPayment(
+      id: row.id,
+      name: row.name,
+      amount: row.amount,
+      dueDate: row.dueDate,
+      category: row.category,
+      status: row.status,
+      repeatType: row.repeatType,
+      notes: row.notes,
+    );
+  }
+}

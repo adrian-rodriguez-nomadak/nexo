@@ -1,0 +1,14 @@
+import "../../modules/calendar/calendar-event.model.js";
+import "../../modules/debts/models/debt-payment.model.js";
+import "../../modules/debts/models/debt.model.js";
+import "../../modules/finances/models/finance-category.model.js";
+import "../../modules/finances/models/finance-movement.model.js";
+import "../../modules/finances/models/upcoming-payment.model.js";
+import "../../modules/inbox/inbox-action.model.js";
+import "../../modules/reminders/reminder.model.js";
+import "../../modules/subscriptions/subscription.model.js";
+import "../../modules/tasks/task.model.js";
+import "../../modules/users/user.model.js";
+import "../../modules/auth/session.model.js";
+import "../../modules/sync/sync-record.model.js";
+import "../../modules/sync/sync-change.model.js";
