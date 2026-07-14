@@ -3,9 +3,13 @@
   "version": "0.1.0",
   "private": true,
   "type": "module",
+  "engines": {
+    "node": "20.x"
+  },
   "scripts": {
     "dev": "tsx watch src/server.ts",
     "build": "tsc",
+    "test": "node --import tsx --test test/*.test.ts",
     "start": "node dist/server.js",
     "db:migrate": "tsx src/shared/db/migrate.ts",
     "seed:demo": "tsx src/shared/db/seed-demo.ts",

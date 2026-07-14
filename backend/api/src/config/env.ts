@@ -13,4 +13,8 @@ export const env = {
   refreshTokenDays: Number(process.env.REFRESH_TOKEN_DAYS ?? 30),
   openAiApiKey: process.env.OPENAI_API_KEY ?? "change_me",
   dbSync: process.env.DB_SYNC === "true",
+  corsOrigins: (process.env.CORS_ORIGINS ?? "")
+    .split(",")
+    .map((origin) => origin.trim())
+    .filter(Boolean),
 };
