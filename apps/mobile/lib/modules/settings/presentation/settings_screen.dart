@@ -93,6 +93,7 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
     if (confirmed != true) return;
     final db = ref.read(appDatabaseProvider);
     await db.transaction(() async {
+      await db.customStatement('DELETE FROM finance_accounts');
       await db.delete(db.financeMovements).go();
       await db.delete(db.upcomingPayments).go();
       await db.delete(db.calendarEvents).go();

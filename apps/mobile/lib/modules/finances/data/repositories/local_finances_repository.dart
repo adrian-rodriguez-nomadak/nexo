@@ -1,8 +1,10 @@
 import 'package:drift/drift.dart';
 
 import '../../../../core/database/app_database.dart' as db;
+import '../../../../core/database/daos/finances_dao.dart';
 import '../../../../core/utils/id_generator.dart';
 import '../../domain/models/finance_movement.dart';
+import '../../domain/models/finance_account.dart';
 import '../../domain/models/finance_summary.dart';
 import '../../domain/models/upcoming_payment.dart';
 import '../../domain/repositories/finances_repository.dart';
@@ -30,6 +32,38 @@ class LocalFinancesRepository implements FinancesRepository {
     final rows = await database.financesDao.getMovements();
     return rows.map(_movementFromRow).toList();
   }
+
+  Future<List<FinanceAccount>> getAccounts() async {
+    final rows = await database.financesDao.getAccounts();
+    return rows
+        .map(
+          (row) => FinanceAccount(
+            id: row.id,
+            name: row.name,
+            type: row.type,
+            initialBalance: row.initialBalance,
+          ),
+        )
+        .toList();
+  }
+
+  Future<void> createAccount({
+    required String name,
+    required String type,
+    required double initialBalance,
+  }) async {
+    await database.financesDao.insertAccount(
+      LocalFinanceAccount(
+        id: localId('account'),
+        name: name,
+        type: type,
+        initialBalance: initialBalance,
+      ),
+    );
+  }
+
+  Future<void> deleteAccount(String id) =>
+      database.financesDao.deleteAccount(id);
 
   @override
   Future<List<UpcomingPayment>> getUpcomingPayments() async {

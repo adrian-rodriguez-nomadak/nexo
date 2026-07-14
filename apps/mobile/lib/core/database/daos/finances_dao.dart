@@ -11,12 +11,28 @@ class LocalFinanceSummary {
     required this.totalExpenses,
     required this.upcomingPayments,
     required this.availableReal,
+    required this.initialBalance,
   });
 
   final double totalIncome;
   final double totalExpenses;
   final double upcomingPayments;
   final double availableReal;
+  final double initialBalance;
+}
+
+class LocalFinanceAccount {
+  const LocalFinanceAccount({
+    required this.id,
+    required this.name,
+    required this.type,
+    required this.initialBalance,
+  });
+
+  final String id;
+  final String name;
+  final String type;
+  final double initialBalance;
 }
 
 @DriftAccessor(tables: [FinanceMovements, UpcomingPayments])
@@ -26,6 +42,7 @@ class FinancesDao extends DatabaseAccessor<AppDatabase>
 
   Future<LocalFinanceSummary> getSummary() async {
     final movements = await getMovements();
+    final accounts = await getAccounts();
     final payments = await getUpcomingPayments();
     final income = movements
         .where((item) => item.type == 'income')
@@ -36,14 +53,53 @@ class FinancesDao extends DatabaseAccessor<AppDatabase>
     final upcoming = payments
         .where((item) => item.status == 'pending')
         .fold<double>(0, (sum, item) => sum + item.amount);
+    final initial = accounts.fold<double>(
+      0,
+      (sum, item) => sum + item.initialBalance,
+    );
 
     return LocalFinanceSummary(
       totalIncome: income,
       totalExpenses: expenses,
       upcomingPayments: upcoming,
-      availableReal: income - expenses - upcoming,
+      availableReal: initial + income - expenses - upcoming,
+      initialBalance: initial,
     );
   }
+
+  Future<List<LocalFinanceAccount>> getAccounts() async {
+    final rows = await customSelect(
+      'SELECT id, name, type, initial_balance FROM finance_accounts ORDER BY created_at',
+      readsFrom: const {},
+    ).get();
+    return rows
+        .map(
+          (row) => LocalFinanceAccount(
+            id: row.read<String>('id'),
+            name: row.read<String>('name'),
+            type: row.read<String>('type'),
+            initialBalance: row.read<double>('initial_balance'),
+          ),
+        )
+        .toList();
+  }
+
+  Future<void> insertAccount(LocalFinanceAccount account) => customStatement(
+    '''INSERT OR REPLACE INTO finance_accounts
+       (id, name, type, initial_balance, created_at, updated_at)
+       VALUES (?, ?, ?, ?, ?, ?)''',
+    [
+      account.id,
+      account.name,
+      account.type,
+      account.initialBalance,
+      DateTime.now().millisecondsSinceEpoch,
+      DateTime.now().millisecondsSinceEpoch,
+    ],
+  );
+
+  Future<void> deleteAccount(String id) =>
+      customStatement('DELETE FROM finance_accounts WHERE id = ?', [id]);
 
   Future<List<FinanceMovement>> getMovements() {
     return (select(financeMovements)..orderBy([

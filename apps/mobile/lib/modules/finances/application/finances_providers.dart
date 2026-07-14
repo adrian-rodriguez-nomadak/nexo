@@ -8,6 +8,7 @@ import '../data/repositories/api_finances_repository.dart';
 import '../data/repositories/local_finances_repository.dart';
 import '../data/repositories/mock_finances_repository.dart';
 import '../domain/models/finance_movement.dart';
+import '../domain/models/finance_account.dart';
 import '../domain/models/finance_summary.dart';
 import '../domain/models/upcoming_payment.dart';
 import '../domain/repositories/finances_repository.dart';
@@ -52,6 +53,12 @@ final financeSummaryProvider = FutureProvider<FinanceSummary>((ref) async {
   } catch (_) {
     return MockFinancesRepository().getSummary();
   }
+});
+
+final financeAccountsProvider = FutureProvider<List<FinanceAccount>>((ref) {
+  final repository = ref.watch(financesRepositoryProvider);
+  if (repository is LocalFinancesRepository) return repository.getAccounts();
+  return const <FinanceAccount>[];
 });
 
 final financeMovementsProvider = FutureProvider<List<FinanceMovement>>((

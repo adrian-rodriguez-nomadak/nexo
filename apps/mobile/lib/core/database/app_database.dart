@@ -50,6 +50,10 @@ class AppDatabase extends _$AppDatabase {
   MigrationStrategy get migration => MigrationStrategy(
     onCreate: (migrator) => migrator.createAll(),
     beforeOpen: (details) async {
+      await customStatement('''CREATE TABLE IF NOT EXISTS finance_accounts (
+        id TEXT PRIMARY KEY, name TEXT NOT NULL, type TEXT NOT NULL,
+        initial_balance REAL NOT NULL DEFAULT 0,
+        created_at INTEGER NOT NULL, updated_at INTEGER NOT NULL)''');
       await customStatement('''CREATE TABLE IF NOT EXISTS sync_queue (
         operation_id TEXT PRIMARY KEY, entity TEXT NOT NULL,
         record_id TEXT NOT NULL, operation TEXT NOT NULL,

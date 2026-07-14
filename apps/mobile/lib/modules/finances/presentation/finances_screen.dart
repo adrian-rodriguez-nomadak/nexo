@@ -4,8 +4,10 @@ import 'package:go_router/go_router.dart';
 
 import '../../../core/constants/app_colors.dart';
 import '../../../core/constants/app_spacing.dart';
+import '../../../core/utils/formatters.dart';
 import '../application/finances_providers.dart';
 import '../data/repositories/local_finances_repository.dart';
+import '../domain/models/finance_account.dart';
 import '../../../shared/mock/mock_finances.dart';
 import '../../../shared/presentation/widgets/app_back_button.dart';
 import '../../../shared/presentation/widgets/app_card.dart';
@@ -19,6 +21,7 @@ import 'widgets/create_debt_sheet.dart';
 import 'widgets/create_expense_sheet.dart';
 import 'widgets/create_income_sheet.dart';
 import 'widgets/create_payment_sheet.dart';
+import 'widgets/create_account_sheet.dart';
 import 'finance_view_data.dart';
 import 'widgets/finance_movement_detail_sheet.dart';
 import 'widgets/upcoming_payment_detail_sheet.dart';
@@ -58,6 +61,58 @@ class FinancesScreen extends ConsumerWidget {
         categoryName: draft.source,
       ),
     );
+  }
+
+  void _openCreateAccountSheet(BuildContext context, WidgetRef ref) {
+    CreateAccountSheet.show(
+      context: context,
+      onSave: (draft) async {
+        final repository = ref.read(financesRepositoryProvider);
+        if (repository is! LocalFinancesRepository) return;
+        await repository.createAccount(
+          name: draft.name,
+          type: draft.type,
+          initialBalance: draft.initialBalance,
+        );
+        ref
+          ..invalidate(financeAccountsProvider)
+          ..invalidate(financeSummaryProvider);
+        if (context.mounted) _showSnackBar(context, 'Cuenta guardada');
+      },
+    );
+  }
+
+  Future<void> _deleteAccount(
+    BuildContext context,
+    WidgetRef ref,
+    FinanceAccount account,
+  ) async {
+    final confirmed = await showDialog<bool>(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: Text('¿Eliminar ${account.name}?'),
+        content: const Text(
+          'Su saldo inicial dejará de formar parte del dinero disponible.',
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context, false),
+            child: const Text('Cancelar'),
+          ),
+          FilledButton(
+            onPressed: () => Navigator.pop(context, true),
+            child: const Text('Eliminar'),
+          ),
+        ],
+      ),
+    );
+    if (confirmed != true) return;
+    final repository = ref.read(financesRepositoryProvider);
+    if (repository is! LocalFinancesRepository) return;
+    await repository.deleteAccount(account.id);
+    ref
+      ..invalidate(financeAccountsProvider)
+      ..invalidate(financeSummaryProvider);
   }
 
   void _openCreatePaymentSheet(BuildContext context, WidgetRef ref) {
@@ -326,6 +381,7 @@ class FinancesScreen extends ConsumerWidget {
     final summary = ref.watch(financeSummaryProvider);
     final movements = ref.watch(financeMovementsProvider);
     final payments = ref.watch(upcomingPaymentsProvider);
+    final accounts = ref.watch(financeAccountsProvider);
     final hasError =
         summary.hasError || movements.hasError || payments.hasError;
     final isLoading =
@@ -387,6 +443,18 @@ class FinancesScreen extends ConsumerWidget {
               const SizedBox(height: AppSpacing.xl),
             ],
             _AvailableCard(data: data),
+            const SizedBox(height: AppSpacing.xxl),
+            SectionHeader(
+              title: 'Mis cuentas',
+              actionLabel: 'Agregar',
+              onActionTap: () => _openCreateAccountSheet(context, ref),
+            ),
+            const SizedBox(height: AppSpacing.md),
+            _AccountsCard(
+              accounts: accounts.value ?? const [],
+              onAdd: () => _openCreateAccountSheet(context, ref),
+              onDelete: (account) => _deleteAccount(context, ref, account),
+            ),
             const SizedBox(height: AppSpacing.xxl),
             _SummaryGrid(items: data.summaryItems),
             const SizedBox(height: AppSpacing.xxl),
@@ -452,6 +520,72 @@ class FinancesScreen extends ConsumerWidget {
       ),
     );
   }
+}
+
+class _AccountsCard extends StatelessWidget {
+  const _AccountsCard({
+    required this.accounts,
+    required this.onAdd,
+    required this.onDelete,
+  });
+
+  final List<FinanceAccount> accounts;
+  final VoidCallback onAdd;
+  final ValueChanged<FinanceAccount> onDelete;
+
+  @override
+  Widget build(BuildContext context) {
+    if (accounts.isEmpty) {
+      return EmptyStateCard(
+        icon: Icons.account_balance_wallet_outlined,
+        title: 'Agrega tu saldo inicial',
+        description:
+            'Registra dónde guardas tu dinero para calcular correctamente lo disponible.',
+        actionLabel: 'Agregar cuenta',
+        onAction: onAdd,
+      );
+    }
+    return AppCard(
+      child: Column(
+        children: [
+          for (final account in accounts) ...[
+            ListTile(
+              contentPadding: EdgeInsets.zero,
+              leading: ModuleBadge(
+                icon: _accountIcon(account.type),
+                color: AppColors.finance,
+                size: 40,
+              ),
+              title: Text(account.name),
+              subtitle: Text('${account.type} · Saldo inicial'),
+              trailing: Row(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  Text(
+                    money(account.initialBalance),
+                    style: Theme.of(context).textTheme.titleMedium,
+                  ),
+                  IconButton(
+                    tooltip: 'Eliminar cuenta',
+                    onPressed: () => onDelete(account),
+                    icon: const Icon(Icons.delete_outline_rounded),
+                  ),
+                ],
+              ),
+            ),
+            if (account != accounts.last) const Divider(),
+          ],
+        ],
+      ),
+    );
+  }
+
+  IconData _accountIcon(String type) => switch (type) {
+    'Banco' => Icons.account_balance_rounded,
+    'Tarjeta' => Icons.credit_card_rounded,
+    'Ahorro' => Icons.savings_rounded,
+    _ => Icons.payments_rounded,
+  };
 }
 
 class _AvailableCard extends StatelessWidget {
