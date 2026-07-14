@@ -1,21 +1,35 @@
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../../core/constants/app_colors.dart';
 import '../../../core/constants/app_spacing.dart';
 import '../../../shared/presentation/widgets/app_card.dart';
 import '../../../shared/presentation/widgets/module_badge.dart';
 import '../../../shared/presentation/widgets/summary_chip.dart';
+import '../application/security_service.dart';
+import '../../settings/application/settings_providers.dart';
 
-class AuthLockScreen extends StatefulWidget {
+class AuthLockScreen extends ConsumerStatefulWidget {
   const AuthLockScreen({super.key});
 
   @override
-  State<AuthLockScreen> createState() => _AuthLockScreenState();
+  ConsumerState<AuthLockScreen> createState() => _AuthLockScreenState();
 }
 
-class _AuthLockScreenState extends State<AuthLockScreen> {
+class _AuthLockScreenState extends ConsumerState<AuthLockScreen> {
   String _pin = '';
+  bool _checking = false;
+
+  @override
+  void initState() {
+    super.initState();
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (ref.read(appSettingsProvider).value?.biometricsEnabled == true) {
+        _authenticateBiometrically();
+      }
+    });
+  }
 
   void _addDigit(String digit) {
     if (_pin.length >= 4) return;
@@ -26,7 +40,7 @@ class _AuthLockScreenState extends State<AuthLockScreen> {
     });
 
     if (nextPin.length == 4) {
-      _completeAccess('Acceso simulado');
+      _verifyPin(nextPin);
     }
   }
 
@@ -38,11 +52,27 @@ class _AuthLockScreenState extends State<AuthLockScreen> {
     });
   }
 
-  void _completeAccess(String message) {
+  Future<void> _verifyPin(String pin) async {
+    if (await ref.read(securityServiceProvider).verifyPin(pin)) {
+      if (mounted) context.go('/');
+      return;
+    }
+    if (!mounted) return;
+    setState(() => _pin = '');
     ScaffoldMessenger.of(
       context,
-    ).showSnackBar(SnackBar(content: Text(message)));
-    context.go('/');
+    ).showSnackBar(const SnackBar(content: Text('PIN incorrecto')));
+  }
+
+  Future<void> _authenticateBiometrically() async {
+    if (_checking) return;
+    setState(() => _checking = true);
+    final authenticated = await ref
+        .read(securityServiceProvider)
+        .authenticate();
+    if (!mounted) return;
+    setState(() => _checking = false);
+    if (authenticated) context.go('/');
   }
 
   @override
@@ -81,15 +111,9 @@ class _AuthLockScreenState extends State<AuthLockScreen> {
             ),
             const SizedBox(height: AppSpacing.xxl),
             ElevatedButton.icon(
-              onPressed: () => _completeAccess('Biometría simulada'),
+              onPressed: _checking ? null : _authenticateBiometrically,
               icon: const Icon(Icons.fingerprint_rounded),
               label: const Text('Usar huella / Face ID'),
-            ),
-            const SizedBox(height: AppSpacing.md),
-            OutlinedButton.icon(
-              onPressed: () => context.go('/'),
-              icon: const Icon(Icons.no_encryption_gmailerrorred_rounded),
-              label: const Text('Entrar sin bloqueo'),
             ),
             const SizedBox(height: AppSpacing.lg),
             const Wrap(
@@ -98,19 +122,14 @@ class _AuthLockScreenState extends State<AuthLockScreen> {
               runSpacing: AppSpacing.sm,
               children: [
                 SummaryChip(
-                  label: 'UI prototipo',
-                  icon: Icons.visibility_rounded,
+                  label: 'PIN cifrado',
+                  icon: Icons.pin_rounded,
                   color: AppColors.info,
                 ),
                 SummaryChip(
-                  label: 'Seguridad simulada',
+                  label: 'Biometría del dispositivo',
                   icon: Icons.shield_rounded,
                   color: AppColors.primaryDark,
-                ),
-                SummaryChip(
-                  label: 'Sin datos reales',
-                  icon: Icons.verified_user_rounded,
-                  color: AppColors.secondary,
                 ),
               ],
             ),

@@ -19,6 +19,7 @@ import '../../finances/application/finances_providers.dart';
 import '../../reminders/application/reminders_providers.dart';
 import '../../subscriptions/application/subscriptions_providers.dart';
 import '../../tasks/application/tasks_providers.dart';
+import '../../auth_lock/application/security_service.dart';
 import '../application/settings_providers.dart';
 import '../domain/app_settings.dart';
 import '../data/local_data_service.dart';
@@ -35,6 +36,92 @@ class SettingsScreen extends ConsumerStatefulWidget {
 class _SettingsScreenState extends ConsumerState<SettingsScreen> {
   Future<void> _update(AppSettings Function(AppSettings) change) =>
       ref.read(appSettingsProvider.notifier).persist(change);
+
+  Future<void> _configurePin(bool enabled) async {
+    final security = ref.read(securityServiceProvider);
+    if (!enabled) {
+      await security.clearPin();
+      await _update(
+        (current) => current.copyWith(
+          pinEnabled: false,
+          biometricsEnabled: false,
+          lockOnExit: false,
+        ),
+      );
+      return;
+    }
+    final pin = TextEditingController();
+    final confirmation = TextEditingController();
+    final accepted = await showDialog<bool>(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: const Text('Crear PIN'),
+        content: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            TextField(
+              controller: pin,
+              obscureText: true,
+              maxLength: 4,
+              keyboardType: TextInputType.number,
+              decoration: const InputDecoration(labelText: 'PIN de 4 dígitos'),
+            ),
+            TextField(
+              controller: confirmation,
+              obscureText: true,
+              maxLength: 4,
+              keyboardType: TextInputType.number,
+              decoration: const InputDecoration(labelText: 'Confirmar PIN'),
+            ),
+          ],
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context, false),
+            child: const Text('Cancelar'),
+          ),
+          FilledButton(
+            onPressed: () => Navigator.pop(
+              context,
+              pin.text.length == 4 && pin.text == confirmation.text,
+            ),
+            child: const Text('Guardar'),
+          ),
+        ],
+      ),
+    );
+    if (accepted == true) {
+      await security.savePin(pin.text);
+      await _update((current) => current.copyWith(pinEnabled: true));
+    } else if (mounted && pin.text.isNotEmpty) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text('Los PIN deben coincidir y tener 4 dígitos.'),
+        ),
+      );
+    }
+    pin.dispose();
+    confirmation.dispose();
+  }
+
+  Future<void> _configureBiometrics(bool enabled) async {
+    if (!enabled) {
+      await _update((current) => current.copyWith(biometricsEnabled: false));
+      return;
+    }
+    if (!await ref.read(securityServiceProvider).canUseBiometrics()) {
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text('Este dispositivo no tiene biometría disponible.'),
+        ),
+      );
+      return;
+    }
+    await _update(
+      (current) => current.copyWith(biometricsEnabled: true, lockOnExit: true),
+    );
+  }
 
   Future<void> _chooseSetting({
     required String title,
@@ -278,10 +365,8 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
                     color: AppColors.info,
                     title: 'PIN de acceso',
                     description: 'Protege la entrada a Nexo con un código.',
-                    value: false,
-                    enabled: false,
-                    badge: 'Próximamente',
-                    onChanged: null,
+                    value: settings.pinEnabled,
+                    onChanged: _configurePin,
                   ),
                   const SizedBox(height: AppSpacing.lg),
                   _SwitchSettingTile(
@@ -289,10 +374,8 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
                     color: AppColors.primaryDark,
                     title: 'Huella / Face ID',
                     description: 'Acceso rápido con biometría del dispositivo.',
-                    value: false,
-                    enabled: false,
-                    badge: 'Próximamente',
-                    onChanged: null,
+                    value: settings.biometricsEnabled,
+                    onChanged: _configureBiometrics,
                   ),
                   const SizedBox(height: AppSpacing.lg),
                   _SwitchSettingTile(
@@ -300,10 +383,22 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
                     color: AppColors.calendar,
                     title: 'Bloquear app al salir',
                     description: 'Vuelve a pedir acceso al regresar.',
-                    value: false,
-                    enabled: false,
-                    badge: 'Próximamente',
-                    onChanged: null,
+                    value: settings.lockOnExit,
+                    onChanged: (value) {
+                      if (value &&
+                          !settings.pinEnabled &&
+                          !settings.biometricsEnabled) {
+                        ScaffoldMessenger.of(context).showSnackBar(
+                          const SnackBar(
+                            content: Text(
+                              'Activa primero un PIN o la biometría.',
+                            ),
+                          ),
+                        );
+                        return;
+                      }
+                      _update((current) => current.copyWith(lockOnExit: value));
+                    },
                   ),
                 ],
               ),
@@ -631,8 +726,6 @@ class _SwitchSettingTile extends StatelessWidget {
     required this.description,
     required this.value,
     required this.onChanged,
-    this.enabled = true,
-    this.badge,
   });
 
   final IconData icon;
@@ -641,8 +734,6 @@ class _SwitchSettingTile extends StatelessWidget {
   final String description;
   final bool value;
   final ValueChanged<bool>? onChanged;
-  final bool enabled;
-  final String? badge;
 
   @override
   Widget build(BuildContext context) {
@@ -656,27 +747,14 @@ class _SwitchSettingTile extends StatelessWidget {
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              Row(
-                children: [
-                  Flexible(child: Text(title, style: textTheme.titleMedium)),
-                  if (badge != null) ...[
-                    const SizedBox(width: AppSpacing.sm),
-                    Text(
-                      badge!,
-                      style: textTheme.labelSmall?.copyWith(
-                        color: AppColors.textMuted,
-                      ),
-                    ),
-                  ],
-                ],
-              ),
+              Text(title, style: textTheme.titleMedium),
               const SizedBox(height: AppSpacing.xs),
               Text(description, style: textTheme.bodySmall),
             ],
           ),
         ),
         const SizedBox(width: AppSpacing.sm),
-        Switch.adaptive(value: value, onChanged: enabled ? onChanged : null),
+        Switch.adaptive(value: value, onChanged: onChanged),
       ],
     );
   }

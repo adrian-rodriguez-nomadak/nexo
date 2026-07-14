@@ -9,6 +9,9 @@ class AppSettings {
     this.smartInbox = true,
     this.confirmBeforeSave = true,
     this.automaticSummaries = false,
+    this.pinEnabled = false,
+    this.biometricsEnabled = false,
+    this.lockOnExit = false,
     this.budgetPeriod = 'Quincenal',
     this.currency = 'MXN',
     this.themeMode = ThemeMode.light,
@@ -21,6 +24,9 @@ class AppSettings {
   final bool smartInbox;
   final bool confirmBeforeSave;
   final bool automaticSummaries;
+  final bool pinEnabled;
+  final bool biometricsEnabled;
+  final bool lockOnExit;
   final String budgetPeriod;
   final String currency;
   final ThemeMode themeMode;
@@ -33,6 +39,9 @@ class AppSettings {
     bool? smartInbox,
     bool? confirmBeforeSave,
     bool? automaticSummaries,
+    bool? pinEnabled,
+    bool? biometricsEnabled,
+    bool? lockOnExit,
     String? budgetPeriod,
     String? currency,
     ThemeMode? themeMode,
@@ -44,6 +53,9 @@ class AppSettings {
     smartInbox: smartInbox ?? this.smartInbox,
     confirmBeforeSave: confirmBeforeSave ?? this.confirmBeforeSave,
     automaticSummaries: automaticSummaries ?? this.automaticSummaries,
+    pinEnabled: pinEnabled ?? this.pinEnabled,
+    biometricsEnabled: biometricsEnabled ?? this.biometricsEnabled,
+    lockOnExit: lockOnExit ?? this.lockOnExit,
     budgetPeriod: budgetPeriod ?? this.budgetPeriod,
     currency: currency ?? this.currency,
     themeMode: themeMode ?? this.themeMode,
@@ -57,6 +69,9 @@ class AppSettings {
     'smartInbox': smartInbox,
     'confirmBeforeSave': confirmBeforeSave,
     'automaticSummaries': automaticSummaries,
+    'pinEnabled': pinEnabled,
+    'biometricsEnabled': biometricsEnabled,
+    'lockOnExit': lockOnExit,
     'budgetPeriod': budgetPeriod,
     'currency': currency,
     'themeMode': themeMode.name,
@@ -70,6 +85,9 @@ class AppSettings {
     smartInbox: json['smartInbox'] as bool? ?? true,
     confirmBeforeSave: json['confirmBeforeSave'] as bool? ?? true,
     automaticSummaries: json['automaticSummaries'] as bool? ?? false,
+    pinEnabled: json['pinEnabled'] as bool? ?? false,
+    biometricsEnabled: json['biometricsEnabled'] as bool? ?? false,
+    lockOnExit: json['lockOnExit'] as bool? ?? false,
     budgetPeriod: json['budgetPeriod'] as String? ?? 'Quincenal',
     currency: json['currency'] as String? ?? 'MXN',
     themeMode: ThemeMode.values.firstWhere(
