@@ -1,3 +1,5 @@
+import 'package:flutter/material.dart';
+
 import '../../../core/constants/app_colors.dart';
 import '../../../core/utils/formatters.dart';
 import '../../../shared/mock/mock_dashboard.dart';
@@ -7,6 +9,8 @@ import '../../finances/domain/models/upcoming_payment.dart';
 import '../../tasks/domain/models/task_item.dart';
 
 MockDashboardData buildDashboardViewData({
+  required String userName,
+  required String todayLabel,
   required FinanceSummary? summary,
   required List<UpcomingPayment>? payments,
   required List<CalendarEvent>? events,
@@ -14,7 +18,11 @@ MockDashboardData buildDashboardViewData({
 }) {
   final base = mockDashboard;
   final nextEvent = events == null || events.isEmpty
-      ? base.nextEvent
+      ? const MockDashboardEvent(
+          title: 'Sin eventos próximos',
+          time: 'Agenda libre',
+          location: 'Crea un evento cuando lo necesites',
+        )
       : MockDashboardEvent(
           title: events.first.title,
           time: shortTime(events.first.startAt),
@@ -22,15 +30,25 @@ MockDashboardData buildDashboardViewData({
         );
 
   return MockDashboardData(
-    user: base.user,
+    user: MockDashboardUser(name: userName, todayLabel: todayLabel),
     summary: summary == null
-        ? base.summary
+        ? const MockDailySummary(
+            availableAmount: r'$0.00',
+            availableLabel: 'Disponible real',
+            subtitle: 'Agrega movimientos para construir tu resumen.',
+            chips: [],
+          )
         : MockDailySummary(
             availableAmount: money(summary.availableAmount),
             availableLabel: 'Disponible real',
-            subtitle: 'Datos conectados en modo demo con fallback mock.',
+            subtitle: 'Resumen calculado con tus datos guardados.',
             chips: [
-              base.summary.chips[0],
+              MockSummaryChip(
+                label:
+                    '${tasks?.where((task) => task.status != 'completed').length ?? 0} pendientes',
+                icon: Icons.checklist_rounded,
+                color: AppColors.task,
+              ),
               MockSummaryChip(
                 label: '${money(summary.upcomingPaymentsTotal)} pagos próximos',
                 icon: base.summary.chips[1].icon,
@@ -45,7 +63,7 @@ MockDashboardData buildDashboardViewData({
           ),
     nextEvent: nextEvent,
     tasks: tasks == null
-        ? base.tasks
+        ? const []
         : tasks
               .map(
                 (task) => MockDashboardTask(
@@ -56,7 +74,18 @@ MockDashboardData buildDashboardViewData({
               )
               .toList(),
     finances: summary == null
-        ? base.finances
+        ? const [
+            MockFinanceQuickItem(
+              amount: r'$0.00',
+              label: 'Ingresos del mes',
+              color: AppColors.finance,
+            ),
+            MockFinanceQuickItem(
+              amount: r'$0.00',
+              label: 'Gastos registrados',
+              color: AppColors.danger,
+            ),
+          ]
         : [
             MockFinanceQuickItem(
               amount: money(summary.incomeTotal),
@@ -70,7 +99,7 @@ MockDashboardData buildDashboardViewData({
             ),
           ],
     upcomingPayments: payments == null
-        ? base.upcomingPayments
+        ? const []
         : payments
               .map(
                 (payment) => MockUpcomingPayment(

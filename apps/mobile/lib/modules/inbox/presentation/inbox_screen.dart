@@ -10,11 +10,25 @@ import '../../../shared/presentation/widgets/app_card.dart';
 import '../../../shared/presentation/widgets/module_badge.dart';
 import '../../../shared/presentation/widgets/quick_action_button.dart';
 import '../../../shared/presentation/widgets/section_header.dart';
-import '../../../shared/presentation/widgets/summary_chip.dart';
 import '../../calendar/presentation/widgets/create_event_sheet.dart';
 import '../../calendar/presentation/widgets/create_reminder_sheet.dart';
 import '../../debts/presentation/widgets/create_debt_from_debts_sheet.dart';
 import '../../finances/presentation/widgets/create_expense_sheet.dart';
+import '../../finances/presentation/widgets/create_income_sheet.dart';
+import '../../calendar/presentation/widgets/create_task_sheet.dart';
+import '../../subscriptions/presentation/widgets/create_subscription_sheet.dart';
+import '../../finances/application/finances_providers.dart';
+import '../../finances/data/repositories/local_finances_repository.dart';
+import '../../tasks/application/tasks_providers.dart';
+import '../../tasks/data/repositories/local_tasks_repository.dart';
+import '../../calendar/application/calendar_providers.dart';
+import '../../calendar/data/repositories/local_calendar_repository.dart';
+import '../../reminders/application/reminders_providers.dart';
+import '../../reminders/data/repositories/local_reminders_repository.dart';
+import '../../debts/application/debts_providers.dart';
+import '../../debts/data/repositories/local_debts_repository.dart';
+import '../../subscriptions/application/subscriptions_providers.dart';
+import '../../subscriptions/data/repositories/local_subscriptions_repository.dart';
 import 'models/inbox_interpretation.dart';
 import 'widgets/interpreted_result_card.dart';
 
@@ -27,7 +41,9 @@ class InboxScreen extends ConsumerStatefulWidget {
 
 class _InboxScreenState extends ConsumerState<InboxScreen> {
   final _controller = TextEditingController();
-  InboxInterpretation? _result;
+  final List<InterpretedAction> _actions = [];
+  final List<InboxInterpretation> _results = [];
+  InterpretedAction? _selectedAction;
   bool _isInterpreting = false;
 
   static const _suggestions = [
@@ -35,27 +51,6 @@ class _InboxScreenState extends ConsumerState<InboxScreen> {
     'Recuérdame pagar el gym',
     'Me deben 500',
     'Cita dental viernes 11 AM',
-  ];
-
-  static const _recentCaptures = [
-    _RecentCapture(
-      title: 'Gasto en comida',
-      detail: r'$180',
-      icon: Icons.restaurant_rounded,
-      color: AppColors.finance,
-    ),
-    _RecentCapture(
-      title: 'Pago gym',
-      detail: 'Recordatorio',
-      icon: Icons.notifications_active_rounded,
-      color: AppColors.task,
-    ),
-    _RecentCapture(
-      title: 'Spotify',
-      detail: 'Suscripción',
-      icon: Icons.subscriptions_rounded,
-      color: AppColors.subscription,
-    ),
   ];
 
   @override
@@ -86,13 +81,19 @@ class _InboxScreenState extends ConsumerState<InboxScreen> {
       );
       if (!mounted) return;
       setState(() {
-        _result = _fromInterpretedAction(interpreted, value);
+        final actions = [interpreted, ...interpreted.additionalActions];
+        _actions
+          ..clear()
+          ..addAll(actions);
+        _results
+          ..clear()
+          ..addAll(
+            actions.map((action) => _fromInterpretedAction(action, value)),
+          );
       });
     } catch (_) {
       if (!mounted) return;
-      setState(() {
-        _result = _buildInterpretation(value);
-      });
+      _showSnackBar('No se pudo interpretar. Intenta nuevamente.');
     } finally {
       if (mounted) setState(() => _isInterpreting = false);
     }
@@ -104,120 +105,231 @@ class _InboxScreenState extends ConsumerState<InboxScreen> {
     ).showSnackBar(SnackBar(content: Text(message)));
   }
 
-  void _continueWithResult() {
-    final result = _result;
-    if (result == null) return;
+  void _continueWithResult(
+    InterpretedAction action,
+    InboxInterpretation result,
+  ) {
+    _selectedAction = action;
+    final payload = action.payload;
+    final amount =
+        (payload['amount'] as num?)?.toDouble() ??
+        (payload['total_amount'] as num?)?.toDouble() ??
+        0;
+    final title = action.title;
 
     switch (result.type) {
       case 'expense':
         CreateExpenseSheet.show(
           context: context,
-          onSave: (_) => _showSnackBar('Gasto simulado guardado'),
+          initialValue: ExpenseDraft(
+            amount: amount,
+            category: payload['category']?.toString() ?? '',
+            description: payload['description']?.toString() ?? title,
+          ),
+          onSave: _saveExpense,
+        );
+        return;
+      case 'income':
+        CreateIncomeSheet.show(
+          context: context,
+          initialValue: IncomeDraft(
+            amount: amount,
+            source: payload['category']?.toString() ?? '',
+            description: payload['description']?.toString() ?? title,
+          ),
+          onSave: _saveIncome,
+        );
+        return;
+      case 'task':
+        CreateTaskSheet.show(
+          context: context,
+          initialDraft: TaskDraft(
+            title: title,
+            description: payload['description']?.toString() ?? '',
+            priority: payload['priority']?.toString() ?? 'medium',
+          ),
+          onSave: _saveTask,
         );
         return;
       case 'reminder':
         CreateReminderSheet.show(
           context: context,
-          onSave: (_) => _showSnackBar('Recordatorio simulado guardado'),
+          initialDraft: ReminderDraft(
+            title: title,
+            description: payload['description']?.toString() ?? '',
+            remindAt: _date(payload['remind_at']) ?? DateTime.now(),
+          ),
+          onSave: _saveReminder,
         );
         return;
       case 'debtInFavor':
         CreateDebtFromDebtsSheet.show(
           context: context,
-          initialType: 'Me deben',
-          onSave: (_) => _showSnackBar('Deuda simulada guardada'),
+          initialType: payload['debt_type'] == 'i_owe' ? 'Debo' : 'Me deben',
+          initialDraft: DebtDraft(
+            name: payload['name']?.toString() ?? title,
+            amount: amount,
+            type: payload['debt_type'] == 'i_owe' ? 'Debo' : 'Me deben',
+            notes: payload['notes']?.toString() ?? '',
+          ),
+          onSave: _saveDebt,
         );
         return;
       case 'event':
         CreateEventSheet.show(
           context: context,
-          onSave: (_) => _showSnackBar('Evento simulado guardado'),
+          initialDraft: EventDraft(
+            title: title,
+            location: payload['location_name']?.toString() ?? '',
+            description: payload['description']?.toString() ?? '',
+            startAt: _date(payload['start_at']) ?? DateTime.now(),
+            endAt: _date(payload['end_at']),
+          ),
+          onSave: _saveEvent,
+        );
+        return;
+      case 'subscription':
+        CreateSubscriptionSheet.show(
+          context: context,
+          initialDraft: SubscriptionDraft(
+            name: payload['name']?.toString() ?? title,
+            amount: amount,
+            billingDay: (payload['billing_day'] as num?)?.toInt() ?? 1,
+            category: payload['category']?.toString() ?? '',
+          ),
+          onSave: _saveSubscription,
         );
         return;
       default:
-        _showSnackBar('Acción simulada guardada');
+        _showSnackBar('La nota quedó en Inbox para revisión');
     }
   }
 
-  void _cancelResult() {
-    setState(() {
-      _result = null;
-      _controller.clear();
-    });
-  }
+  DateTime? _date(Object? value) =>
+      value == null ? null : DateTime.tryParse(value.toString())?.toLocal();
 
-  InboxInterpretation _buildInterpretation(String text) {
-    final normalized = text.toLowerCase();
+  Future<void> _saveExpense(ExpenseDraft draft) => _saveMovement(
+    type: 'expense',
+    amount: draft.amount,
+    description: draft.description,
+    category: draft.category,
+  );
 
-    if (normalized.contains('gasté') || normalized.contains('gaste')) {
-      return const InboxInterpretation(
-        type: 'expense',
-        detectedLabel: 'un gasto',
-        title: 'Comida',
-        secondaryLabel: 'Monto',
-        secondary: r'$180',
-        category: 'Alimentos',
-        preview: 'Lo mandaría a Finanzas como gasto del día.',
-        icon: Icons.receipt_long_rounded,
-        color: AppColors.finance,
-      );
-    }
+  Future<void> _saveIncome(IncomeDraft draft) => _saveMovement(
+    type: 'income',
+    amount: draft.amount,
+    description: draft.description,
+    category: draft.source,
+  );
 
-    if (normalized.contains('recuérdame') ||
-        normalized.contains('recuerdame') ||
-        normalized.contains('recordar')) {
-      return const InboxInterpretation(
-        type: 'reminder',
-        detectedLabel: 'un recordatorio',
-        title: 'Pagar Gym',
-        secondaryLabel: 'Fecha',
-        secondary: '15 julio',
-        category: 'Salud/Gym',
-        preview: 'Lo dejaría como pendiente con aviso próximo.',
-        icon: Icons.notifications_active_rounded,
-        color: AppColors.task,
-      );
-    }
-
-    if (normalized.contains('me deben')) {
-      return const InboxInterpretation(
-        type: 'debtInFavor',
-        detectedLabel: 'una deuda a favor',
-        title: 'Cobro pendiente',
-        secondaryLabel: 'Monto',
-        secondary: r'$500',
-        category: 'Deudas por cobrar',
-        preview: 'Lo registraría para seguimiento en Finanzas.',
-        icon: Icons.savings_rounded,
-        color: AppColors.debt,
-      );
-    }
-
-    if (normalized.contains('cita') || normalized.contains('evento')) {
-      return const InboxInterpretation(
-        type: 'event',
-        detectedLabel: 'un evento',
-        title: 'Cita dental',
-        secondaryLabel: 'Fecha',
-        secondary: 'Viernes, 11:00 AM',
-        category: 'Salud',
-        preview: 'Lo agregaría al Calendario.',
-        icon: Icons.calendar_today_rounded,
-        color: AppColors.calendar,
-      );
-    }
-
-    return const InboxInterpretation(
-      type: 'note',
-      detectedLabel: 'una nota rápida',
-      title: 'Captura sin clasificar',
-      secondaryLabel: 'Estado',
-      secondary: 'Pendiente de revisar',
-      category: 'Inbox',
-      preview: 'Lo dejaría guardado en Inbox para clasificar después.',
-      icon: Icons.inbox_rounded,
-      color: AppColors.accent,
+  Future<void> _saveMovement({
+    required String type,
+    required double amount,
+    required String description,
+    required String category,
+  }) async {
+    final repository = ref.read(financesRepositoryProvider);
+    if (repository is! LocalFinancesRepository) return;
+    await repository.createMovement(
+      type: type,
+      amount: amount,
+      description: description,
+      categoryName: category,
     );
+    ref
+      ..invalidate(financeSummaryProvider)
+      ..invalidate(financeMovementsProvider);
+    _saved();
+  }
+
+  Future<void> _saveTask(TaskDraft draft) async {
+    final repository = ref.read(tasksRepositoryProvider);
+    if (repository is! LocalTasksRepository) return;
+    await repository.createTask(
+      title: draft.title,
+      description: draft.description,
+      priority: draft.priority,
+    );
+    ref.invalidate(tasksProvider);
+    _saved();
+  }
+
+  Future<void> _saveReminder(ReminderDraft draft) async {
+    final repository = ref.read(remindersRepositoryProvider);
+    if (repository is! LocalRemindersRepository) return;
+    await repository.createReminder(
+      title: draft.title,
+      description: draft.description,
+      remindAt: draft.remindAt,
+    );
+    ref.invalidate(remindersProvider);
+    _saved();
+  }
+
+  Future<void> _saveDebt(DebtDraft draft) async {
+    final repository = ref.read(debtsRepositoryProvider);
+    if (repository is! LocalDebtsRepository) return;
+    await repository.createDebt(
+      name: draft.name,
+      type: draft.type == 'Me deben' ? 'they_owe_me' : 'i_owe',
+      amount: draft.amount,
+      notes: draft.notes,
+    );
+    ref.invalidate(debtsProvider);
+    _saved();
+  }
+
+  Future<void> _saveEvent(EventDraft draft) async {
+    final repository = ref.read(calendarRepositoryProvider);
+    if (repository is! LocalCalendarRepository) return;
+    await repository.createEvent(
+      title: draft.title,
+      description: draft.description,
+      locationName: draft.location,
+      startAt: draft.startAt,
+      endAt: draft.endAt,
+    );
+    ref.invalidate(calendarEventsProvider);
+    _saved();
+  }
+
+  Future<void> _saveSubscription(SubscriptionDraft draft) async {
+    final repository = ref.read(subscriptionsRepositoryProvider);
+    if (repository is! LocalSubscriptionsRepository) return;
+    await repository.createSubscription(
+      name: draft.name,
+      amount: draft.amount,
+      billingDay: draft.billingDay,
+      category: draft.category,
+    );
+    ref.invalidate(subscriptionsProvider);
+    _saved();
+  }
+
+  void _saved() {
+    if (!mounted) return;
+    setState(() {
+      final selected = _selectedAction;
+      final index = selected == null ? -1 : _actions.indexOf(selected);
+      if (index >= 0) {
+        _actions.removeAt(index);
+        _results.removeAt(index);
+      }
+      _selectedAction = null;
+      if (_actions.isEmpty) _controller.clear();
+    });
+    _showSnackBar('Guardado localmente y listo para sincronizar');
+  }
+
+  void _cancelResult(InterpretedAction action) {
+    setState(() {
+      final index = _actions.indexOf(action);
+      if (index >= 0) {
+        _actions.removeAt(index);
+        _results.removeAt(index);
+      }
+      if (_actions.isEmpty) _controller.clear();
+    });
   }
 
   InboxInterpretation _fromInterpretedAction(
@@ -238,6 +350,28 @@ class _InboxScreenState extends ConsumerState<InboxScreen> {
         preview: action.preview,
         icon: Icons.receipt_long_rounded,
         color: AppColors.finance,
+      ),
+      'create_income' || 'income' => InboxInterpretation(
+        type: 'income',
+        detectedLabel: 'un ingreso',
+        title: action.title,
+        secondaryLabel: 'Monto',
+        secondary: secondaryAmount,
+        category: 'Finanzas',
+        preview: action.preview,
+        icon: Icons.trending_up_rounded,
+        color: AppColors.finance,
+      ),
+      'create_task' || 'task' => InboxInterpretation(
+        type: 'task',
+        detectedLabel: 'una tarea',
+        title: action.title,
+        secondaryLabel: 'Prioridad',
+        secondary: action.payload['priority']?.toString() ?? 'Media',
+        category: 'Tareas',
+        preview: action.preview,
+        icon: Icons.add_task_rounded,
+        color: AppColors.task,
       ),
       'create_reminder' || 'reminder' => InboxInterpretation(
         type: 'reminder',
@@ -271,6 +405,17 @@ class _InboxScreenState extends ConsumerState<InboxScreen> {
         preview: action.preview,
         icon: Icons.calendar_today_rounded,
         color: AppColors.calendar,
+      ),
+      'create_subscription' || 'subscription' => InboxInterpretation(
+        type: 'subscription',
+        detectedLabel: 'una suscripción',
+        title: action.title,
+        secondaryLabel: 'Monto',
+        secondary: secondaryAmount,
+        category: 'Suscripciones',
+        preview: action.preview,
+        icon: Icons.subscriptions_rounded,
+        color: AppColors.subscription,
       ),
       _ => InboxInterpretation(
         type: 'note',
@@ -387,83 +532,24 @@ class _InboxScreenState extends ConsumerState<InboxScreen> {
                   )
                   .toList(),
             ),
-            if (_result != null) ...[
+            if (_results.isNotEmpty) ...[
               const SizedBox(height: AppSpacing.xxl),
-              InterpretedResultCard(
-                result: _result!,
-                onSave: _continueWithResult,
-                onEdit: () => _showSnackBar('Edición simulada'),
-                onCancel: _cancelResult,
-              ),
-            ],
-            const SizedBox(height: AppSpacing.xxl),
-            const SectionHeader(title: 'Capturas recientes'),
-            const SizedBox(height: AppSpacing.md),
-            AppCard(
-              child: Column(
-                children: [
-                  for (final capture in _recentCaptures) ...[
-                    _RecentCaptureTile(capture: capture),
-                    if (capture != _recentCaptures.last)
-                      const SizedBox(height: AppSpacing.lg),
-                  ],
-                ],
-              ),
-            ),
-            const SizedBox(height: AppSpacing.lg),
-            Wrap(
-              spacing: AppSpacing.sm,
-              runSpacing: AppSpacing.sm,
-              children: const [
-                SummaryChip(
-                  label: 'UI prototipo',
-                  icon: Icons.visibility_rounded,
-                  color: AppColors.info,
+              for (var index = 0; index < _results.length; index++) ...[
+                InterpretedResultCard(
+                  result: _results[index],
+                  onSave: () =>
+                      _continueWithResult(_actions[index], _results[index]),
+                  onEdit: () =>
+                      _continueWithResult(_actions[index], _results[index]),
+                  onCancel: () => _cancelResult(_actions[index]),
                 ),
-                SummaryChip(
-                  label: 'Sin datos reales',
-                  icon: Icons.lock_outline_rounded,
-                  color: AppColors.textMuted,
-                ),
+                if (index < _results.length - 1)
+                  const SizedBox(height: AppSpacing.md),
               ],
-            ),
+            ],
           ],
         ),
       ),
-    );
-  }
-}
-
-class _RecentCapture {
-  const _RecentCapture({
-    required this.title,
-    required this.detail,
-    required this.icon,
-    required this.color,
-  });
-
-  final String title;
-  final String detail;
-  final IconData icon;
-  final Color color;
-}
-
-class _RecentCaptureTile extends StatelessWidget {
-  const _RecentCaptureTile({required this.capture});
-
-  final _RecentCapture capture;
-
-  @override
-  Widget build(BuildContext context) {
-    final textTheme = Theme.of(context).textTheme;
-
-    return Row(
-      children: [
-        ModuleBadge(icon: capture.icon, color: capture.color, size: 38),
-        const SizedBox(width: AppSpacing.md),
-        Expanded(child: Text(capture.title, style: textTheme.titleMedium)),
-        Text(capture.detail, style: textTheme.bodyMedium),
-      ],
     );
   }
 }

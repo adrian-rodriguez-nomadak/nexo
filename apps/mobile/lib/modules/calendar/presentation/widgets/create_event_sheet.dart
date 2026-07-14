@@ -81,8 +81,12 @@ class _CreateEventSheetState extends State<CreateEventSheet> {
     final title = _titleController.text.trim();
     if (title.isEmpty) return;
     final now = DateTime.now();
-    final startAt = _timeForToday(_startController.text, now) ?? now;
-    final endAt = _timeForToday(_endController.text, now);
+    final initial = widget.initialDraft;
+    final startDate = initial?.startAt ?? now;
+    final endDate = initial?.endAt ?? startDate;
+    final startAt =
+        _timeForToday(_startController.text, startDate) ?? startDate;
+    final endAt = _timeForToday(_endController.text, endDate);
     widget.onSave?.call(
       EventDraft(
         title: title,

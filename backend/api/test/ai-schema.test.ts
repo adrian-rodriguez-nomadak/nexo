@@ -1,7 +1,10 @@
 import assert from "node:assert/strict";
 import test from "node:test";
 
-import { interpretedActionSchema } from "../src/modules/ai/ai.service.js";
+import {
+  interpretationSchema,
+  interpretedActionSchema,
+} from "../src/modules/ai/ai.service.js";
 
 const emptyPayload = {
   type: null,
@@ -52,4 +55,27 @@ test("rejects unknown intents and invalid confidence", () => {
   });
 
   assert.equal(result.success, false);
+});
+
+test("supports multiple independent actions in one interpretation", () => {
+  const result = interpretationSchema.parse({
+    actions: [
+      {
+        intent: "create_event",
+        title: "Ir al gimnasio",
+        preview: "Propone crear un evento.",
+        confidence: 0.95,
+        payload: { ...emptyPayload, start_at: "2026-07-14T18:00:00-06:00" },
+      },
+      {
+        intent: "create_expense",
+        title: "Mensualidad del gimnasio",
+        preview: "Propone registrar un gasto.",
+        confidence: 0.98,
+        payload: { ...emptyPayload, type: "expense", amount: 600 },
+      },
+    ],
+  });
+
+  assert.equal(result.actions.length, 2);
 });

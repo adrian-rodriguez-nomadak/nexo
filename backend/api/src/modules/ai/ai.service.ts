@@ -48,6 +48,10 @@ export const interpretedActionSchema = z.object({
   }),
 });
 
+export const interpretationSchema = z.object({
+  actions: z.array(interpretedActionSchema).min(1).max(5),
+});
+
 export type InterpretedAction = z.infer<typeof interpretedActionSchema>;
 
 const client =
@@ -84,7 +88,8 @@ export const aiService = {
       safety_identifier: safetyIdentifier(userId),
       reasoning: { effort: "low" },
       instructions: `Interpreta texto breve en español para Nexo, una app personal de México.
-Devuelve exactamente una acción. No ejecutes ni guardes nada.
+Devuelve una acción por cada intención independiente, hasta 5. No ejecutes ni guardes nada.
+Una frase puede contener varias acciones; un evento y un gasto deben ser elementos separados.
 Usa fechas ISO 8601 y zona America/Monterrey. Hoy es ${new Date().toISOString()}.
 Si falta un dato, usa null. No inventes montos, personas, fechas ni lugares.
 Usa note cuando el texto no permita una acción confiable.
@@ -92,18 +97,18 @@ Para deudas usa debt_type: they_owe_me o i_owe. Para movimientos usa type: expen
 El preview debe explicar en una frase qué se propone guardar y que requiere confirmación.`,
       input: text,
       text: {
-        format: zodTextFormat(
-          interpretedActionSchema,
-          "nexo_interpreted_action",
-        ),
+        format: zodTextFormat(interpretationSchema, "nexo_interpretation"),
       },
     });
 
     if (!response.output_parsed) return null;
     const parsed = response.output_parsed;
     return {
-      ...parsed,
-      payload: removeNulls(parsed.payload),
+      actions: parsed.actions.map((action) => ({
+        ...action,
+        payload: removeNulls(action.payload),
+        source: "openai" as const,
+      })),
       source: "openai" as const,
     };
   },

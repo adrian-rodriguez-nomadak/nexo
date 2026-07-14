@@ -71,13 +71,19 @@ class _CreateReminderSheetState extends State<CreateReminderSheet> {
       ReminderDraft(
         title: title,
         description: _notesController.text.trim(),
-        remindAt: _timeForToday(_timeController.text) ?? DateTime.now(),
+        remindAt:
+            _timeForDate(
+              _timeController.text,
+              widget.initialDraft?.remindAt ?? DateTime.now(),
+            ) ??
+            widget.initialDraft?.remindAt ??
+            DateTime.now(),
       ),
     );
     Navigator.of(context).pop();
   }
 
-  DateTime? _timeForToday(String raw) {
+  DateTime? _timeForDate(String raw, DateTime date) {
     final match = RegExp(
       r'^(\d{1,2}):(\d{2})\s*([aApP][mM])?$',
     ).firstMatch(raw.trim());
@@ -88,8 +94,7 @@ class _CreateReminderSheetState extends State<CreateReminderSheet> {
     if (minute > 59 || hour > 23 || hour == 0 && period != null) return null;
     if (period == 'pm' && hour < 12) hour += 12;
     if (period == 'am' && hour == 12) hour = 0;
-    final now = DateTime.now();
-    return DateTime(now.year, now.month, now.day, hour, minute);
+    return DateTime(date.year, date.month, date.day, hour, minute);
   }
 
   @override

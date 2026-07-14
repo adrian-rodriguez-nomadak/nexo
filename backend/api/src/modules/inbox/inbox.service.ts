@@ -75,25 +75,30 @@ export const inboxService = {
         error,
       );
     }
-    const intent = interpreted?.intent ?? detectIntent(text);
-    const payload = interpreted?.payload ?? payloadFor(intent, text);
+    const fallbackIntent = detectIntent(text);
+    const actions = interpreted?.actions ?? [
+      {
+        intent: fallbackIntent,
+        title: text,
+        preview:
+          "Interpretación local preparada; revisa los datos antes de guardar.",
+        confidence: fallbackIntent === "unknown" ? 0.2 : 0.7,
+        payload: payloadFor(fallbackIntent, text),
+      },
+    ];
+    const primary = actions[0];
 
     await InboxAction.create({
       user_id: userId,
       raw_text: text,
-      detected_intent: intent,
-      structured_payload: payload,
+      detected_intent: primary.intent,
+      structured_payload: { actions },
       status: "draft",
     });
 
     return {
-      intent,
-      title: interpreted?.title ?? text,
-      preview:
-        interpreted?.preview ??
-        "Interpretación local preparada; revisa los datos antes de guardar.",
-      confidence: interpreted?.confidence ?? (intent === "unknown" ? 0.2 : 0.7),
-      payload,
+      ...primary,
+      actions,
       source: interpreted?.source ?? "local",
     };
   },

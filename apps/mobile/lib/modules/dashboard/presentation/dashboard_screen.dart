@@ -11,6 +11,8 @@ import '../../../shared/presentation/widgets/money_amount.dart';
 import '../../../shared/presentation/widgets/quick_action_button.dart';
 import '../../../shared/presentation/widgets/section_header.dart';
 import '../../../shared/presentation/widgets/summary_chip.dart';
+import '../../../shared/presentation/widgets/empty_state_card.dart';
+import '../../auth/application/auth_providers.dart';
 import '../../calendar/presentation/widgets/create_event_sheet.dart';
 import '../../calendar/presentation/widgets/create_task_sheet.dart';
 import '../../calendar/application/calendar_providers.dart';
@@ -18,6 +20,9 @@ import '../../finances/application/finances_providers.dart';
 import '../../finances/presentation/widgets/create_expense_sheet.dart';
 import '../../finances/presentation/widgets/create_payment_sheet.dart';
 import '../../tasks/application/tasks_providers.dart';
+import '../../finances/data/repositories/local_finances_repository.dart';
+import '../../tasks/data/repositories/local_tasks_repository.dart';
+import '../../calendar/data/repositories/local_calendar_repository.dart';
 import 'dashboard_view_data.dart';
 
 class DashboardScreen extends ConsumerWidget {
@@ -29,11 +34,28 @@ class DashboardScreen extends ConsumerWidget {
     ).showSnackBar(SnackBar(content: Text(message)));
   }
 
-  void _handleQuickAction(BuildContext context, MockQuickAction action) {
+  void _handleQuickAction(
+    BuildContext context,
+    WidgetRef ref,
+    MockQuickAction action,
+  ) {
     if (action.label.contains('Gasto')) {
       CreateExpenseSheet.show(
         context: context,
-        onSave: (_) => _showSnackBar(context, 'Gasto simulado guardado'),
+        onSave: (draft) async {
+          final repository = ref.read(financesRepositoryProvider);
+          if (repository is! LocalFinancesRepository) return;
+          await repository.createMovement(
+            type: 'expense',
+            amount: draft.amount,
+            description: draft.description,
+            categoryName: draft.category,
+          );
+          ref
+            ..invalidate(financeSummaryProvider)
+            ..invalidate(financeMovementsProvider);
+          if (context.mounted) _showSnackBar(context, 'Guardado localmente');
+        },
       );
       return;
     }
@@ -41,7 +63,17 @@ class DashboardScreen extends ConsumerWidget {
     if (action.label.contains('Tarea')) {
       CreateTaskSheet.show(
         context: context,
-        onSave: (_) => _showSnackBar(context, 'Tarea simulada guardada'),
+        onSave: (draft) async {
+          final repository = ref.read(tasksRepositoryProvider);
+          if (repository is! LocalTasksRepository) return;
+          await repository.createTask(
+            title: draft.title,
+            description: draft.description,
+            priority: draft.priority,
+          );
+          ref.invalidate(tasksProvider);
+          if (context.mounted) _showSnackBar(context, 'Guardado localmente');
+        },
       );
       return;
     }
@@ -49,7 +81,19 @@ class DashboardScreen extends ConsumerWidget {
     if (action.label.contains('Evento')) {
       CreateEventSheet.show(
         context: context,
-        onSave: (_) => _showSnackBar(context, 'Evento simulado guardado'),
+        onSave: (draft) async {
+          final repository = ref.read(calendarRepositoryProvider);
+          if (repository is! LocalCalendarRepository) return;
+          await repository.createEvent(
+            title: draft.title,
+            description: draft.description,
+            locationName: draft.location,
+            startAt: draft.startAt,
+            endAt: draft.endAt,
+          );
+          ref.invalidate(calendarEventsProvider);
+          if (context.mounted) _showSnackBar(context, 'Guardado localmente');
+        },
       );
       return;
     }
@@ -57,7 +101,19 @@ class DashboardScreen extends ConsumerWidget {
     if (action.label.contains('Pago')) {
       CreatePaymentSheet.show(
         context: context,
-        onSave: (_) => _showSnackBar(context, 'Pago simulado guardado'),
+        onSave: (draft) async {
+          final repository = ref.read(financesRepositoryProvider);
+          if (repository is! LocalFinancesRepository) return;
+          await repository.createUpcomingPayment(
+            name: draft.name,
+            amount: draft.amount,
+            category: draft.category,
+          );
+          ref
+            ..invalidate(financeSummaryProvider)
+            ..invalidate(upcomingPaymentsProvider);
+          if (context.mounted) _showSnackBar(context, 'Guardado localmente');
+        },
       );
       return;
     }
@@ -71,7 +127,33 @@ class DashboardScreen extends ConsumerWidget {
     final payments = ref.watch(upcomingPaymentsProvider);
     final events = ref.watch(calendarEventsProvider);
     final tasks = ref.watch(tasksProvider);
+    final session = ref.watch(authSessionProvider).value;
+    final sources = [summary, payments, events, tasks];
+    if (sources.any((source) => source.isLoading)) {
+      return const Scaffold(body: Center(child: CircularProgressIndicator()));
+    }
+    if (sources.any((source) => source.hasError)) {
+      return Scaffold(
+        body: Center(
+          child: EmptyStateCard(
+            icon: Icons.cloud_off_rounded,
+            title: 'No se pudo cargar Inicio',
+            description: 'Tus datos siguen guardados. Intenta nuevamente.',
+            actionLabel: 'Reintentar',
+            onAction: () {
+              ref
+                ..invalidate(financeSummaryProvider)
+                ..invalidate(upcomingPaymentsProvider)
+                ..invalidate(calendarEventsProvider)
+                ..invalidate(tasksProvider);
+            },
+          ),
+        ),
+      );
+    }
     final data = buildDashboardViewData(
+      userName: session?.name.isNotEmpty == true ? session!.name : 'tú',
+      todayLabel: _todayLabel(DateTime.now()),
       summary: summary.value,
       payments: payments.value,
       events: events.value,
@@ -106,7 +188,7 @@ class DashboardScreen extends ConsumerWidget {
                   SectionHeader(
                     title: 'Tareas de hoy',
                     actionLabel: 'Ver todo',
-                    onActionTap: () => context.go('/inbox'),
+                    onActionTap: () => context.go('/calendar'),
                   ),
                   const SizedBox(height: AppSpacing.md),
                   _TasksCard(
@@ -138,7 +220,7 @@ class DashboardScreen extends ConsumerWidget {
                   _QuickActions(
                     actions: data.quickActions,
                     onActionTap: (action) =>
-                        _handleQuickAction(context, action),
+                        _handleQuickAction(context, ref, action),
                   ),
                   const SizedBox(height: 130),
                 ],
@@ -153,6 +235,33 @@ class DashboardScreen extends ConsumerWidget {
         child: const Icon(Icons.inbox_rounded),
       ),
     );
+  }
+
+  String _todayLabel(DateTime date) {
+    const weekdays = [
+      'lunes',
+      'martes',
+      'miércoles',
+      'jueves',
+      'viernes',
+      'sábado',
+      'domingo',
+    ];
+    const months = [
+      'enero',
+      'febrero',
+      'marzo',
+      'abril',
+      'mayo',
+      'junio',
+      'julio',
+      'agosto',
+      'septiembre',
+      'octubre',
+      'noviembre',
+      'diciembre',
+    ];
+    return '${weekdays[date.weekday - 1]}, ${date.day} de ${months[date.month - 1]}';
   }
 }
 
@@ -282,6 +391,14 @@ class _TasksCard extends StatelessWidget {
   Widget build(BuildContext context) {
     final textTheme = Theme.of(context).textTheme;
 
+    if (tasks.isEmpty) {
+      return const EmptyStateCard(
+        icon: Icons.task_alt_rounded,
+        title: 'Sin tareas pendientes',
+        description: 'Las tareas que agregues aparecerán aquí.',
+      );
+    }
+
     return AppCard(
       child: Column(
         children: [
@@ -370,6 +487,14 @@ class _PaymentsCard extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final textTheme = Theme.of(context).textTheme;
+
+    if (payments.isEmpty) {
+      return const EmptyStateCard(
+        icon: Icons.payments_outlined,
+        title: 'Sin pagos próximos',
+        description: 'No tienes pagos programados por ahora.',
+      );
+    }
 
     return AppCard(
       child: Column(
