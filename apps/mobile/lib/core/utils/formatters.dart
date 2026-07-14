@@ -1,5 +1,5 @@
 String money(num value, {bool signed = false}) {
-  final sign = signed && value > 0 ? '+' : '';
+  final sign = value < 0 ? '-' : (signed && value > 0 ? '+' : '');
   final absolute = value.abs().toStringAsFixed(0);
   final buffer = StringBuffer();
   for (var i = 0; i < absolute.length; i++) {
