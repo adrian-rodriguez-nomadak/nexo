@@ -22,6 +22,8 @@ import '../../tasks/application/tasks_providers.dart';
 import '../application/settings_providers.dart';
 import '../domain/app_settings.dart';
 import '../data/local_data_service.dart';
+import '../data/categories_service.dart';
+import 'widgets/categories_sheet.dart';
 
 class SettingsScreen extends ConsumerStatefulWidget {
   const SettingsScreen({super.key});
@@ -97,6 +99,7 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
     await db.transaction(() async {
       await db.customStatement('DELETE FROM finance_accounts');
       await db.customStatement('DELETE FROM finance_budgets');
+      await db.customStatement('DELETE FROM finance_categories');
       await db.delete(db.financeMovements).go();
       await db.delete(db.upcomingPayments).go();
       await db.delete(db.calendarEvents).go();
@@ -429,8 +432,12 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
                     color: AppColors.accent,
                     title: 'Categorías',
                     value: '',
-                    chipLabel: 'Próximamente',
-                    chipIcon: Icons.schedule_rounded,
+                    chipLabel: 'Administrar',
+                    chipIcon: Icons.edit_rounded,
+                    onTap: () => CategoriesSheet.show(
+                      context: context,
+                      service: CategoriesService(ref.read(appDatabaseProvider)),
+                    ),
                   ),
                 ],
               ),

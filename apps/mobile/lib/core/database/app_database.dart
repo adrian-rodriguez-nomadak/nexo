@@ -58,6 +58,29 @@ class AppDatabase extends _$AppDatabase {
         id TEXT PRIMARY KEY, category TEXT NOT NULL COLLATE NOCASE UNIQUE,
         amount REAL NOT NULL, created_at INTEGER NOT NULL,
         updated_at INTEGER NOT NULL)''');
+      await customStatement('''CREATE TABLE IF NOT EXISTS finance_categories (
+        id TEXT PRIMARY KEY, name TEXT NOT NULL COLLATE NOCASE UNIQUE,
+        created_at INTEGER NOT NULL)''');
+      for (final category in [
+        'Alimentos',
+        'Transporte',
+        'Hogar',
+        'Salud',
+        'Entretenimiento',
+        'Servicios',
+        'Educación',
+        'Otros',
+      ]) {
+        await customStatement(
+          '''INSERT OR IGNORE INTO finance_categories (id, name, created_at)
+             VALUES (?, ?, ?)''',
+          [
+            'category_${category.toLowerCase()}',
+            category,
+            DateTime.now().millisecondsSinceEpoch,
+          ],
+        );
+      }
       await customStatement('''CREATE TABLE IF NOT EXISTS sync_queue (
         operation_id TEXT PRIMARY KEY, entity TEXT NOT NULL,
         record_id TEXT NOT NULL, operation TEXT NOT NULL,

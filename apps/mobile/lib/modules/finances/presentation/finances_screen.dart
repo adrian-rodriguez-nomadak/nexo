@@ -10,6 +10,8 @@ import '../data/repositories/local_finances_repository.dart';
 import '../domain/models/finance_account.dart';
 import '../domain/models/finance_budget.dart';
 import '../../settings/application/settings_providers.dart';
+import '../../settings/data/categories_service.dart';
+import '../../../core/database/database_provider.dart';
 import '../../../shared/mock/mock_finances.dart';
 import '../../../shared/presentation/widgets/app_back_button.dart';
 import '../../../shared/presentation/widgets/app_card.dart';
@@ -37,9 +39,17 @@ class FinancesScreen extends ConsumerWidget {
     ).showSnackBar(SnackBar(content: Text('$label simulado')));
   }
 
-  void _openCreateExpenseSheet(BuildContext context, WidgetRef ref) {
+  Future<void> _openCreateExpenseSheet(
+    BuildContext context,
+    WidgetRef ref,
+  ) async {
+    final categories = await CategoriesService(
+      ref.read(appDatabaseProvider),
+    ).getAll();
+    if (!context.mounted) return;
     CreateExpenseSheet.show(
       context: context,
+      categories: categories.map((item) => item.name).toList(),
       onSave: (draft) => _saveMovement(
         context,
         ref,
@@ -84,9 +94,17 @@ class FinancesScreen extends ConsumerWidget {
     );
   }
 
-  void _openCreateBudgetSheet(BuildContext context, WidgetRef ref) {
+  Future<void> _openCreateBudgetSheet(
+    BuildContext context,
+    WidgetRef ref,
+  ) async {
+    final categories = await CategoriesService(
+      ref.read(appDatabaseProvider),
+    ).getAll();
+    if (!context.mounted) return;
     CreateBudgetSheet.show(
       context: context,
+      categories: categories.map((item) => item.name).toList(),
       onSave: (draft) async {
         final repository = ref.read(financesRepositoryProvider);
         if (repository is! LocalFinancesRepository) return;

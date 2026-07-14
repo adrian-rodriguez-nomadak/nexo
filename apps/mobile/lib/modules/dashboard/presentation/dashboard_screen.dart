@@ -23,6 +23,8 @@ import '../../tasks/application/tasks_providers.dart';
 import '../../finances/data/repositories/local_finances_repository.dart';
 import '../../tasks/data/repositories/local_tasks_repository.dart';
 import '../../calendar/data/repositories/local_calendar_repository.dart';
+import '../../settings/data/categories_service.dart';
+import '../../../core/database/database_provider.dart';
 import 'dashboard_view_data.dart';
 
 class DashboardScreen extends ConsumerWidget {
@@ -34,14 +36,19 @@ class DashboardScreen extends ConsumerWidget {
     ).showSnackBar(SnackBar(content: Text(message)));
   }
 
-  void _handleQuickAction(
+  Future<void> _handleQuickAction(
     BuildContext context,
     WidgetRef ref,
     MockQuickAction action,
-  ) {
+  ) async {
     if (action.label.contains('Gasto')) {
+      final categories = await CategoriesService(
+        ref.read(appDatabaseProvider),
+      ).getAll();
+      if (!context.mounted) return;
       CreateExpenseSheet.show(
         context: context,
+        categories: categories.map((item) => item.name).toList(),
         onSave: (draft) async {
           final repository = ref.read(financesRepositoryProvider);
           if (repository is! LocalFinancesRepository) return;

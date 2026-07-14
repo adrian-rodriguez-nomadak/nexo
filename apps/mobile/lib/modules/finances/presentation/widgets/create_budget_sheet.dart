@@ -11,18 +11,24 @@ class BudgetDraft {
 }
 
 class CreateBudgetSheet extends StatefulWidget {
-  const CreateBudgetSheet({super.key, required this.onSave});
+  const CreateBudgetSheet({
+    super.key,
+    required this.onSave,
+    this.categories = const [],
+  });
 
   final Future<void> Function(BudgetDraft draft) onSave;
+  final List<String> categories;
 
   static Future<void> show({
     required BuildContext context,
     required Future<void> Function(BudgetDraft draft) onSave,
+    List<String> categories = const [],
   }) => showModalBottomSheet<void>(
     context: context,
     isScrollControlled: true,
     showDragHandle: true,
-    builder: (_) => CreateBudgetSheet(onSave: onSave),
+    builder: (_) => CreateBudgetSheet(onSave: onSave, categories: categories),
   );
 
   @override
@@ -90,6 +96,22 @@ class _CreateBudgetSheetState extends State<CreateBudgetSheet> {
                   ? 'Escribe una categoría'
                   : null,
             ),
+            if (widget.categories.isNotEmpty) ...[
+              const SizedBox(height: AppSpacing.sm),
+              Wrap(
+                spacing: AppSpacing.sm,
+                runSpacing: AppSpacing.xs,
+                children: widget.categories
+                    .map(
+                      (category) => ActionChip(
+                        label: Text(category),
+                        onPressed: () =>
+                            setState(() => _category.text = category),
+                      ),
+                    )
+                    .toList(),
+              ),
+            ],
             const SizedBox(height: AppSpacing.md),
             TextFormField(
               controller: _amount,

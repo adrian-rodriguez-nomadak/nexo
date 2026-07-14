@@ -19,20 +19,30 @@ class ExpenseDraft {
 }
 
 class CreateExpenseSheet extends StatefulWidget {
-  const CreateExpenseSheet({this.onSave, this.initialValue, super.key});
+  const CreateExpenseSheet({
+    this.onSave,
+    this.initialValue,
+    this.categories = const [],
+    super.key,
+  });
 
   final ValueChanged<ExpenseDraft>? onSave;
   final ExpenseDraft? initialValue;
+  final List<String> categories;
 
   static Future<void> show({
     required BuildContext context,
     ValueChanged<ExpenseDraft>? onSave,
     ExpenseDraft? initialValue,
+    List<String> categories = const [],
   }) {
     return AppBottomSheet.show<void>(
       context: context,
-      builder: (context) =>
-          CreateExpenseSheet(onSave: onSave, initialValue: initialValue),
+      builder: (context) => CreateExpenseSheet(
+        onSave: onSave,
+        initialValue: initialValue,
+        categories: categories,
+      ),
     );
   }
 
@@ -105,6 +115,22 @@ class _CreateExpenseSheetState extends State<CreateExpenseSheet> {
             controller: _categoryController,
             prefixIcon: Icons.category_rounded,
           ),
+          if (widget.categories.isNotEmpty) ...[
+            const SizedBox(height: AppSpacing.sm),
+            Wrap(
+              spacing: AppSpacing.sm,
+              runSpacing: AppSpacing.xs,
+              children: widget.categories
+                  .map(
+                    (category) => ActionChip(
+                      label: Text(category),
+                      onPressed: () =>
+                          setState(() => _categoryController.text = category),
+                    ),
+                  )
+                  .toList(),
+            ),
+          ],
           const SizedBox(height: AppSpacing.lg),
           AppTextField(
             label: 'Descripción',

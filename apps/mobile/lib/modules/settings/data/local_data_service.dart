@@ -17,6 +17,7 @@ class LocalDataService {
   static const tables = <String, String>{
     'Cuentas': 'finance_accounts',
     'Presupuestos': 'finance_budgets',
+    'Categorías': 'finance_categories',
     'Movimientos': 'finance_movements',
     'Pagos próximos': 'upcoming_payments',
     'Eventos': 'calendar_events',
