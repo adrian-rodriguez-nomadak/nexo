@@ -4,6 +4,7 @@ import 'package:flutter/widgets.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../core/sync/sync_providers.dart';
+import '../../core/notifications/notification_providers.dart';
 import '../../modules/auth/application/auth_providers.dart';
 import '../../modules/calendar/application/calendar_providers.dart';
 import '../../modules/debts/application/debts_providers.dart';
@@ -29,6 +30,7 @@ class _AppBootstrapState extends ConsumerState<AppBootstrap>
   void initState() {
     super.initState();
     WidgetsBinding.instance.addObserver(this);
+    unawaited(ref.read(notificationServiceProvider).initialize());
     _periodicSync = Timer.periodic(
       const Duration(minutes: 1),
       (_) => unawaited(_runSync()),

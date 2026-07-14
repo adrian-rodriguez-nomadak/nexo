@@ -5,6 +5,7 @@ import 'package:go_router/go_router.dart';
 import '../../../core/constants/app_colors.dart';
 import '../../../core/constants/app_spacing.dart';
 import '../../../core/utils/formatters.dart';
+import '../../../core/notifications/notification_providers.dart';
 import '../application/finances_providers.dart';
 import '../data/repositories/local_finances_repository.dart';
 import '../domain/models/finance_account.dart';
@@ -405,11 +406,21 @@ class FinancesScreen extends ConsumerWidget {
     }
 
     try {
-      await repository.createUpcomingPayment(
+      final payment = await repository.createUpcomingPayment(
         name: draft.name,
         amount: draft.amount,
         category: draft.category,
       );
+      if (ref.read(appSettingsProvider).value?.upcomingPayments == true) {
+        await ref
+            .read(notificationServiceProvider)
+            .schedule(
+              id: payment.$1.hashCode & 0x7fffffff,
+              title: 'Pago próximo: ${draft.name}',
+              body: 'Tienes un pago programado por ${money(draft.amount)}.',
+              date: payment.$2.subtract(const Duration(hours: 9)),
+            );
+      }
       if (!context.mounted) return;
       ref.invalidate(financeSummaryProvider);
       ref.invalidate(upcomingPaymentsProvider);

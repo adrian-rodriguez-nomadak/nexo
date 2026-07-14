@@ -3,6 +3,8 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../../core/constants/app_colors.dart';
 import '../../../core/constants/app_spacing.dart';
+import '../../../core/notifications/notification_providers.dart';
+import '../../settings/application/settings_providers.dart';
 import '../application/calendar_providers.dart';
 import '../../tasks/application/tasks_providers.dart';
 import '../../reminders/application/reminders_providers.dart';
@@ -130,11 +132,23 @@ class CalendarScreen extends ConsumerWidget {
     }
 
     try {
-      await repository.createReminder(
+      final id = await repository.createReminder(
         title: draft.title,
         description: draft.description,
         remindAt: draft.remindAt,
       );
+      if (ref.read(appSettingsProvider).value?.reminders == true) {
+        await ref
+            .read(notificationServiceProvider)
+            .schedule(
+              id: id.hashCode & 0x7fffffff,
+              title: draft.title,
+              body: draft.description.isEmpty
+                  ? 'Tienes un recordatorio pendiente.'
+                  : draft.description,
+              date: draft.remindAt,
+            );
+      }
       if (!context.mounted) return;
       ref.invalidate(remindersProvider);
       _showSnackBar(context, 'Guardado localmente');

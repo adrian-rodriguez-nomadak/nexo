@@ -18,7 +18,7 @@ class LocalRemindersRepository implements RemindersRepository {
     return rows.map(_fromRow).toList();
   }
 
-  Future<void> createReminder({
+  Future<String> createReminder({
     required String title,
     String? description,
     DateTime? remindAt,
@@ -48,6 +48,7 @@ class LocalRemindersRepository implements RemindersRepository {
         'status': 'pending',
       },
     );
+    return id;
   }
 
   Future<void> updateReminder({

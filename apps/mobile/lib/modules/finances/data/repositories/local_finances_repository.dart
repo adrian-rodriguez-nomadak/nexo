@@ -152,7 +152,7 @@ class LocalFinancesRepository implements FinancesRepository {
     );
   }
 
-  Future<void> createUpcomingPayment({
+  Future<(String, DateTime)> createUpcomingPayment({
     required String name,
     required double amount,
     String? category,
@@ -185,6 +185,7 @@ class LocalFinancesRepository implements FinancesRepository {
         'due_date': dueDate.toUtc().toIso8601String(),
       },
     );
+    return (id, dueDate);
   }
 
   Future<void> updateMovement({

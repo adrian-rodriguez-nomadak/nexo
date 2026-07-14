@@ -6,6 +6,7 @@ import 'package:go_router/go_router.dart';
 import '../../../core/constants/app_colors.dart';
 import '../../../core/constants/app_spacing.dart';
 import '../../../core/database/database_provider.dart';
+import '../../../core/notifications/notification_providers.dart';
 import '../../../shared/presentation/widgets/app_back_button.dart';
 import '../../../shared/presentation/widgets/app_card.dart';
 import '../../../shared/presentation/widgets/module_badge.dart';
@@ -120,6 +121,35 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
     }
     await _update(
       (current) => current.copyWith(biometricsEnabled: true, lockOnExit: true),
+    );
+  }
+
+  Future<bool> _ensureNotifications(bool enabled) async {
+    if (!enabled) return true;
+    final granted = await ref
+        .read(notificationServiceProvider)
+        .requestPermission();
+    if (!granted && mounted) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text(
+            'Activa las notificaciones en los ajustes del dispositivo.',
+          ),
+        ),
+      );
+    }
+    return granted;
+  }
+
+  Future<void> _setDailySummary(bool enabled, {required bool morning}) async {
+    if (!await _ensureNotifications(enabled)) return;
+    await ref
+        .read(notificationServiceProvider)
+        .scheduleDailySummary(morning: morning, enabled: enabled);
+    await _update(
+      (current) => morning
+          ? current.copyWith(dailySummary: enabled)
+          : current.copyWith(nightSummary: enabled),
     );
   }
 
@@ -415,9 +445,12 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
                     title: 'Recordatorios',
                     description: 'Avisos visuales para pendientes importantes.',
                     value: settings.reminders,
-                    onChanged: (value) => _update(
-                      (current) => current.copyWith(reminders: value),
-                    ),
+                    onChanged: (value) async {
+                      if (!await _ensureNotifications(value)) return;
+                      await _update(
+                        (current) => current.copyWith(reminders: value),
+                      );
+                    },
                   ),
                   const SizedBox(height: AppSpacing.lg),
                   _SwitchSettingTile(
@@ -426,9 +459,12 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
                     title: 'Pagos próximos',
                     description: 'Alertas para suscripciones, deudas y pagos.',
                     value: settings.upcomingPayments,
-                    onChanged: (value) => _update(
-                      (current) => current.copyWith(upcomingPayments: value),
-                    ),
+                    onChanged: (value) async {
+                      if (!await _ensureNotifications(value)) return;
+                      await _update(
+                        (current) => current.copyWith(upcomingPayments: value),
+                      );
+                    },
                   ),
                   const SizedBox(height: AppSpacing.lg),
                   _SwitchSettingTile(
@@ -437,9 +473,8 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
                     title: 'Resumen diario',
                     description: 'Una vista breve para iniciar el día.',
                     value: settings.dailySummary,
-                    onChanged: (value) => _update(
-                      (current) => current.copyWith(dailySummary: value),
-                    ),
+                    onChanged: (value) =>
+                        _setDailySummary(value, morning: true),
                   ),
                   const SizedBox(height: AppSpacing.lg),
                   _SwitchSettingTile(
@@ -448,9 +483,8 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
                     title: 'Resumen nocturno',
                     description: 'Cierre visual con pendientes y movimientos.',
                     value: settings.nightSummary,
-                    onChanged: (value) => _update(
-                      (current) => current.copyWith(nightSummary: value),
-                    ),
+                    onChanged: (value) =>
+                        _setDailySummary(value, morning: false),
                   ),
                 ],
               ),

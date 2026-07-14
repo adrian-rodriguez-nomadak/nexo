@@ -4,6 +4,7 @@ import 'package:go_router/go_router.dart';
 
 import '../../../core/constants/app_colors.dart';
 import '../../../core/constants/app_spacing.dart';
+import '../../../core/utils/formatters.dart';
 import '../../../shared/mock/mock_dashboard.dart';
 import '../../../shared/presentation/widgets/app_card.dart';
 import '../../../shared/presentation/widgets/module_badge.dart';
@@ -25,6 +26,8 @@ import '../../tasks/data/repositories/local_tasks_repository.dart';
 import '../../calendar/data/repositories/local_calendar_repository.dart';
 import '../../settings/data/categories_service.dart';
 import '../../../core/database/database_provider.dart';
+import '../../../core/notifications/notification_providers.dart';
+import '../../settings/application/settings_providers.dart';
 import 'dashboard_view_data.dart';
 
 class DashboardScreen extends ConsumerWidget {
@@ -112,11 +115,21 @@ class DashboardScreen extends ConsumerWidget {
         onSave: (draft) async {
           final repository = ref.read(financesRepositoryProvider);
           if (repository is! LocalFinancesRepository) return;
-          await repository.createUpcomingPayment(
+          final payment = await repository.createUpcomingPayment(
             name: draft.name,
             amount: draft.amount,
             category: draft.category,
           );
+          if (ref.read(appSettingsProvider).value?.upcomingPayments == true) {
+            await ref
+                .read(notificationServiceProvider)
+                .schedule(
+                  id: payment.$1.hashCode & 0x7fffffff,
+                  title: 'Pago próximo: ${draft.name}',
+                  body: 'Tienes un pago programado por ${money(draft.amount)}.',
+                  date: payment.$2.subtract(const Duration(hours: 9)),
+                );
+          }
           ref
             ..invalidate(financeSummaryProvider)
             ..invalidate(upcomingPaymentsProvider);
