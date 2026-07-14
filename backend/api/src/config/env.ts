@@ -12,6 +12,7 @@ export const env = {
   accessTokenTtl: process.env.ACCESS_TOKEN_TTL ?? "15m",
   refreshTokenDays: Number(process.env.REFRESH_TOKEN_DAYS ?? 30),
   openAiApiKey: process.env.OPENAI_API_KEY ?? "change_me",
+  openAiModel: process.env.OPENAI_MODEL ?? "gpt-5.6-luna",
   dbSync: process.env.DB_SYNC === "true",
   corsOrigins: (process.env.CORS_ORIGINS ?? "")
     .split(",")

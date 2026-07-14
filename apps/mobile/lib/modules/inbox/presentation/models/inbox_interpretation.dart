@@ -11,6 +11,8 @@ class InboxInterpretation {
     required this.preview,
     required this.icon,
     required this.color,
+    this.confidence = 0,
+    this.source = 'local',
   });
 
   final String type;
@@ -22,4 +24,6 @@ class InboxInterpretation {
   final String preview;
   final IconData icon;
   final Color color;
+  final double confidence;
+  final String source;
 }

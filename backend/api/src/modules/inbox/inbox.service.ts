@@ -1,6 +1,7 @@
 import { requireUserId } from "../../shared/auth/user-context.js";
 import { moduleHealth } from "../../shared/utils/api-response.js";
 import { InboxAction } from "./inbox-action.model.js";
+import { aiService } from "../ai/ai.service.js";
 
 function detectIntent(text: string) {
   const normalized = text.toLocaleLowerCase("es-MX");
@@ -63,11 +64,22 @@ export const inboxService = {
   },
 
   async interpret(text: string) {
-    const intent = detectIntent(text);
-    const payload = payloadFor(intent, text);
+    const userId = requireUserId();
+    let interpreted: Awaited<ReturnType<typeof aiService.interpretAction>> =
+      null;
+    try {
+      interpreted = await aiService.interpretAction(text, userId);
+    } catch (error) {
+      console.error(
+        "OpenAI interpretation failed; using local fallback",
+        error,
+      );
+    }
+    const intent = interpreted?.intent ?? detectIntent(text);
+    const payload = interpreted?.payload ?? payloadFor(intent, text);
 
     await InboxAction.create({
-      user_id: requireUserId(),
+      user_id: userId,
       raw_text: text,
       detected_intent: intent,
       structured_payload: payload,
@@ -76,8 +88,13 @@ export const inboxService = {
 
     return {
       intent,
-      confidence: intent === "unknown" ? 0.2 : 0.85,
+      title: interpreted?.title ?? text,
+      preview:
+        interpreted?.preview ??
+        "Interpretación local preparada; revisa los datos antes de guardar.",
+      confidence: interpreted?.confidence ?? (intent === "unknown" ? 0.2 : 0.7),
       payload,
+      source: interpreted?.source ?? "local",
     };
   },
 };

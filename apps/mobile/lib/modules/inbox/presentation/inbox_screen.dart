@@ -227,7 +227,7 @@ class _InboxScreenState extends ConsumerState<InboxScreen> {
     final amount = action.payload['amount'];
     final secondaryAmount = amount == null ? 'Pendiente' : '\$$amount';
 
-    return switch (action.intent) {
+    final base = switch (action.intent) {
       'create_expense' || 'expense' => InboxInterpretation(
         type: 'expense',
         detectedLabel: 'un gasto',
@@ -284,6 +284,19 @@ class _InboxScreenState extends ConsumerState<InboxScreen> {
         color: AppColors.accent,
       ),
     };
+    return InboxInterpretation(
+      type: base.type,
+      detectedLabel: base.detectedLabel,
+      title: action.title.isEmpty ? base.title : action.title,
+      secondaryLabel: base.secondaryLabel,
+      secondary: base.secondary,
+      category: action.payload['category']?.toString() ?? base.category,
+      preview: base.preview,
+      icon: base.icon,
+      color: base.color,
+      confidence: action.confidence,
+      source: action.source,
+    );
   }
 
   @override

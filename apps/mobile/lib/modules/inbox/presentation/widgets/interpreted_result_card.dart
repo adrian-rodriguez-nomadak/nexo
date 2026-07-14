@@ -41,6 +41,15 @@ class InterpretedResultCard extends StatelessWidget {
                     ),
                     const SizedBox(height: AppSpacing.xs),
                     Text(result.preview, style: textTheme.bodyMedium),
+                    if (result.source == 'openai') ...[
+                      const SizedBox(height: AppSpacing.xs),
+                      Text(
+                        'OpenAI · ${(result.confidence * 100).round()}% de confianza',
+                        style: textTheme.labelMedium?.copyWith(
+                          color: result.color,
+                        ),
+                      ),
+                    ],
                   ],
                 ),
               ),

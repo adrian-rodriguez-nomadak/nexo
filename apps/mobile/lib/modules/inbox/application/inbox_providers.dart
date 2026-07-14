@@ -34,6 +34,17 @@ final interpretInboxTextProvider =
     FutureProvider.family<InterpretedAction, String>((ref, text) async {
       final mode = ref.watch(dataSourceModeProvider);
       final repository = ref.watch(inboxRepositoryProvider);
+      if ((mode == DataSourceMode.local ||
+              mode == DataSourceMode.localWithApiFallback) &&
+          ref.watch(authSessionProvider).value != null) {
+        try {
+          return await ApiInboxRepository(
+            client: ref.read(authenticatedApiClientProvider),
+          ).interpret(text);
+        } catch (_) {
+          return repository.interpret(text);
+        }
+      }
       if (mode != DataSourceMode.apiWithMockFallback &&
           mode != DataSourceMode.localWithApiFallback) {
         return repository.interpret(text);
