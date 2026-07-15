@@ -5,6 +5,7 @@ import '../../../../core/constants/app_spacing.dart';
 import '../../../../shared/presentation/widgets/app_bottom_sheet.dart';
 import '../../../../shared/presentation/widgets/app_text_field.dart';
 import '../../../../shared/presentation/widgets/module_badge.dart';
+import '../../../../shared/presentation/widgets/twelve_hour_time_field.dart';
 
 class EventDraft {
   const EventDraft({
@@ -45,23 +46,22 @@ class CreateEventSheet extends StatefulWidget {
 
 class _CreateEventSheetState extends State<CreateEventSheet> {
   final _titleController = TextEditingController();
-  final _startController = TextEditingController();
-  final _endController = TextEditingController();
   final _placeController = TextEditingController();
   final _notesController = TextEditingController();
+  late TimeOfDay _startTime;
+  late TimeOfDay _endTime;
 
   @override
   void initState() {
     super.initState();
     final draft = widget.initialDraft;
+    final now = DateTime.now();
+    _startTime = TimeOfDay.fromDateTime(draft?.startAt ?? now);
+    _endTime = TimeOfDay.fromDateTime(
+      draft?.endAt ?? (draft?.startAt ?? now).add(const Duration(hours: 1)),
+    );
     if (draft != null) {
       _titleController.text = draft.title;
-      _startController.text =
-          '${draft.startAt.hour.toString().padLeft(2, '0')}:${draft.startAt.minute.toString().padLeft(2, '0')}';
-      if (draft.endAt != null) {
-        _endController.text =
-            '${draft.endAt!.hour.toString().padLeft(2, '0')}:${draft.endAt!.minute.toString().padLeft(2, '0')}';
-      }
       _placeController.text = draft.location;
       _notesController.text = draft.description;
     }
@@ -70,8 +70,6 @@ class _CreateEventSheetState extends State<CreateEventSheet> {
   @override
   void dispose() {
     _titleController.dispose();
-    _startController.dispose();
-    _endController.dispose();
     _placeController.dispose();
     _notesController.dispose();
     super.dispose();
@@ -84,9 +82,11 @@ class _CreateEventSheetState extends State<CreateEventSheet> {
     final initial = widget.initialDraft;
     final startDate = initial?.startAt ?? now;
     final endDate = initial?.endAt ?? startDate;
-    final startAt =
-        _timeForToday(_startController.text, startDate) ?? startDate;
-    final endAt = _timeForToday(_endController.text, endDate);
+    final startAt = _timeForDate(_startTime, startDate);
+    var endAt = _timeForDate(_endTime, endDate);
+    if (!endAt.isAfter(startAt)) {
+      endAt = endAt.add(const Duration(days: 1));
+    }
     widget.onSave?.call(
       EventDraft(
         title: title,
@@ -99,19 +99,8 @@ class _CreateEventSheetState extends State<CreateEventSheet> {
     Navigator.of(context).pop();
   }
 
-  DateTime? _timeForToday(String raw, DateTime date) {
-    final match = RegExp(
-      r'^(\d{1,2}):(\d{2})\s*([aApP][mM])?$',
-    ).firstMatch(raw.trim());
-    if (match == null) return null;
-    var hour = int.parse(match.group(1)!);
-    final minute = int.parse(match.group(2)!);
-    final period = match.group(3)?.toLowerCase();
-    if (minute > 59 || hour > 23 || hour == 0 && period != null) return null;
-    if (period == 'pm' && hour < 12) hour += 12;
-    if (period == 'am' && hour == 12) hour = 0;
-    return DateTime(date.year, date.month, date.day, hour, minute);
-  }
+  DateTime _timeForDate(TimeOfDay time, DateTime date) =>
+      DateTime(date.year, date.month, date.day, time.hour, time.minute);
 
   @override
   Widget build(BuildContext context) {
@@ -141,28 +130,16 @@ class _CreateEventSheetState extends State<CreateEventSheet> {
             color: AppColors.primaryDark,
           ),
           const SizedBox(height: AppSpacing.lg),
-          Row(
-            children: [
-              Expanded(
-                child: AppTextField(
-                  label: 'Hora inicio',
-                  hint: '9:00 AM',
-                  controller: _startController,
-                  keyboardType: TextInputType.datetime,
-                  prefixIcon: Icons.schedule_rounded,
-                ),
-              ),
-              const SizedBox(width: AppSpacing.md),
-              Expanded(
-                child: AppTextField(
-                  label: 'Hora fin',
-                  hint: '10:00 AM',
-                  controller: _endController,
-                  keyboardType: TextInputType.datetime,
-                  prefixIcon: Icons.schedule_rounded,
-                ),
-              ),
-            ],
+          TwelveHourTimeField(
+            label: 'Hora inicio',
+            value: _startTime,
+            onChanged: (time) => setState(() => _startTime = time),
+          ),
+          const SizedBox(height: AppSpacing.lg),
+          TwelveHourTimeField(
+            label: 'Hora fin',
+            value: _endTime,
+            onChanged: (time) => setState(() => _endTime = time),
           ),
           const SizedBox(height: AppSpacing.lg),
           AppTextField(

@@ -5,6 +5,7 @@ import '../../../../core/constants/app_spacing.dart';
 import '../../../../shared/presentation/widgets/app_bottom_sheet.dart';
 import '../../../../shared/presentation/widgets/app_text_field.dart';
 import '../../../../shared/presentation/widgets/module_badge.dart';
+import '../../../../shared/presentation/widgets/twelve_hour_time_field.dart';
 
 class ReminderDraft {
   const ReminderDraft({
@@ -41,17 +42,18 @@ class CreateReminderSheet extends StatefulWidget {
 
 class _CreateReminderSheetState extends State<CreateReminderSheet> {
   final _titleController = TextEditingController();
-  final _timeController = TextEditingController();
   final _notesController = TextEditingController();
+  late TimeOfDay _reminderTime;
 
   @override
   void initState() {
     super.initState();
     final draft = widget.initialDraft;
+    _reminderTime = TimeOfDay.fromDateTime(
+      draft?.remindAt ?? DateTime.now().add(const Duration(hours: 1)),
+    );
     if (draft != null) {
       _titleController.text = draft.title;
-      _timeController.text =
-          '${draft.remindAt.hour.toString().padLeft(2, '0')}:${draft.remindAt.minute.toString().padLeft(2, '0')}';
       _notesController.text = draft.description;
     }
   }
@@ -59,7 +61,6 @@ class _CreateReminderSheetState extends State<CreateReminderSheet> {
   @override
   void dispose() {
     _titleController.dispose();
-    _timeController.dispose();
     _notesController.dispose();
     super.dispose();
   }
@@ -71,31 +72,17 @@ class _CreateReminderSheetState extends State<CreateReminderSheet> {
       ReminderDraft(
         title: title,
         description: _notesController.text.trim(),
-        remindAt:
-            _timeForDate(
-              _timeController.text,
-              widget.initialDraft?.remindAt ?? DateTime.now(),
-            ) ??
-            widget.initialDraft?.remindAt ??
-            DateTime.now(),
+        remindAt: _timeForDate(
+          _reminderTime,
+          widget.initialDraft?.remindAt ?? DateTime.now(),
+        ),
       ),
     );
     Navigator.of(context).pop();
   }
 
-  DateTime? _timeForDate(String raw, DateTime date) {
-    final match = RegExp(
-      r'^(\d{1,2}):(\d{2})\s*([aApP][mM])?$',
-    ).firstMatch(raw.trim());
-    if (match == null) return null;
-    var hour = int.parse(match.group(1)!);
-    final minute = int.parse(match.group(2)!);
-    final period = match.group(3)?.toLowerCase();
-    if (minute > 59 || hour > 23 || hour == 0 && period != null) return null;
-    if (period == 'pm' && hour < 12) hour += 12;
-    if (period == 'am' && hour == 12) hour = 0;
-    return DateTime(date.year, date.month, date.day, hour, minute);
-  }
+  DateTime _timeForDate(TimeOfDay time, DateTime date) =>
+      DateTime(date.year, date.month, date.day, time.hour, time.minute);
 
   @override
   Widget build(BuildContext context) {
@@ -127,12 +114,10 @@ class _CreateReminderSheetState extends State<CreateReminderSheet> {
             color: AppColors.primaryDark,
           ),
           const SizedBox(height: AppSpacing.lg),
-          AppTextField(
+          TwelveHourTimeField(
             label: 'Hora',
-            hint: '6:00 PM',
-            controller: _timeController,
-            keyboardType: TextInputType.datetime,
-            prefixIcon: Icons.schedule_rounded,
+            value: _reminderTime,
+            onChanged: (time) => setState(() => _reminderTime = time),
           ),
           const SizedBox(height: AppSpacing.lg),
           const _VisualField(
