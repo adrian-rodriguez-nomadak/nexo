@@ -54,6 +54,11 @@ android {
         release {
             if (keystorePropertiesFile.exists()) {
                 signingConfig = signingConfigs.getByName("release")
+            } else {
+                // Produces an installable APK for physical-device testing.
+                // Distribution builds must provide android/key.properties and
+                // use the private release keystore configured above.
+                signingConfig = signingConfigs.getByName("debug")
             }
         }
     }
