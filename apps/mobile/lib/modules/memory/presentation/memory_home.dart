@@ -11,6 +11,7 @@ import '../domain/memory_entry.dart';
 import 'memory_graph_view.dart';
 import 'memory_insights_view.dart';
 import '../security/memory_security.dart';
+import 'memory_auth_gate.dart';
 
 enum PlanMode { free, premium }
 
@@ -1485,6 +1486,8 @@ class SettingsView extends StatelessWidget {
           'Ajustes',
           style: TextStyle(fontSize: 28, fontWeight: FontWeight.w900),
         ),
+        const SizedBox(height: 22),
+        const _AccountSettingsCard(),
         const SizedBox(height: 28),
         const Text(
           'Plan de prueba',
@@ -1547,6 +1550,59 @@ class SettingsView extends StatelessWidget {
           ),
         ),
       ],
+    );
+  }
+}
+
+class _AccountSettingsCard extends StatelessWidget {
+  const _AccountSettingsCard();
+
+  @override
+  Widget build(BuildContext context) {
+    final auth = MemoryAuthScope.maybeOf(context);
+    if (auth == null || auth.session == null) return const SizedBox.shrink();
+    final session = auth.session!;
+    return Container(
+      padding: const EdgeInsets.all(16),
+      decoration: BoxDecoration(
+        color: const Color(0xFF211F2C),
+        borderRadius: BorderRadius.circular(22),
+      ),
+      child: Row(
+        children: [
+          const CircleAvatar(
+            backgroundColor: Color(0xFF6656D9),
+            child: Icon(Icons.person_outline, color: Colors.white),
+          ),
+          const SizedBox(width: 12),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  session.name.isEmpty ? 'Cuenta de Nexo' : session.name,
+                  style: const TextStyle(
+                    color: Colors.white,
+                    fontWeight: FontWeight.w900,
+                  ),
+                ),
+                if (session.email.isNotEmpty)
+                  Text(
+                    session.email,
+                    style: const TextStyle(color: Color(0xFFD8D5E2)),
+                  ),
+              ],
+            ),
+          ),
+          TextButton(
+            onPressed: auth.loading ? null : auth.logout,
+            child: const Text(
+              'Salir',
+              style: TextStyle(color: Color(0xFFC7BEFF)),
+            ),
+          ),
+        ],
+      ),
     );
   }
 }

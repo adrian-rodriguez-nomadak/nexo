@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 
 import '../modules/memory/presentation/memory_home.dart';
+import '../modules/memory/presentation/memory_auth_gate.dart';
 import '../modules/memory/security/memory_security.dart';
 
 class NexoApp extends StatelessWidget {
@@ -48,7 +49,9 @@ class NexoApp extends StatelessWidget {
           ),
         ),
       ),
-      home: const MemorySecurityGate(child: MemoryHome()),
+      home: const MemoryAuthGate(
+        child: MemorySecurityGate(child: MemoryHome()),
+      ),
     );
   }
 }

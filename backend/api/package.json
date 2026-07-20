@@ -12,6 +12,7 @@
     "test": "node --import tsx --test test/*.test.ts",
     "start": "node dist/shared/db/migrate.js && node dist/server.js",
     "db:migrate": "tsx src/shared/db/migrate.ts",
+    "db:reset-test": "tsx src/shared/db/reset-test-data.ts",
     "seed:demo": "tsx src/shared/db/seed-demo.ts",
     "format": "prettier --write \"src/**/*.ts\""
   },
