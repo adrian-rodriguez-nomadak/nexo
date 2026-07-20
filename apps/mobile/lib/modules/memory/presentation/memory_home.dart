@@ -417,19 +417,20 @@ class _CaptureViewState extends State<CaptureView> {
         details[item.key] = item.value.text.trim();
       }
     }
-    widget.onSaved(
-      MemoryEntry(
-        id: const Uuid().v4(),
-        text: text,
-        createdAt: DateTime.now(),
-        updatedAt: DateTime.now(),
-        details: details,
-        tags: _pendingAnalysis?.topics.isNotEmpty == true
-            ? _pendingAnalysis!.topics
-            : _tagsFor(text),
-        analysis: _pendingAnalysis,
-      ),
+    final now = DateTime.now();
+    final entry = MemoryEntry(
+      id: const Uuid().v4(),
+      text: text,
+      createdAt: now,
+      updatedAt: now,
+      details: details,
+      tags: _pendingAnalysis?.topics.isNotEmpty == true
+          ? _pendingAnalysis!.topics
+          : _tagsFor(text),
+      analysis: _pendingAnalysis,
     );
+    widget.onSaved(entry);
+    unawaited(_analysisService.saveNote(entry).catchError((_) {}));
     setState(() {
       _note.clear();
       _questions = [];

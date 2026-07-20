@@ -196,7 +196,16 @@ Patrones observados: ${input.memoryContext.recurringPatterns.join(" | ")}`
       instructions: `Analiza un relato personal para Nexo, una memoria privada en español de México.
 Extrae únicamente hechos presentes en el texto. No inventes nombres, montos, emociones, lugares ni horarios.
 Un relato puede contener varios eventos. Usa ISO 8601 cuando exista fecha u hora; en caso contrario usa null.
-Las preguntas deben ser breves, empáticas y servir para completar contexto realmente ausente.
+Las preguntas deben sentirse escritas para esta persona, no para cualquier usuario.
+Prioriza en este orden:
+1. Cambios respecto a una nota anterior ("antes X, ahora Y").
+2. Patrones repetidos y su posible causa concreta.
+3. Continuidad de una conversación, persona o proyecto ya conocido.
+4. Contradicciones entre el relato nuevo y los hechos conocidos.
+5. Una decisión o emoción que cambió y qué provocó ese cambio.
+Evita preguntas genéricas como "¿cómo te sentiste?", "¿qué hiciste?", "¿qué hablaste?" o "¿por qué?" sin mencionar el contexto específico.
+Cada pregunta debe incluir al menos un detalle concreto del relato actual o la memoria anterior.
+Si el relato está completo y no existe una pregunta personalmente útil, devuelve cero preguntas.
 Genera como máximo ${questionLimit} preguntas y evita preguntas redundantes o invasivas.
 Nunca preguntes algo que ya esté contestado en la memoria general o en las preguntas respondidas de notas anteriores.
 Si el nuevo texto confirma un dato conocido, no vuelvas a preguntarlo; úsalo para actualizar patrones.

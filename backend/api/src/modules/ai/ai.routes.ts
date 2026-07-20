@@ -14,9 +14,19 @@ aiRoutes.post(
   rateLimit({ windowMs: 60_000, max: 12 }),
   asyncHandler(aiController.analyzeMemory),
 );
+aiRoutes.post(
+  "/memory/notes",
+  rateLimit({ windowMs: 60_000, max: 30 }),
+  asyncHandler(aiController.saveMemory),
+);
 
 publicAiRoutes.post(
   "/memory/analyze",
   rateLimit({ windowMs: 60_000, max: 6 }),
   asyncHandler(aiController.analyzeMemoryPublic),
+);
+publicAiRoutes.post(
+  "/memory/notes",
+  rateLimit({ windowMs: 60_000, max: 30 }),
+  asyncHandler(aiController.saveMemoryPublic),
 );

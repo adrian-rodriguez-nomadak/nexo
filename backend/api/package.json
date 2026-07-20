@@ -10,7 +10,7 @@
     "dev": "tsx watch src/server.ts",
     "build": "tsc",
     "test": "node --import tsx --test test/*.test.ts",
-    "start": "node dist/server.js",
+    "start": "node dist/shared/db/migrate.js && node dist/server.js",
     "db:migrate": "tsx src/shared/db/migrate.ts",
     "seed:demo": "tsx src/shared/db/seed-demo.ts",
     "format": "prettier --write \"src/**/*.ts\""
