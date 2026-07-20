@@ -10,6 +10,7 @@ class MemoryAnalysis {
     required this.questions,
     required this.relatedNoteIds,
     required this.source,
+    required this.contextUpdate,
   });
 
   final String summary;
@@ -22,6 +23,7 @@ class MemoryAnalysis {
   final List<String> questions;
   final List<String> relatedNoteIds;
   final String source;
+  final MemoryContextUpdate contextUpdate;
 
   Map<String, Object?> toJson() => {
     'summary': summary,
@@ -34,6 +36,7 @@ class MemoryAnalysis {
     'questions': questions,
     'relatedNoteIds': relatedNoteIds,
     'source': source,
+    'context_update': contextUpdate.toJson(),
   };
 
   factory MemoryAnalysis.fromJson(Map<String, dynamic> json) {
@@ -54,6 +57,11 @@ class MemoryAnalysis {
         json['related_note_ids'] ?? json['relatedNoteIds'],
       ),
       source: json['source']?.toString() ?? 'local',
+      contextUpdate: MemoryContextUpdate.fromJson(
+        json['context_update'] is Map
+            ? Map<String, dynamic>.from(json['context_update'] as Map)
+            : const {},
+      ),
     );
   }
 
@@ -65,6 +73,37 @@ class MemoryAnalysis {
           .whereType<Map>()
           .map((item) => Map<String, dynamic>.from(item))
           .toList();
+}
+
+class MemoryContextUpdate {
+  const MemoryContextUpdate({
+    this.compressedSummary = '',
+    this.knownFacts = const [],
+    this.recurringPatterns = const [],
+  });
+
+  final String compressedSummary;
+  final List<String> knownFacts;
+  final List<String> recurringPatterns;
+
+  Map<String, Object?> toJson() => {
+    'compressed_summary': compressedSummary,
+    'known_facts': knownFacts,
+    'recurring_patterns': recurringPatterns,
+  };
+
+  factory MemoryContextUpdate.fromJson(Map<String, dynamic> json) {
+    return MemoryContextUpdate(
+      compressedSummary: json['compressed_summary']?.toString() ?? '',
+      knownFacts: (json['known_facts'] as List<dynamic>? ?? [])
+          .map((item) => item.toString())
+          .toList(),
+      recurringPatterns:
+          (json['recurring_patterns'] as List<dynamic>? ?? [])
+              .map((item) => item.toString())
+              .toList(),
+    );
+  }
 }
 
 class MemoryEvent {

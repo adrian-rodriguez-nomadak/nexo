@@ -83,6 +83,11 @@ export const memoryAnalysisSchema = z.object({
   expenses: z.array(memoryExpenseSchema).max(8),
   follow_up_questions: z.array(z.string()).max(8),
   related_note_ids: z.array(z.string()).max(8),
+  context_update: z.object({
+    compressed_summary: z.string().max(4000),
+    known_facts: z.array(z.string()).max(50),
+    recurring_patterns: z.array(z.string()).max(20),
+  }),
 });
 
 export type InterpretedAction = z.infer<typeof interpretedActionSchema>;
@@ -151,7 +156,18 @@ El preview debe explicar en una frase qué se propone guardar y que requiere con
     text: string;
     userId: string;
     plan: "free" | "premium";
-    previousNotes: Array<{ id: string; text: string; tags: string[] }>;
+    memoryContext: {
+      compressedSummary: string;
+      knownFacts: string[];
+      recurringPatterns: string[];
+    };
+    previousNotes: Array<{
+      id: string;
+      text: string;
+      tags: string[];
+      summary: string;
+      details: Record<string, string>;
+    }>;
   }) {
     if (!client) return null;
     const context = input.previousNotes.length
@@ -159,10 +175,18 @@ El preview debe explicar en una frase qué se propone guardar y que requiere con
           .slice(0, 10)
           .map(
             (note) =>
-              `- ID ${note.id}; etiquetas: ${note.tags.join(", ")}; texto: ${note.text}`,
+              `- ID ${note.id}; etiquetas: ${note.tags.join(", ")}; resumen: ${note.summary}; texto: ${note.text}; preguntas respondidas: ${Object.entries(note.details)
+                .map(([question, answer]) => `${question} => ${answer}`)
+                .join(" | ")}`,
           )
           .join("\n")}`
       : "No hay notas anteriores.";
+    const generalContext = input.memoryContext.compressedSummary
+      ? `Memoria general existente:
+Resumen comprimido: ${input.memoryContext.compressedSummary}
+Hechos conocidos: ${input.memoryContext.knownFacts.join(" | ")}
+Patrones observados: ${input.memoryContext.recurringPatterns.join(" | ")}`
+      : "Todavía no existe una memoria general.";
     const questionLimit = input.plan === "free" ? 3 : 8;
     const response = await client.responses.parse({
       model: env.openAiModel,
@@ -174,10 +198,17 @@ Extrae únicamente hechos presentes en el texto. No inventes nombres, montos, em
 Un relato puede contener varios eventos. Usa ISO 8601 cuando exista fecha u hora; en caso contrario usa null.
 Las preguntas deben ser breves, empáticas y servir para completar contexto realmente ausente.
 Genera como máximo ${questionLimit} preguntas y evita preguntas redundantes o invasivas.
+Nunca preguntes algo que ya esté contestado en la memoria general o en las preguntas respondidas de notas anteriores.
+Si el nuevo texto confirma un dato conocido, no vuelvas a preguntarlo; úsalo para actualizar patrones.
 Relaciona notas anteriores solo cuando exista una razón clara en el contenido.
 Los temas deben ser palabras cortas en minúsculas. La moneda predeterminada es MXN.
 No hagas diagnósticos médicos, legales o psicológicos.
+En context_update devuelve una nueva memoria general autosuficiente que combine la memoria anterior con este relato.
+Comprime hechos repetidos en patrones con frecuencia aproximada. Conserva personas, hábitos, preferencias y contexto aún relevante.
+No copies relatos completos y no excedas 4000 caracteres en compressed_summary.
 Hoy es ${new Date().toISOString()} y la zona del usuario es America/Monterrey.
+
+${generalContext}
 
 ${context}`,
       input: input.text,

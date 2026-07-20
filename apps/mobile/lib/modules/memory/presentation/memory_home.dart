@@ -2003,6 +2003,48 @@ class _MemoryDetailSheetState extends State<MemoryDetailSheet> {
                 ),
               ),
             ],
+            if (widget.entry.analysis!.expenses.isNotEmpty) ...[
+              const SizedBox(height: 24),
+              const Text(
+                'Gastos detectados',
+                style: TextStyle(fontSize: 18, fontWeight: FontWeight.w800),
+              ),
+              const SizedBox(height: 10),
+              ...widget.entry.analysis!.expenses.map(
+                (expense) => Container(
+                  margin: const EdgeInsets.only(bottom: 8),
+                  padding: const EdgeInsets.all(14),
+                  decoration: BoxDecoration(
+                    color: const Color(0xFFEAF6F0),
+                    borderRadius: BorderRadius.circular(15),
+                  ),
+                  child: Row(
+                    children: [
+                      const Icon(
+                        Icons.payments_outlined,
+                        color: Color(0xFF2F765A),
+                      ),
+                      const SizedBox(width: 12),
+                      Expanded(
+                        child: Text(
+                          expense.description,
+                          style: const TextStyle(fontWeight: FontWeight.w700),
+                        ),
+                      ),
+                      Text(
+                        expense.amount == null
+                            ? expense.currency
+                            : '\$${expense.amount!.toStringAsFixed(expense.amount! % 1 == 0 ? 0 : 2)} ${expense.currency}',
+                        style: const TextStyle(
+                          color: Color(0xFF2F765A),
+                          fontWeight: FontWeight.w900,
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+              ),
+            ],
             if (widget.entry.analysis!.people.isNotEmpty ||
                 widget.entry.analysis!.places.isNotEmpty ||
                 widget.entry.analysis!.emotions.isNotEmpty) ...[
