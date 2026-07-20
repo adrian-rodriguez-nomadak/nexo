@@ -27,8 +27,8 @@ class VoiceTranscriptionService {
       onResult: (SpeechRecognitionResult result) {
         onResult(result.recognizedWords, result.finalResult);
       },
-      localeId: 'es_MX',
       listenOptions: SpeechListenOptions(
+        localeId: 'es_MX',
         partialResults: true,
         cancelOnError: true,
         listenMode: ListenMode.dictation,

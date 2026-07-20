@@ -176,7 +176,8 @@ class GraphData {
           reason: 'Esta nota está conectada por el tema “$topic”.',
         );
       }
-      for (final person in entry.analysis?.people.take(4) ?? const []) {
+      for (final person
+          in entry.analysis?.people.take(4) ?? const <String>[]) {
         final id = 'person:${person.toLowerCase()}';
         nodes[id] = GraphNode(id: id, label: person, type: 'person');
         edges['$noteId|$id'] = GraphEdge(
@@ -185,7 +186,8 @@ class GraphData {
           reason: 'Esta nota menciona a $person.',
         );
       }
-      for (final place in entry.analysis?.places.take(3) ?? const []) {
+      for (final place
+          in entry.analysis?.places.take(3) ?? const <String>[]) {
         final id = 'place:${place.toLowerCase()}';
         nodes[id] = GraphNode(id: id, label: place, type: 'place');
         edges['$noteId|$id'] = GraphEdge(
@@ -194,7 +196,8 @@ class GraphData {
           reason: 'Esta nota se relaciona con el lugar $place.',
         );
       }
-      for (final related in entry.analysis?.relatedNoteIds.take(4) ?? const []) {
+      for (final related
+          in entry.analysis?.relatedNoteIds.take(4) ?? const <String>[]) {
         final relatedId = 'note:$related';
         edges['$noteId|$relatedId'] = GraphEdge(
           from: noteId,
@@ -356,7 +359,7 @@ class _GraphCanvas extends StatelessWidget {
   Map<String, Offset> _positions(List<GraphNode> nodes) {
     final positions = <String, Offset>{};
     if (nodes.isEmpty) return positions;
-    const center = Offset(size.width / 2, size.height / 2);
+    final center = Offset(size.width / 2, size.height / 2);
     for (var index = 0; index < nodes.length; index++) {
       if (index == 0) {
         positions[nodes[index].id] = center;
