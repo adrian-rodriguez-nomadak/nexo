@@ -1,6 +1,7 @@
 import 'package:flutter_secure_storage/flutter_secure_storage.dart';
 import 'package:uuid/uuid.dart';
 
+import '../../../core/config/api_config.dart';
 import '../../../core/http/api_client.dart';
 import 'memory_context_repository.dart';
 import '../domain/memory_analysis.dart';
@@ -22,8 +23,15 @@ class MemoryAnalysisService {
     required List<MemoryEntry> previousEntries,
   }) async {
     final installationId = await _installationId();
-    const client = ApiClient();
-    final memoryContext = await contextRepository.load();
+    const client = ApiClient(
+      config: ApiConfig(timeout: Duration(seconds: 45)),
+    );
+    MemoryContext memoryContext;
+    try {
+      memoryContext = await contextRepository.load();
+    } catch (_) {
+      memoryContext = const MemoryContext();
+    }
     final result =
         await client.post(
               '/public/ai/memory/analyze',
@@ -48,7 +56,11 @@ class MemoryAnalysisService {
             )
             as Map<String, dynamic>;
     final analysis = MemoryAnalysis.fromJson(result);
-    await contextRepository.save(analysis.contextUpdate);
+    try {
+      await contextRepository.save(analysis.contextUpdate);
+    } catch (_) {
+      // The OpenAI result remains valid even if the local context cache fails.
+    }
     return analysis;
   }
 

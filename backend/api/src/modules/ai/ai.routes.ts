@@ -22,7 +22,7 @@ aiRoutes.post(
 
 publicAiRoutes.post(
   "/memory/analyze",
-  rateLimit({ windowMs: 60_000, max: 6 }),
+  rateLimit({ windowMs: 60_000, max: 30 }),
   asyncHandler(aiController.analyzeMemoryPublic),
 );
 publicAiRoutes.post(

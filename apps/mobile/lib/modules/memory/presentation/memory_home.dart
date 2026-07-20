@@ -221,6 +221,7 @@ class _CaptureViewState extends State<CaptureView> {
   Timer? _recordingTimer;
   bool _analyzing = false;
   bool _usingLocalAnalysis = false;
+  String? _analysisFailure;
 
   @override
   void dispose() {
@@ -338,6 +339,7 @@ class _CaptureViewState extends State<CaptureView> {
     setState(() {
       _analyzing = true;
       _usingLocalAnalysis = false;
+      _analysisFailure = null;
     });
     for (final controller in _answers.values) {
       controller.dispose();
@@ -350,8 +352,9 @@ class _CaptureViewState extends State<CaptureView> {
         premium: widget.mode == PlanMode.premium,
         previousEntries: widget.entries,
       );
-    } catch (_) {
+    } catch (error) {
       analysis = null;
+      _analysisFailure = _friendlyAnalysisFailure(error);
     }
     if (!mounted) return;
     final suggestions = analysis?.questions.isNotEmpty == true
@@ -367,6 +370,28 @@ class _CaptureViewState extends State<CaptureView> {
         _answers[question] = TextEditingController();
       }
     });
+  }
+
+  String _friendlyAnalysisFailure(Object error) {
+    final message = error.toString().toLowerCase();
+    if (message.contains('429')) {
+      return 'Se alcanzó temporalmente el límite de análisis.';
+    }
+    if (message.contains('401')) {
+      return 'El backend rechazó la solicitud de análisis.';
+    }
+    if (message.contains('503')) {
+      return 'OpenAI no está disponible en el backend.';
+    }
+    if (message.contains('timeout') || message.contains('timed out')) {
+      return 'El análisis tardó demasiado en responder.';
+    }
+    if (message.contains('socket') ||
+        message.contains('network') ||
+        message.contains('connection')) {
+      return 'No se pudo conectar con el backend.';
+    }
+    return 'La respuesta del backend no pudo procesarse.';
   }
 
   List<String> _feedbackFor(String text) {
@@ -437,6 +462,7 @@ class _CaptureViewState extends State<CaptureView> {
       _answers.clear();
       _pendingAnalysis = null;
       _usingLocalAnalysis = false;
+      _analysisFailure = null;
     });
     ScaffoldMessenger.of(context).showSnackBar(
       const SnackBar(content: Text('Momento guardado en tu historia')),
@@ -676,17 +702,17 @@ class _CaptureViewState extends State<CaptureView> {
                 color: const Color(0xFFFFF4D8),
                 borderRadius: BorderRadius.circular(14),
               ),
-              child: const Row(
+              child: Row(
                 children: [
-                  Icon(
+                  const Icon(
                     Icons.offline_bolt_outlined,
                     color: Color(0xFF89621C),
                   ),
-                  SizedBox(width: 10),
+                  const SizedBox(width: 10),
                   Expanded(
                     child: Text(
-                      'Usando análisis local. Tu nota se guardará aunque la IA no esté disponible.',
-                      style: TextStyle(
+                      'Usando análisis local. ${_analysisFailure ?? 'La IA no está disponible.'} Tu nota se guardará.',
+                      style: const TextStyle(
                         color: Color(0xFF6E4E15),
                         fontSize: 12,
                       ),
