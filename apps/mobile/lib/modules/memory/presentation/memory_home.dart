@@ -713,16 +713,58 @@ class _CaptureViewState extends State<CaptureView> {
           ),
           const SizedBox(height: 12),
           ..._questions.map(
-            (question) => Padding(
-              padding: const EdgeInsets.only(bottom: 12),
-              child: TextField(
-                controller: _answers[question],
-                decoration: InputDecoration(
-                  labelText: question,
-                  alignLabelWithHint: true,
-                ),
-                minLines: 2,
-                maxLines: 4,
+            (question) => Container(
+              width: double.infinity,
+              margin: const EdgeInsets.only(bottom: 14),
+              padding: const EdgeInsets.all(16),
+              decoration: BoxDecoration(
+                color: Colors.white,
+                borderRadius: BorderRadius.circular(18),
+                border: Border.all(color: const Color(0xFFE4E1DB)),
+              ),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Row(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Container(
+                        width: 25,
+                        height: 25,
+                        decoration: const BoxDecoration(
+                          color: Color(0xFFECE9FF),
+                          shape: BoxShape.circle,
+                        ),
+                        alignment: Alignment.center,
+                        child: const Icon(
+                          Icons.question_mark_rounded,
+                          size: 15,
+                          color: Color(0xFF6656D9),
+                        ),
+                      ),
+                      const SizedBox(width: 10),
+                      Expanded(
+                        child: Text(
+                          question,
+                          style: const TextStyle(
+                            fontSize: 15,
+                            height: 1.4,
+                            fontWeight: FontWeight.w800,
+                          ),
+                        ),
+                      ),
+                    ],
+                  ),
+                  const SizedBox(height: 12),
+                  TextField(
+                    controller: _answers[question],
+                    decoration: const InputDecoration(
+                      hintText: 'Escribe tu respuesta…',
+                    ),
+                    minLines: 2,
+                    maxLines: 6,
+                  ),
+                ],
               ),
             ),
           ),
