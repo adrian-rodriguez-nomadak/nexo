@@ -52,7 +52,41 @@ export const interpretationSchema = z.object({
   actions: z.array(interpretedActionSchema).min(1).max(5),
 });
 
+const memoryEventSchema = z.object({
+  title: z.string(),
+  description: z.string(),
+  occurred_at: nullableString,
+  category: z.enum([
+    "work",
+    "health",
+    "money",
+    "relationship",
+    "travel",
+    "personal",
+    "other",
+  ]),
+});
+
+const memoryExpenseSchema = z.object({
+  description: z.string(),
+  amount: nullableNumber,
+  currency: z.string(),
+});
+
+export const memoryAnalysisSchema = z.object({
+  summary: z.string(),
+  events: z.array(memoryEventSchema).max(12),
+  people: z.array(z.string()).max(12),
+  places: z.array(z.string()).max(12),
+  topics: z.array(z.string()).max(10),
+  emotions: z.array(z.string()).max(8),
+  expenses: z.array(memoryExpenseSchema).max(8),
+  follow_up_questions: z.array(z.string()).max(8),
+  related_note_ids: z.array(z.string()).max(8),
+});
+
 export type InterpretedAction = z.infer<typeof interpretedActionSchema>;
+export type MemoryAnalysis = z.infer<typeof memoryAnalysisSchema>;
 
 const client =
   env.openAiApiKey === "change_me"
@@ -111,5 +145,47 @@ El preview debe explicar en una frase qué se propone guardar y que requiere con
       })),
       source: "openai" as const,
     };
+  },
+
+  async analyzeMemory(input: {
+    text: string;
+    userId: string;
+    plan: "free" | "premium";
+    previousNotes: Array<{ id: string; text: string; tags: string[] }>;
+  }) {
+    if (!client) return null;
+    const context = input.previousNotes.length
+      ? `Notas anteriores para detectar relaciones:\n${input.previousNotes
+          .slice(0, 10)
+          .map(
+            (note) =>
+              `- ID ${note.id}; etiquetas: ${note.tags.join(", ")}; texto: ${note.text}`,
+          )
+          .join("\n")}`
+      : "No hay notas anteriores.";
+    const questionLimit = input.plan === "free" ? 3 : 8;
+    const response = await client.responses.parse({
+      model: env.openAiModel,
+      store: false,
+      safety_identifier: safetyIdentifier(input.userId),
+      reasoning: { effort: "low" },
+      instructions: `Analiza un relato personal para Nexo, una memoria privada en español de México.
+Extrae únicamente hechos presentes en el texto. No inventes nombres, montos, emociones, lugares ni horarios.
+Un relato puede contener varios eventos. Usa ISO 8601 cuando exista fecha u hora; en caso contrario usa null.
+Las preguntas deben ser breves, empáticas y servir para completar contexto realmente ausente.
+Genera como máximo ${questionLimit} preguntas y evita preguntas redundantes o invasivas.
+Relaciona notas anteriores solo cuando exista una razón clara en el contenido.
+Los temas deben ser palabras cortas en minúsculas. La moneda predeterminada es MXN.
+No hagas diagnósticos médicos, legales o psicológicos.
+Hoy es ${new Date().toISOString()} y la zona del usuario es America/Monterrey.
+
+${context}`,
+      input: input.text,
+      text: {
+        format: zodTextFormat(memoryAnalysisSchema, "nexo_memory_analysis"),
+      },
+    });
+    if (!response.output_parsed) return null;
+    return { ...response.output_parsed, source: "openai" as const };
   },
 };

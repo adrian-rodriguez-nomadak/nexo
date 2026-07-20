@@ -25,7 +25,11 @@
 	<key>LSRequiresIPhoneOS</key>
 	<true/>
 	<key>NSFaceIDUsageDescription</key>
-	<string>Nexo usa Face ID para proteger tus finanzas y datos personales.</string>
+	<string>Nexo usa Face ID para proteger tus recuerdos personales.</string>
+	<key>NSMicrophoneUsageDescription</key>
+	<string>Nexo necesita usar el micrófono para registrar tus recuerdos mediante voz.</string>
+	<key>NSSpeechRecognitionUsageDescription</key>
+	<string>Nexo convierte tu voz en texto para organizar tus recuerdos.</string>
 	<key>UILaunchStoryboardName</key>
 	<string>LaunchScreen</string>
 	<key>UIMainStoryboardFile</key>

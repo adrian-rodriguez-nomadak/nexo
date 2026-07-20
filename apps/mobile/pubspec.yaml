@@ -1,5 +1,5 @@
 name: nexo_mobile
-description: "Nexo organiza agenda, recordatorios y finanzas personales con asistencia de IA."
+description: "Nexo convierte experiencias cotidianas en una memoria personal conectada."
 # The following line prevents the package from being accidentally published to
 # pub.dev using `flutter pub publish`. This is preferred for private packages.
 publish_to: 'none' # Remove this line if you wish to publish to pub.dev
@@ -48,6 +48,7 @@ dependencies:
   flutter_local_notifications: ^22.0.1
   timezone: ^0.11.1
   flutter_timezone: ^5.1.0
+  speech_to_text: ^7.4.0
 
 dev_dependencies:
   flutter_test:

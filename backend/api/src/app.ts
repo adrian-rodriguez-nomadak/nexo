@@ -13,7 +13,7 @@ import { calendarRoutes } from "./modules/calendar/calendar.routes.js";
 import { tasksRoutes } from "./modules/tasks/tasks.routes.js";
 import { remindersRoutes } from "./modules/reminders/reminders.routes.js";
 import { inboxRoutes } from "./modules/inbox/inbox.routes.js";
-import { aiRoutes } from "./modules/ai/ai.routes.js";
+import { aiRoutes, publicAiRoutes } from "./modules/ai/ai.routes.js";
 import { syncRoutes } from "./modules/sync/sync.routes.js";
 import { authMiddleware } from "./shared/middlewares/auth.middleware.js";
 import { withUserContext } from "./shared/auth/user-context.js";
@@ -54,6 +54,7 @@ app.get("/health", (_req, res) => {
 });
 
 app.use("/api/auth", authRoutes);
+app.use("/api/public/ai", publicAiRoutes);
 app.use("/api", authMiddleware, withUserContext);
 app.use("/api/users", usersRoutes);
 app.use("/api/finances", financesRoutes);
