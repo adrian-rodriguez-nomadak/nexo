@@ -28,34 +28,39 @@ async function analyzeMemoryRequest(
   res: Response,
   userId: string,
 ) {
-    const text = typeof req.body?.text === "string" ? req.body.text.trim() : "";
-    if (text.length < 3 || text.length > 12_000) {
-      return fail(res, "El texto debe contener entre 3 y 12000 caracteres.");
-    }
-    const plan = req.body?.plan === "premium" ? "premium" : "free";
-    const rawNotes = Array.isArray(req.body?.previous_notes)
-      ? req.body.previous_notes.slice(0, 10)
-      : [];
-    const previousNotes = rawNotes
-      .filter(
-        (note): note is { id: string; text: string; tags?: unknown } =>
-          typeof note?.id === "string" && typeof note?.text === "string",
-      )
-      .map((note) => ({
-        id: note.id,
-        text: note.text.slice(0, 800),
-        tags: Array.isArray(note.tags)
-          ? note.tags.map(String).slice(0, 10)
-          : [],
-      }));
-    const analysis = await aiService.analyzeMemory({
-      text,
-      plan,
-      previousNotes,
-      userId,
-    });
-    if (!analysis) {
-      return fail(res, "El análisis inteligente no está disponible.", 503);
-    }
-    return ok(res, analysis);
+  const text = typeof req.body?.text === "string" ? req.body.text.trim() : "";
+  if (text.length < 3 || text.length > 12_000) {
+    return fail(res, "El texto debe contener entre 3 y 12000 caracteres.");
+  }
+  const plan = req.body?.plan === "premium" ? "premium" : "free";
+  const rawNotes: unknown[] = Array.isArray(req.body?.previous_notes)
+    ? req.body.previous_notes.slice(0, 10)
+    : [];
+  const previousNotes = rawNotes
+    .filter(
+      (note): note is { id: string; text: string; tags?: unknown } =>
+        typeof note === "object" &&
+        note !== null &&
+        "id" in note &&
+        "text" in note &&
+        typeof note.id === "string" &&
+        typeof note.text === "string",
+    )
+    .map((note) => ({
+      id: note.id,
+      text: note.text.slice(0, 800),
+      tags: Array.isArray(note.tags)
+        ? note.tags.map(String).slice(0, 10)
+        : [],
+    }));
+  const analysis = await aiService.analyzeMemory({
+    text,
+    plan,
+    previousNotes,
+    userId,
+  });
+  if (!analysis) {
+    return fail(res, "El análisis inteligente no está disponible.", 503);
+  }
+  return ok(res, analysis);
 }
