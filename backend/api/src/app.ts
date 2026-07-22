@@ -21,6 +21,18 @@ import { env } from "./config/env.js";
 
 export const app = express();
 
+function isLocalWebOrigin(origin: string) {
+  try {
+    const url = new URL(origin);
+    return (
+      url.protocol === "http:" &&
+      (url.hostname === "localhost" || url.hostname === "127.0.0.1")
+    );
+  } catch {
+    return false;
+  }
+}
+
 app.set("trust proxy", 1);
 app.use(helmet());
 app.use(
@@ -29,6 +41,7 @@ app.use(
       if (
         !origin ||
         env.nodeEnv !== "production" ||
+        isLocalWebOrigin(origin) ||
         env.corsOrigins.includes(origin)
       ) {
         callback(null, true);

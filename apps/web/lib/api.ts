@@ -1,4 +1,9 @@
-const API_URL = process.env.NEXT_PUBLIC_API_BASE_URL ?? "http://localhost:3000/api";
+function apiBaseUrl(value: string | undefined) {
+  const base = (value ?? "http://localhost:3000/api").replace(/\/+$/, "");
+  return base.endsWith("/api") ? base : `${base}/api`;
+}
+
+const API_URL = apiBaseUrl(process.env.NEXT_PUBLIC_API_BASE_URL);
 
 type Envelope<T> = { ok: boolean; data: T; message?: string };
 
