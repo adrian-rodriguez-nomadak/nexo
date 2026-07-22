@@ -28,6 +28,28 @@ export type Person = {
 
 export type Tokens = { access_token: string; refresh_token: string; expires_in: number };
 
+export type FinanceSummary = {
+  totalIncome: number;
+  totalExpenses: number;
+  upcomingPayments: number;
+  availableReal: number;
+  dailyRecommended: number;
+};
+
+export type TaskItem = { id: string; title: string; description?: string; due_date?: string; priority: string; status: string };
+export type CalendarItem = { id: string; title: string; description?: string; start_at: string; end_at?: string; location_name?: string; status: string };
+export type SubscriptionItem = { id: string; name: string; amount: number | string; billing_day: number; frequency: string; category?: string; status: string };
+export type MovementItem = { id: string; type: "income" | "expense"; amount: number | string; description?: string; movement_date: string; payment_method?: string };
+export type PaymentItem = { id: string; name: string; amount: number | string; due_date: string; category?: string; status: string };
+export type DashboardData = {
+  finance: FinanceSummary | null;
+  tasks: TaskItem[];
+  events: CalendarItem[];
+  subscriptions: SubscriptionItem[];
+  movements: MovementItem[];
+  payments: PaymentItem[];
+};
+
 export function getTokens(): Tokens | null {
   if (typeof window === "undefined") return null;
   const raw = localStorage.getItem("nexo.session");
@@ -78,9 +100,15 @@ export const api = {
   }),
   dashboard: async () => {
     const settled = await Promise.allSettled([
-      request<unknown>("/finances/summary"), request<unknown[]>("/tasks"),
-      request<unknown[]>("/calendar/events"), request<unknown[]>("/subscriptions"),
+      request<FinanceSummary>("/finances/summary"), request<TaskItem[]>("/tasks"),
+      request<CalendarItem[]>("/calendar/events"), request<SubscriptionItem[]>("/subscriptions"),
+      request<MovementItem[]>("/finances/movements?limit=50"), request<PaymentItem[]>("/finances/upcoming-payments"),
     ]);
-    return settled.map((result) => result.status === "fulfilled" ? result.value : null);
+    const value = <T,>(index: number, fallback: T) => settled[index].status === "fulfilled" ? settled[index].value as T : fallback;
+    return {
+      finance: value<FinanceSummary | null>(0, null), tasks: value<TaskItem[]>(1, []),
+      events: value<CalendarItem[]>(2, []), subscriptions: value<SubscriptionItem[]>(3, []),
+      movements: value<MovementItem[]>(4, []), payments: value<PaymentItem[]>(5, []),
+    } satisfies DashboardData;
   },
 };
