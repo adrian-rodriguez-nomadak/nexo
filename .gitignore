@@ -1,25 +1,7 @@
-# OS and editor files
 .DS_Store
+.env
+.env.*
+!.env.example
+*.log
 .idea/
 .vscode/
-
-# Flutter / Dart
-**/.dart_tool/
-**/.pub/
-**/build/
-**/coverage/
-**/.flutter-plugins-dependencies
-
-# Node / TypeScript
-**/node_modules/
-**/dist/
-**/.next/
-**/*.tsbuildinfo
-**/npm-debug.log*
-
-# Environment and local data
-**/.env
-**/.env.local
-*.sqlite
-*.sqlite-shm
-*.sqlite-wal
