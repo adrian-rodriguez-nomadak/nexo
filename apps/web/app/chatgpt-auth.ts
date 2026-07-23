@@ -15,11 +15,15 @@ const PERCENT_ENCODED_UTF8 = "percent-encoded-utf-8";
 const SIGN_IN_PATH = "/signin-with-chatgpt";
 const SIGN_OUT_PATH = "/signout-with-chatgpt";
 const CALLBACK_PATH = "/callback";
+const DEFAULT_DEVELOPMENT_EMAIL = "local@nexo.dev";
+const DEFAULT_DEVELOPMENT_NAME = "Usuario local";
 
 export async function getChatGPTUser(): Promise<ChatGPTUser | null> {
   const requestHeaders = await headers();
   const email = requestHeaders.get(USER_EMAIL_HEADER);
-  if (!email) return null;
+  if (!email) {
+    return getDevelopmentUser();
+  }
 
   const encodedFullName = requestHeaders.get(USER_FULL_NAME_HEADER);
   const fullName =
@@ -30,6 +34,21 @@ export async function getChatGPTUser(): Promise<ChatGPTUser | null> {
 
   return {
     displayName: fullName ?? email,
+    email,
+    fullName,
+  };
+}
+
+function getDevelopmentUser(): ChatGPTUser | null {
+  if (process.env.NODE_ENV === "production") return null;
+
+  const email =
+    process.env.NEXO_DEV_USER_EMAIL?.trim() || DEFAULT_DEVELOPMENT_EMAIL;
+  const fullName =
+    process.env.NEXO_DEV_USER_NAME?.trim() || DEFAULT_DEVELOPMENT_NAME;
+
+  return {
+    displayName: fullName,
     email,
     fullName,
   };

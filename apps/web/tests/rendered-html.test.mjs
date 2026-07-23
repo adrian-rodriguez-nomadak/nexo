@@ -5,14 +5,16 @@ import test from "node:test";
 const projectRoot = new URL("../", import.meta.url);
 
 test("builds the authenticated Nexo dashboard", async () => {
-  const [dashboard, apiClient, authSession, layout, page] = await Promise.all([
-    readFile(new URL("app/nexo-dashboard.tsx", projectRoot), "utf8"),
-    readFile(new URL("app/api-client.ts", projectRoot), "utf8"),
-    readFile(new URL("app/auth-session.ts", projectRoot), "utf8"),
-    readFile(new URL("app/layout.tsx", projectRoot), "utf8"),
-    readFile(new URL("app/page.tsx", projectRoot), "utf8"),
-    access(new URL("dist/server/index.js", projectRoot)),
-  ]);
+  const [dashboard, apiClient, authSession, chatGPTAuth, layout, page] =
+    await Promise.all([
+      readFile(new URL("app/nexo-dashboard.tsx", projectRoot), "utf8"),
+      readFile(new URL("app/api-client.ts", projectRoot), "utf8"),
+      readFile(new URL("app/auth-session.ts", projectRoot), "utf8"),
+      readFile(new URL("app/chatgpt-auth.ts", projectRoot), "utf8"),
+      readFile(new URL("app/layout.tsx", projectRoot), "utf8"),
+      readFile(new URL("app/page.tsx", projectRoot), "utf8"),
+      access(new URL("dist/server/index.js", projectRoot)),
+    ]);
 
   assert.match(layout, /Nexo — Tu vida, conectada/);
   assert.match(page, /NexoDashboard/);
@@ -24,6 +26,8 @@ test("builds the authenticated Nexo dashboard", async () => {
   assert.match(apiClient, /NEXT_PUBLIC_API_URL/);
   assert.match(apiClient, /authorization/);
   assert.match(authSession, /x-nexo-auth-secret/);
+  assert.match(chatGPTAuth, /process\.env\.NODE_ENV === "production"/);
+  assert.match(chatGPTAuth, /NEXO_DEV_USER_EMAIL/);
   assert.match(page, /getChatGPTUser/);
   assert.match(page, /Continuar con ChatGPT/);
   assert.match(apiClient, /http:\/\/localhost:3001/);
