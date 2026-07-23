@@ -25,3 +25,5 @@ services:
         value: "false"
       - key: CORS_ORIGIN
         sync: false
+      - key: AUTH_EXCHANGE_SECRET
+        sync: false

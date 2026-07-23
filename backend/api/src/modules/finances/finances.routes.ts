@@ -20,7 +20,7 @@ export const financesRouter = Router();
 financesRouter.get(
   "/",
   asyncHandler(async (_request, response) => {
-    response.json(await getFinances());
+    response.json(await getFinances(_request.authUser!.id));
   }),
 );
 
@@ -45,6 +45,7 @@ financesRouter.post(
     }
 
     const account = await createFinanceAccount({
+      userId: request.authUser!.id,
       name: normalizedName,
       type,
       initialBalanceCents,
@@ -85,6 +86,7 @@ financesRouter.post(
     }
 
     const transaction = await createFinanceTransaction({
+      userId: request.authUser!.id,
       accountId: normalizedAccountId,
       kind,
       category: normalizedCategory,
@@ -114,7 +116,10 @@ financesRouter.delete(
       return;
     }
 
-    const deleted = await deleteFinanceTransaction(id);
+    const deleted = await deleteFinanceTransaction(
+      request.authUser!.id,
+      id,
+    );
     if (!deleted) {
       response.status(404).json({ error: "El movimiento ya no existe." });
       return;

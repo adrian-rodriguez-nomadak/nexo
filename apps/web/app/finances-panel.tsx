@@ -2,7 +2,7 @@
 
 import { type FormEvent, useCallback, useEffect, useMemo, useState } from "react";
 
-import { apiUrl } from "./api-client";
+import { apiFetch } from "./api-client";
 
 type AccountType = "cash" | "bank" | "savings" | "credit";
 type TransactionKind = "income" | "expense";
@@ -100,8 +100,8 @@ function todayInputValue(): string {
   return new Date(date.getTime() - offset).toISOString().slice(0, 10);
 }
 
-async function fetchFinances(): Promise<FinanceData> {
-  const response = await fetch(apiUrl("/api/finances"));
+async function fetchFinances(sessionToken: string): Promise<FinanceData> {
+  const response = await apiFetch("/api/finances", sessionToken);
   const data = (await response.json()) as Partial<FinanceData> & {
     error?: string;
   };
@@ -117,7 +117,7 @@ async function fetchFinances(): Promise<FinanceData> {
   };
 }
 
-export function FinancesPanel() {
+export function FinancesPanel({ sessionToken }: { sessionToken: string }) {
   const [accounts, setAccounts] = useState<FinanceAccount[]>([]);
   const [transactions, setTransactions] = useState<FinanceTransaction[]>([]);
   const [summary, setSummary] = useState<FinanceSummary>(emptySummary);
@@ -137,20 +137,20 @@ export function FinancesPanel() {
   const [occurredAt, setOccurredAt] = useState(todayInputValue);
 
   const loadFinances = useCallback(async () => {
-    const data = await fetchFinances();
+    const data = await fetchFinances(sessionToken);
     const nextAccounts = data.accounts;
     setAccounts(nextAccounts);
     setTransactions(data.transactions);
     setSummary(data.summary);
     setAccountId((current) => current || nextAccounts[0]?.id || "");
-  }, []);
+  }, [sessionToken]);
 
   useEffect(() => {
     let active = true;
 
     async function initializeFinances() {
       try {
-        const data = await fetchFinances();
+        const data = await fetchFinances(sessionToken);
         if (!active) return;
 
         setAccounts(data.accounts);
@@ -175,7 +175,7 @@ export function FinancesPanel() {
     return () => {
       active = false;
     };
-  }, []);
+  }, [sessionToken]);
 
   const selectedAccount = useMemo(
     () => accounts.find((account) => account.id === accountId),
@@ -195,7 +195,10 @@ export function FinancesPanel() {
     setError(null);
 
     try {
-      const response = await fetch(apiUrl("/api/finances/accounts"), {
+      const response = await apiFetch(
+        "/api/finances/accounts",
+        sessionToken,
+        {
         method: "POST",
         headers: { "content-type": "application/json" },
         body: JSON.stringify({
@@ -203,7 +206,8 @@ export function FinancesPanel() {
           type: accountType,
           initialBalanceCents,
         }),
-      });
+        },
+      );
       const data = (await response.json()) as {
         account?: FinanceAccount;
         error?: string;
@@ -246,7 +250,10 @@ export function FinancesPanel() {
     setError(null);
 
     try {
-      const response = await fetch(apiUrl("/api/finances/transactions"), {
+      const response = await apiFetch(
+        "/api/finances/transactions",
+        sessionToken,
+        {
         method: "POST",
         headers: { "content-type": "application/json" },
         body: JSON.stringify({
@@ -257,7 +264,8 @@ export function FinancesPanel() {
           amountCents,
           occurredAt: new Date(`${occurredAt}T12:00:00`).toISOString(),
         }),
-      });
+        },
+      );
       const data = (await response.json()) as {
         transaction?: FinanceTransaction;
         error?: string;
@@ -289,8 +297,9 @@ export function FinancesPanel() {
     setError(null);
 
     try {
-      const response = await fetch(
-        apiUrl(`/api/finances/transactions/${id}`),
+      const response = await apiFetch(
+        `/api/finances/transactions/${id}`,
+        sessionToken,
         {
           method: "DELETE",
         },

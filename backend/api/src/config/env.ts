@@ -27,6 +27,8 @@ export const env = {
     .split(",")
     .map((origin) => origin.trim())
     .filter(Boolean),
+  AUTH_EXCHANGE_SECRET:
+    process.env.AUTH_EXCHANGE_SECRET ?? process.env.JWT_SECRET ?? "",
 };
 
 export function requireDatabaseUrl(): string {

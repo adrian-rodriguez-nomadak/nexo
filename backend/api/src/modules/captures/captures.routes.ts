@@ -25,6 +25,7 @@ capturesRouter.get(
     }
 
     const captures = await listCaptures(
+      request.authUser!.id,
       requestedModule && isModuleKey(requestedModule)
         ? requestedModule
         : undefined,
@@ -51,6 +52,7 @@ capturesRouter.post(
     }
 
     const capture = await createCapture({
+      userId: request.authUser!.id,
       module,
       content: normalizedContent,
     });
@@ -68,7 +70,7 @@ capturesRouter.delete(
       return;
     }
 
-    const deleted = await deleteCapture(id);
+    const deleted = await deleteCapture(request.authUser!.id, id);
     if (!deleted) {
       response.status(404).json({ error: "La captura ya no existe." });
       return;

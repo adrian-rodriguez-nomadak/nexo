@@ -2,6 +2,26 @@ import { pool } from "./database.js";
 
 const statements = [
   `
+    CREATE TABLE IF NOT EXISTS users (
+      id TEXT PRIMARY KEY,
+      email TEXT NOT NULL UNIQUE,
+      display_name TEXT NOT NULL,
+      created_at TIMESTAMPTZ NOT NULL,
+      updated_at TIMESTAMPTZ NOT NULL
+    )
+  `,
+  `
+    CREATE TABLE IF NOT EXISTS auth_sessions (
+      id TEXT PRIMARY KEY,
+      user_id TEXT NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+      token_hash TEXT NOT NULL UNIQUE,
+      expires_at TIMESTAMPTZ NOT NULL,
+      created_at TIMESTAMPTZ NOT NULL
+    )
+  `,
+  "CREATE INDEX IF NOT EXISTS auth_sessions_user_idx ON auth_sessions (user_id)",
+  "CREATE INDEX IF NOT EXISTS auth_sessions_expiry_idx ON auth_sessions (expires_at)",
+  `
     CREATE TABLE IF NOT EXISTS captures (
       id TEXT PRIMARY KEY,
       module TEXT NOT NULL,
@@ -13,6 +33,8 @@ const statements = [
   `,
   "CREATE INDEX IF NOT EXISTS captures_created_at_idx ON captures (created_at DESC)",
   "CREATE INDEX IF NOT EXISTS captures_module_idx ON captures (module)",
+  "ALTER TABLE captures ADD COLUMN IF NOT EXISTS user_id TEXT REFERENCES users(id) ON DELETE CASCADE",
+  "CREATE INDEX IF NOT EXISTS captures_user_created_idx ON captures (user_id, created_at DESC)",
   `
     CREATE TABLE IF NOT EXISTS finance_accounts (
       id TEXT PRIMARY KEY,
@@ -36,6 +58,8 @@ const statements = [
     )
   `,
   "CREATE INDEX IF NOT EXISTS finance_accounts_created_at_idx ON finance_accounts (created_at)",
+  "ALTER TABLE finance_accounts ADD COLUMN IF NOT EXISTS user_id TEXT REFERENCES users(id) ON DELETE CASCADE",
+  "CREATE INDEX IF NOT EXISTS finance_accounts_user_idx ON finance_accounts (user_id)",
   "CREATE INDEX IF NOT EXISTS finance_transactions_account_idx ON finance_transactions (account_id)",
   "CREATE INDEX IF NOT EXISTS finance_transactions_occurred_at_idx ON finance_transactions (occurred_at DESC)",
 ];

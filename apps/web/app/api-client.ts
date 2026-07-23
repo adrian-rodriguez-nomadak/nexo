@@ -11,3 +11,17 @@ export function apiUrl(path: string): string {
   const normalizedPath = path.startsWith("/") ? path : `/${path}`;
   return `${configuredApiUrl || defaultApiUrl}${normalizedPath}`;
 }
+
+export function apiFetch(
+  path: string,
+  sessionToken: string,
+  init: RequestInit = {},
+): Promise<Response> {
+  const headers = new Headers(init.headers);
+  headers.set("authorization", `Bearer ${sessionToken}`);
+
+  return fetch(apiUrl(path), {
+    ...init,
+    headers,
+  });
+}

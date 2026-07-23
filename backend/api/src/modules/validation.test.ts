@@ -2,6 +2,11 @@ import assert from "node:assert/strict";
 import test from "node:test";
 
 import {
+  hashSessionToken,
+  normalizeDisplayName,
+  normalizeEmail,
+} from "./auth/auth.utils.js";
+import {
   isModuleKey,
   normalizeCaptureContent,
 } from "./captures/captures.validation.js";
@@ -31,4 +36,15 @@ test("validates finance input", () => {
     normalizeOccurredAt("2026-07-23T12:00:00-06:00"),
     "2026-07-23T18:00:00.000Z",
   );
+});
+
+test("normalizes identity and hashes session tokens", () => {
+  assert.equal(normalizeEmail("  User@Example.COM "), "user@example.com");
+  assert.equal(normalizeEmail("invalid"), null);
+  assert.equal(
+    normalizeDisplayName("  Adrián   Rodríguez ", "user@example.com"),
+    "Adrián Rodríguez",
+  );
+  assert.equal(hashSessionToken("token"), hashSessionToken("token"));
+  assert.notEqual(hashSessionToken("token"), hashSessionToken("other-token"));
 });

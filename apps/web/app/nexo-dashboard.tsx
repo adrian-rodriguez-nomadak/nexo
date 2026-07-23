@@ -8,7 +8,8 @@ import {
   useState,
 } from "react";
 
-import { apiUrl } from "./api-client";
+import { apiFetch } from "./api-client";
+import type { ChatGPTUser } from "./chatgpt-auth";
 import { FinancesPanel } from "./finances-panel";
 
 type ModuleKey =
@@ -116,7 +117,24 @@ function formatTime(value: string): string {
   }).format(new Date(value));
 }
 
-export function NexoDashboard() {
+function userInitials(user: ChatGPTUser): string {
+  const source = user.fullName ?? user.email.split("@")[0] ?? "N";
+  return source
+    .split(/\s+/)
+    .slice(0, 2)
+    .map((part) => part[0]?.toUpperCase())
+    .join("");
+}
+
+export function NexoDashboard({
+  sessionToken,
+  signOutPath,
+  user,
+}: {
+  sessionToken: string;
+  signOutPath: string;
+  user: ChatGPTUser;
+}) {
   const [captures, setCaptures] = useState<CaptureRecord[]>([]);
   const [selectedModule, setSelectedModule] = useState<ModuleKey | "all">("all");
   const [captureModule, setCaptureModule] = useState<ModuleKey>("notes");
@@ -130,7 +148,10 @@ export function NexoDashboard() {
 
     async function loadCaptures() {
       try {
-        const response = await fetch(apiUrl("/api/captures"));
+        const response = await apiFetch(
+          "/api/captures",
+          sessionToken,
+        );
         const data = (await response.json()) as {
           captures?: CaptureRecord[];
           error?: string;
@@ -149,7 +170,7 @@ export function NexoDashboard() {
     return () => {
       active = false;
     };
-  }, []);
+  }, [sessionToken]);
 
   const visibleCaptures = useMemo(
     () =>
@@ -184,7 +205,7 @@ export function NexoDashboard() {
     setError(null);
 
     try {
-      const response = await fetch(apiUrl("/api/captures"), {
+      const response = await apiFetch("/api/captures", sessionToken, {
         method: "POST",
         headers: { "content-type": "application/json" },
         body: JSON.stringify({
@@ -220,13 +241,25 @@ export function NexoDashboard() {
     setCaptures((current) => current.filter((capture) => capture.id !== id));
 
     try {
-      const response = await fetch(apiUrl(`/api/captures/${id}`), {
-        method: "DELETE",
-      });
+      const response = await apiFetch(
+        `/api/captures/${id}`,
+        sessionToken,
+        {
+          method: "DELETE",
+        },
+      );
       if (!response.ok) throw new Error();
     } catch {
       setCaptures(previous);
       setError("No fue posible eliminar la captura.");
+    }
+  }
+
+  async function signOut() {
+    try {
+      await apiFetch("/api/auth/logout", sessionToken, { method: "POST" });
+    } finally {
+      window.location.assign(signOutPath);
     }
   }
 
@@ -309,13 +342,23 @@ export function NexoDashboard() {
           </div>
           <div className="profile">
             <span className="status-dot" />
-            Backend activo
-            <span className="avatar">AR</span>
+            <span className="profile-identity">
+              <strong>{user.displayName}</strong>
+              <span>{user.email}</span>
+            </span>
+            <span className="avatar">{userInitials(user)}</span>
+            <button
+              className="sign-out-link"
+              onClick={() => void signOut()}
+              type="button"
+            >
+              Salir
+            </button>
           </div>
         </header>
 
         {selectedModule === "finances" ? (
-          <FinancesPanel />
+          <FinancesPanel sessionToken={sessionToken} />
         ) : (
         <section className="dashboard-grid">
           <div className="primary-column">

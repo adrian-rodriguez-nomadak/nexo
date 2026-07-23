@@ -5,6 +5,8 @@ import express, {
 } from "express";
 
 import { env } from "./config/env.js";
+import { authRouter } from "./modules/auth/auth.routes.js";
+import { requireAuth } from "./modules/auth/auth.middleware.js";
 import { capturesRouter } from "./modules/captures/captures.routes.js";
 import { financesRouter } from "./modules/finances/finances.routes.js";
 import { query } from "./shared/db/database.js";
@@ -42,8 +44,9 @@ const healthHandler = asyncHandler(async (_request, response) => {
 
 app.get("/health", healthHandler);
 app.get("/api/health", healthHandler);
-app.use("/api/captures", capturesRouter);
-app.use("/api/finances", financesRouter);
+app.use("/api/auth", authRouter);
+app.use("/api/captures", requireAuth, capturesRouter);
+app.use("/api/finances", requireAuth, financesRouter);
 
 const notFoundHandler: RequestHandler = (_request, response) => {
   response.status(404).json({ error: "Ruta no encontrada." });

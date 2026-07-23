@@ -33,43 +33,53 @@ function mapCapture(row: CaptureRow): CaptureRecord {
 }
 
 export async function listCaptures(
+  userId: string,
   module?: ModuleKey,
 ): Promise<CaptureRecord[]> {
   const result = module
     ? await query<CaptureRow>(
         `SELECT id, module, content, created_at, occurred_at, amount_cents
          FROM captures
-         WHERE module = $1
+         WHERE user_id = $1 AND module = $2
          ORDER BY created_at DESC
          LIMIT 100`,
-        [module],
+        [userId, module],
       )
     : await query<CaptureRow>(
         `SELECT id, module, content, created_at, occurred_at, amount_cents
          FROM captures
+         WHERE user_id = $1
          ORDER BY created_at DESC
          LIMIT 100`,
+        [userId],
       );
 
   return result.rows.map(mapCapture);
 }
 
 export async function createCapture(input: {
+  userId: string;
   module: ModuleKey;
   content: string;
 }): Promise<CaptureRecord> {
   const id = randomUUID();
   const result = await query<CaptureRow>(
-    `INSERT INTO captures (id, module, content, created_at)
-     VALUES ($1, $2, $3, NOW())
+    `INSERT INTO captures (id, user_id, module, content, created_at)
+     VALUES ($1, $2, $3, $4, NOW())
      RETURNING id, module, content, created_at, occurred_at, amount_cents`,
-    [id, input.module, input.content],
+    [id, input.userId, input.module, input.content],
   );
 
   return mapCapture(result.rows[0]!);
 }
 
-export async function deleteCapture(id: string): Promise<boolean> {
-  const result = await query("DELETE FROM captures WHERE id = $1", [id]);
+export async function deleteCapture(
+  userId: string,
+  id: string,
+): Promise<boolean> {
+  const result = await query(
+    "DELETE FROM captures WHERE id = $1 AND user_id = $2",
+    [id, userId],
+  );
   return (result.rowCount ?? 0) > 0;
 }
