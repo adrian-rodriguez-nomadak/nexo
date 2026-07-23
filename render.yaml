@@ -1,0 +1,27 @@
+databases:
+  - name: nexo-db
+    plan: free
+    databaseName: nexo
+    user: nexo
+
+services:
+  - type: web
+    name: nexo-api
+    runtime: node
+    plan: free
+    rootDir: backend/api
+    buildCommand: npm ci --include=dev && npm run build
+    startCommand: npm run db:migrate && npm start
+    healthCheckPath: /health
+    autoDeployTrigger: commit
+    envVars:
+      - key: NODE_ENV
+        value: production
+      - key: DATABASE_URL
+        fromDatabase:
+          name: nexo-db
+          property: connectionString
+      - key: DATABASE_SSL
+        value: "false"
+      - key: CORS_ORIGIN
+        sync: false

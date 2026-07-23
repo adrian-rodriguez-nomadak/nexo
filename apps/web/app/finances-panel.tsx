@@ -2,6 +2,8 @@
 
 import { type FormEvent, useCallback, useEffect, useMemo, useState } from "react";
 
+import { apiUrl } from "./api-client";
+
 type AccountType = "cash" | "bank" | "savings" | "credit";
 type TransactionKind = "income" | "expense";
 
@@ -99,7 +101,7 @@ function todayInputValue(): string {
 }
 
 async function fetchFinances(): Promise<FinanceData> {
-  const response = await fetch("/api/finances");
+  const response = await fetch(apiUrl("/api/finances"));
   const data = (await response.json()) as Partial<FinanceData> & {
     error?: string;
   };
@@ -193,7 +195,7 @@ export function FinancesPanel() {
     setError(null);
 
     try {
-      const response = await fetch("/api/finances/accounts", {
+      const response = await fetch(apiUrl("/api/finances/accounts"), {
         method: "POST",
         headers: { "content-type": "application/json" },
         body: JSON.stringify({
@@ -244,7 +246,7 @@ export function FinancesPanel() {
     setError(null);
 
     try {
-      const response = await fetch("/api/finances/transactions", {
+      const response = await fetch(apiUrl("/api/finances/transactions"), {
         method: "POST",
         headers: { "content-type": "application/json" },
         body: JSON.stringify({
@@ -287,9 +289,12 @@ export function FinancesPanel() {
     setError(null);
 
     try {
-      const response = await fetch(`/api/finances/transactions/${id}`, {
-        method: "DELETE",
-      });
+      const response = await fetch(
+        apiUrl(`/api/finances/transactions/${id}`),
+        {
+          method: "DELETE",
+        },
+      );
       if (!response.ok) throw new Error();
       await loadFinances();
     } catch {

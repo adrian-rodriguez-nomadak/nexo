@@ -8,6 +8,7 @@ import {
   useState,
 } from "react";
 
+import { apiUrl } from "./api-client";
 import { FinancesPanel } from "./finances-panel";
 
 type ModuleKey =
@@ -129,7 +130,7 @@ export function NexoDashboard() {
 
     async function loadCaptures() {
       try {
-        const response = await fetch("/api/captures");
+        const response = await fetch(apiUrl("/api/captures"));
         const data = (await response.json()) as {
           captures?: CaptureRecord[];
           error?: string;
@@ -183,7 +184,7 @@ export function NexoDashboard() {
     setError(null);
 
     try {
-      const response = await fetch("/api/captures", {
+      const response = await fetch(apiUrl("/api/captures"), {
         method: "POST",
         headers: { "content-type": "application/json" },
         body: JSON.stringify({
@@ -219,7 +220,7 @@ export function NexoDashboard() {
     setCaptures((current) => current.filter((capture) => capture.id !== id));
 
     try {
-      const response = await fetch(`/api/captures/${id}`, {
+      const response = await fetch(apiUrl(`/api/captures/${id}`), {
         method: "DELETE",
       });
       if (!response.ok) throw new Error();
