@@ -282,10 +282,24 @@ async function request<T>(
 }
 
 export const api = {
+  register: (name: string, email: string, password: string) =>
+    request<{ user: Person["user"]; tokens: Tokens }>("/auth/register", {
+      method: "POST",
+      body: JSON.stringify({
+        name,
+        email,
+        password,
+        device_name: "Nexo Sports Web",
+      }),
+    }),
   login: (email: string, password: string) =>
     request<{ user: Person["user"]; tokens: Tokens }>("/auth/login", {
       method: "POST",
-      body: JSON.stringify({ email, password, device_name: "Nexo Web" }),
+      body: JSON.stringify({
+        email,
+        password,
+        device_name: "Nexo Sports Web",
+      }),
     }),
   me: () => request<Person>("/users/me"),
   updateProfile: (profile: Profile, complete_onboarding = false) =>

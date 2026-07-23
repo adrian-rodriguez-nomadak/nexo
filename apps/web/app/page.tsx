@@ -95,6 +95,8 @@ export default function Home() {
 }
 
 function SportsLogin({ onSuccess }: { onSuccess: () => Promise<void> }) {
+  const [mode, setMode] = useState<"login" | "register">("login");
+  const [name, setName] = useState("");
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [error, setError] = useState("");
@@ -105,7 +107,10 @@ function SportsLogin({ onSuccess }: { onSuccess: () => Promise<void> }) {
     setBusy(true);
     setError("");
     try {
-      const result = await api.login(email, password);
+      const result =
+        mode === "register"
+          ? await api.register(name, email, password)
+          : await api.login(email, password);
       setTokens(result.tokens);
       await onSuccess();
     } catch (issue) {
@@ -162,10 +167,33 @@ function SportsLogin({ onSuccess }: { onSuccess: () => Promise<void> }) {
       <section className="sports-login-panel">
         <form onSubmit={submit}>
           <span className="sports-kicker">
-            <span /> ACCESO PRIVADO
+            <span /> {mode === "login" ? "ACCESO PRIVADO" : "NUEVA CUENTA"}
           </span>
-          <h2>Entra a Nexo Sports</h2>
-          <p>Usa tu cuenta de Nexo para conservar tus análisis.</p>
+          <h2>
+            {mode === "login"
+              ? "Entra a Nexo Sports"
+              : "Crea tu cuenta"}
+          </h2>
+          <p>
+            {mode === "login"
+              ? "Usa tu cuenta de Nexo para conservar tus análisis."
+              : "Guarda tus análisis y consulta cada jornada en un solo lugar."}
+          </p>
+          {mode === "register" && (
+            <label>
+              Nombre
+              <input
+                type="text"
+                required
+                minLength={2}
+                maxLength={100}
+                value={name}
+                onChange={(event) => setName(event.target.value)}
+                placeholder="Tu nombre"
+                autoComplete="name"
+              />
+            </label>
+          )}
           <label>
             Correo electrónico
             <input
@@ -186,19 +214,38 @@ function SportsLogin({ onSuccess }: { onSuccess: () => Promise<void> }) {
               value={password}
               onChange={(event) => setPassword(event.target.value)}
               placeholder="••••••••"
-              autoComplete="current-password"
+              autoComplete={
+                mode === "login" ? "current-password" : "new-password"
+              }
             />
           </label>
           {error && <p className="form-error">{error}</p>}
           <button className="sports-login-submit" disabled={busy}>
             {busy ? (
-              "Entrando…"
+              mode === "login" ? "Entrando…" : "Creando cuenta…"
             ) : (
               <>
-                Entrar <ArrowRight size={18} />
+                {mode === "login" ? "Entrar" : "Crear cuenta"}{" "}
+                <ArrowRight size={18} />
               </>
             )}
           </button>
+          <div className="sports-auth-switch">
+            <span>
+              {mode === "login"
+                ? "¿Aún no tienes cuenta?"
+                : "¿Ya tienes una cuenta?"}
+            </span>
+            <button
+              type="button"
+              onClick={() => {
+                setMode(mode === "login" ? "register" : "login");
+                setError("");
+              }}
+            >
+              {mode === "login" ? "Crear cuenta" : "Iniciar sesión"}
+            </button>
+          </div>
           <small>
             <LockKeyhole size={13} />
             Sesión protegida y datos privados.
