@@ -42,7 +42,7 @@ export async function createSessionForIdentity(input: {
   displayName: string;
 }): Promise<{ token: string; user: AuthUser; expiresAt: string }> {
   const userResult = await query<UserRow>(
-    `INSERT INTO users (id, email, display_name, created_at, updated_at)
+    `INSERT INTO nexo_users (id, email, display_name, created_at, updated_at)
      VALUES ($1, $2, $3, NOW(), NOW())
      ON CONFLICT (email)
      DO UPDATE SET display_name = EXCLUDED.display_name, updated_at = NOW()
@@ -53,9 +53,9 @@ export async function createSessionForIdentity(input: {
   const token = randomBytes(32).toString("base64url");
   const expiresAt = new Date(Date.now() + SESSION_DURATION_MS);
 
-  await query("DELETE FROM auth_sessions WHERE expires_at <= NOW()");
+  await query("DELETE FROM nexo_auth_sessions WHERE expires_at <= NOW()");
   await query(
-    `INSERT INTO auth_sessions (
+    `INSERT INTO nexo_auth_sessions (
       id, user_id, token_hash, expires_at, created_at
     ) VALUES ($1, $2, $3, $4, NOW())`,
     [randomUUID(), userRow.id, hashSessionToken(token), expiresAt],
@@ -77,8 +77,8 @@ export async function findUserBySessionToken(
 ): Promise<AuthUser | null> {
   const result = await query<UserRow>(
     `SELECT u.id, u.email, u.display_name
-     FROM auth_sessions s
-     INNER JOIN users u ON u.id = s.user_id
+     FROM nexo_auth_sessions s
+     INNER JOIN nexo_users u ON u.id = s.user_id
      WHERE s.token_hash = $1 AND s.expires_at > NOW()
      LIMIT 1`,
     [hashSessionToken(token)],
@@ -94,7 +94,7 @@ export async function findUserBySessionToken(
 }
 
 export async function revokeSession(token: string): Promise<void> {
-  await query("DELETE FROM auth_sessions WHERE token_hash = $1", [
+  await query("DELETE FROM nexo_auth_sessions WHERE token_hash = $1", [
     hashSessionToken(token),
   ]);
 }
