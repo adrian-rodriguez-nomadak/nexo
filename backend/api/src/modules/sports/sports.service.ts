@@ -204,21 +204,21 @@ async function enrichTicketProbabilities(ticket: BetTicket) {
 }
 
 async function attachWeather(matches: MatchSummary[]) {
-  return Promise.all(
-    matches.map(async (rawMatch, index) => {
-      const match = enrichMatchVenue(rawMatch);
-      const forecast = await getMatchWeather(match).catch(() => undefined);
-      return {
-        ...match,
-        weather:
-          forecast ??
-          (match.sources.includes("demo") ? demoWeather(index) : undefined),
-        sources: forecast
-          ? Array.from(new Set([...match.sources, "open-meteo" as const]))
-          : match.sources,
-      };
-    }),
-  );
+  const enriched: MatchSummary[] = [];
+  for (const [index, rawMatch] of matches.entries()) {
+    const match = enrichMatchVenue(rawMatch);
+    const forecast = await getMatchWeather(match).catch(() => undefined);
+    enriched.push({
+      ...match,
+      weather:
+        forecast ??
+        (match.sources.includes("demo") ? demoWeather(index) : undefined),
+      sources: forecast
+        ? Array.from(new Set([...match.sources, "open-meteo" as const]))
+        : match.sources,
+    });
+  }
+  return enriched;
 }
 
 async function loadOverview() {
@@ -310,16 +310,45 @@ export const sportsService = {
     const loaded = await loadOverview();
     const match = loaded.matches.find((item) => item.id === id);
     if (!match) return null;
-    const providerContext: Partial<AnalysisInput> = match.sources.includes(
-      "api-football",
-    )
-      ? await apiFootballProvider.context(match).catch(() => ({}))
-      : {};
+    const [apiContext, sportsDbContext] = await Promise.all([
+      match.sources.includes("api-football")
+        ? apiFootballProvider
+            .context(match)
+            .catch(() => ({}) as Partial<AnalysisInput>)
+        : Promise.resolve({} as Partial<AnalysisInput>),
+      match.sources.includes("thesportsdb")
+        ? sportsDbProvider
+            .context(match)
+            .catch(() => ({}) as Partial<AnalysisInput>)
+        : Promise.resolve({} as Partial<AnalysisInput>),
+    ]);
+    const availability = [
+      ...(apiContext.availability ?? []),
+      ...(sportsDbContext.availability ?? []),
+    ];
+    const headToHead = apiContext.headToHead?.length
+      ? apiContext.headToHead
+      : (sportsDbContext.headToHead ?? []);
     return {
       match,
-      availability: providerContext.availability ?? [],
-      headToHead: providerContext.headToHead ?? [],
-      restDays: providerContext.restDays ?? { home: 6, away: 6 },
+      availability,
+      headToHead,
+      restDays: sportsDbContext.restDays ??
+        apiContext.restDays ?? { home: 0, away: 0 },
+      coverage: {
+        standings: Boolean(
+          apiContext.coverage?.standings || sportsDbContext.coverage?.standings,
+        ),
+        form: Boolean(
+          apiContext.coverage?.form || sportsDbContext.coverage?.form,
+        ),
+        availability: Boolean(
+          apiContext.coverage?.availability ||
+          sportsDbContext.coverage?.availability,
+        ),
+        headToHead: headToHead.length > 0,
+        weather: Boolean(match.weather),
+      },
     };
   },
 

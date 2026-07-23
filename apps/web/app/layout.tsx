@@ -6,8 +6,9 @@ import "@fontsource/playfair-display/600.css";
 import "./globals.css";
 
 export const metadata = {
-  title: "Nexo — Tu contexto personal",
-  description: "Revisa y enriquece la información que Nexo usa para ayudarte.",
+  title: "Nexo Sports — Liga MX Intelligence",
+  description:
+    "Partidos, forma, clima y análisis responsable de riesgo para Liga MX.",
 };
 
 export default function RootLayout({ children }: Readonly<{ children: React.ReactNode }>) {

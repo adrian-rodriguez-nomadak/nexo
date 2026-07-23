@@ -15,8 +15,10 @@ import {
   ShieldCheck,
   Sparkles,
   Thermometer,
+  Timer,
   Trash2,
   TrendingUp,
+  Trophy,
   Upload,
   Users,
   Wind,
@@ -52,10 +54,13 @@ const dateTime = (value: string) => {
       weekday: "short",
       day: "numeric",
       month: "short",
+      timeZone: "America/Monterrey",
     }).format(date),
     time: new Intl.DateTimeFormat("es-MX", {
       hour: "2-digit",
       minute: "2-digit",
+      hour12: true,
+      timeZone: "America/Monterrey",
     }).format(date),
   };
 };
@@ -511,17 +516,51 @@ function ContextPanel({
       <div className="context-signals">
         <Signal
           icon={<Users size={18} />}
-          label="Bajas reportadas"
-          value={`${context?.availability.length ?? match.home.unavailablePlayers + match.away.unavailablePlayers}`}
+          label="Bajas y sanciones"
+          value={
+            !context
+              ? "Consultando"
+              : context.coverage.availability
+                ? `${context.availability.length}`
+                : "Sin cobertura"
+          }
           copy={
-            context?.availability.length
+            context?.coverage.availability && context.availability.length
               ? context.availability
                   .slice(0, 2)
                   .map((item) => item.playerName)
                   .join(", ")
-              : "Sin incidencias confirmadas"
+              : context?.coverage.availability
+                ? "No hay incidencias reportadas"
+                : "Requiere API-Football para este partido"
           }
           tone={(context?.availability.length ?? 0) >= 3 ? "warn" : ""}
+        />
+        <Signal
+          icon={<Trophy size={18} />}
+          label="Tabla actual"
+          value={
+            match.home.position && match.away.position
+              ? `#${match.home.position} vs #${match.away.position}`
+              : "Calculando"
+          }
+          copy={`${match.home.points} pts (${match.home.matchesPlayed} PJ) · ${match.away.points} pts (${match.away.matchesPlayed} PJ)`}
+        />
+        <Signal
+          icon={<BarChart3 size={18} />}
+          label="Goles por partido"
+          value={`${match.home.goalsForAverage.toFixed(1)} vs ${match.away.goalsForAverage.toFixed(1)}`}
+          copy={`Reciben ${match.home.goalsAgainstAverage.toFixed(1)} y ${match.away.goalsAgainstAverage.toFixed(1)}`}
+        />
+        <Signal
+          icon={<Timer size={18} />}
+          label="Días de descanso"
+          value={
+            context
+              ? `${context.restDays.home} vs ${context.restDays.away}`
+              : "Consultando"
+          }
+          copy={`${match.home.shortName} local · ${match.away.shortName} visitante`}
         />
         <Signal
           icon={<CloudRain size={18} />}
@@ -544,6 +583,20 @@ function ContextPanel({
             weather?.impact === "low"
               ? "Impacto esperado bajo"
               : "Puede alterar el ritmo de juego"
+          }
+        />
+        <Signal
+          icon={<TrendingUp size={18} />}
+          label="Historial directo"
+          value={
+            context?.coverage.headToHead
+              ? `${context.headToHead.length} partidos`
+              : "Sin cruces recientes"
+          }
+          copy={
+            context?.headToHead[0]
+              ? `${context.headToHead[0].home} ${context.headToHead[0].homeScore}–${context.headToHead[0].awayScore} ${context.headToHead[0].away}`
+              : "El modelo reduce su confianza cuando falta historial"
           }
         />
       </div>

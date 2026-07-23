@@ -54,6 +54,7 @@ function teamFromFixture(
     logoUrl: typeof value.logo === "string" ? value.logo : undefined,
     position: Number(standing?.rank ?? 0),
     points: Number(standing?.points ?? 0),
+    matchesPlayed: played,
     form: rawForm,
     formLabel: rawForm.length
       ? `${rawForm.filter((x) => x === "W").length}V · ${rawForm.filter((x) => x === "D").length}E · ${rawForm.filter((x) => x === "L").length}D`
@@ -170,6 +171,16 @@ export const apiFootballProvider = {
         awayScore: Number(goals.away ?? 0),
       };
     });
-    return { availability, headToHead: history };
+    return {
+      availability,
+      headToHead: history,
+      coverage: {
+        standings: match.home.matchesPlayed > 0 || match.away.matchesPlayed > 0,
+        form: match.home.form.length > 0 || match.away.form.length > 0,
+        availability: true,
+        headToHead: history.length > 0,
+        weather: Boolean(match.weather),
+      },
+    };
   },
 };

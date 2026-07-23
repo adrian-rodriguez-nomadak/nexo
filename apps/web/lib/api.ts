@@ -26,7 +26,11 @@ export type Person = {
   onboarding_completed: boolean;
 };
 
-export type Tokens = { access_token: string; refresh_token: string; expires_in: number };
+export type Tokens = {
+  access_token: string;
+  refresh_token: string;
+  expires_in: number;
+};
 
 export type FinanceSummary = {
   totalIncome: number;
@@ -36,11 +40,48 @@ export type FinanceSummary = {
   dailyRecommended: number;
 };
 
-export type TaskItem = { id: string; title: string; description?: string; due_date?: string; priority: string; status: string };
-export type CalendarItem = { id: string; title: string; description?: string; start_at: string; end_at?: string; location_name?: string; status: string };
-export type SubscriptionItem = { id: string; name: string; amount: number | string; billing_day: number; frequency: string; category?: string; status: string };
-export type MovementItem = { id: string; type: "income" | "expense"; amount: number | string; description?: string; movement_date: string; payment_method?: string };
-export type PaymentItem = { id: string; name: string; amount: number | string; due_date: string; category?: string; status: string };
+export type TaskItem = {
+  id: string;
+  title: string;
+  description?: string;
+  due_date?: string;
+  priority: string;
+  status: string;
+};
+export type CalendarItem = {
+  id: string;
+  title: string;
+  description?: string;
+  start_at: string;
+  end_at?: string;
+  location_name?: string;
+  status: string;
+};
+export type SubscriptionItem = {
+  id: string;
+  name: string;
+  amount: number | string;
+  billing_day: number;
+  frequency: string;
+  category?: string;
+  status: string;
+};
+export type MovementItem = {
+  id: string;
+  type: "income" | "expense";
+  amount: number | string;
+  description?: string;
+  movement_date: string;
+  payment_method?: string;
+};
+export type PaymentItem = {
+  id: string;
+  name: string;
+  amount: number | string;
+  due_date: string;
+  category?: string;
+  status: string;
+};
 export type DashboardData = {
   finance: FinanceSummary | null;
   tasks: TaskItem[];
@@ -50,7 +91,8 @@ export type DashboardData = {
   payments: PaymentItem[];
 };
 
-export type SportsSource = "api-football" | "thesportsdb" | "open-meteo" | "demo";
+export type SportsSource =
+  "api-football" | "thesportsdb" | "open-meteo" | "demo";
 export type SportsTeam = {
   id: string;
   name: string;
@@ -60,12 +102,14 @@ export type SportsTeam = {
   city?: string;
   position: number;
   points: number;
+  matchesPlayed: number;
   form: string[];
   formLabel: string;
   goalsForAverage: number;
   goalsAgainstAverage: number;
   homeAwayStrength: number;
-  unavailablePlayers: number;
+  unavailablePlayers: number | null;
+  lastMatchAt?: string;
 };
 export type SportsWeather = {
   temperatureC: number;
@@ -109,8 +153,21 @@ export type AvailabilityItem = {
 export type MatchContext = {
   match: SportsMatch;
   availability: AvailabilityItem[];
-  headToHead: Array<{ date: string; home: string; away: string; homeScore: number; awayScore: number }>;
+  headToHead: Array<{
+    date: string;
+    home: string;
+    away: string;
+    homeScore: number;
+    awayScore: number;
+  }>;
   restDays: { home: number; away: number };
+  coverage: {
+    standings: boolean;
+    form: boolean;
+    availability: boolean;
+    headToHead: boolean;
+    weather: boolean;
+  };
 };
 export type MatchAnalysis = {
   analysisId: string;
@@ -118,13 +175,22 @@ export type MatchAnalysis = {
   generatedAt: string;
   modelVersion: string;
   probabilities: { homeWin: number; draw: number; awayWin: number };
-  goals: { over1_5: number; over2_5: number; bothTeamsScore: number; expectedTotal: number };
+  goals: {
+    over1_5: number;
+    over2_5: number;
+    bothTeamsScore: number;
+    expectedTotal: number;
+  };
   confidence: number;
   expectedScenario: string;
   summary: string;
   keyFactors: string[];
   uncertainties: string[];
-  saferMarkets: Array<{ market: string; probability: number; risk: "low" | "medium" | "high" }>;
+  saferMarkets: Array<{
+    market: string;
+    probability: number;
+    risk: "low" | "medium" | "high";
+  }>;
   factorScores: Record<string, number>;
 };
 export type BetSelection = {
@@ -163,7 +229,11 @@ export function getTokens(): Tokens | null {
   if (typeof window === "undefined") return null;
   const raw = localStorage.getItem("nexo.session");
   if (!raw) return null;
-  try { return JSON.parse(raw) as Tokens; } catch { return null; }
+  try {
+    return JSON.parse(raw) as Tokens;
+  } catch {
+    return null;
+  }
 }
 
 export function setTokens(tokens: Tokens | null) {
@@ -171,13 +241,19 @@ export function setTokens(tokens: Tokens | null) {
   else localStorage.removeItem("nexo.session");
 }
 
-async function request<T>(path: string, options: RequestInit = {}, retry = true): Promise<T> {
+async function request<T>(
+  path: string,
+  options: RequestInit = {},
+  retry = true,
+): Promise<T> {
   const tokens = getTokens();
   const response = await fetch(`${API_URL}${path}`, {
     ...options,
     headers: {
       "Content-Type": "application/json",
-      ...(tokens?.access_token ? { Authorization: `Bearer ${tokens.access_token}` } : {}),
+      ...(tokens?.access_token
+        ? { Authorization: `Bearer ${tokens.access_token}` }
+        : {}),
       ...options.headers,
     },
   });
@@ -188,65 +264,97 @@ async function request<T>(path: string, options: RequestInit = {}, retry = true)
       body: JSON.stringify({ refresh_token: tokens.refresh_token }),
     });
     if (refreshed.ok) {
-      const payload = await refreshed.json() as Envelope<Tokens>;
+      const payload = (await refreshed.json()) as Envelope<Tokens>;
       setTokens(payload.data);
       return request<T>(path, options, false);
     }
     setTokens(null);
   }
-  const payload = await response.json().catch(() => ({ ok: false, message: "No se pudo conectar con Nexo" })) as Envelope<T>;
-  if (!response.ok || !payload.ok) throw new Error(payload.message ?? "Ocurrió un error");
+  const payload = (await response
+    .json()
+    .catch(() => ({
+      ok: false,
+      message: "No se pudo conectar con Nexo",
+    }))) as Envelope<T>;
+  if (!response.ok || !payload.ok)
+    throw new Error(payload.message ?? "Ocurrió un error");
   return payload.data;
 }
 
 export const api = {
-  login: (email: string, password: string) => request<{ user: Person["user"]; tokens: Tokens }>("/auth/login", {
-    method: "POST", body: JSON.stringify({ email, password, device_name: "Nexo Web" }),
-  }),
+  login: (email: string, password: string) =>
+    request<{ user: Person["user"]; tokens: Tokens }>("/auth/login", {
+      method: "POST",
+      body: JSON.stringify({ email, password, device_name: "Nexo Web" }),
+    }),
   me: () => request<Person>("/users/me"),
-  updateProfile: (profile: Profile, complete_onboarding = false) => request<Person>("/users/me/profile", {
-    method: "PUT", body: JSON.stringify({ ...profile, complete_onboarding }),
-  }),
+  updateProfile: (profile: Profile, complete_onboarding = false) =>
+    request<Person>("/users/me/profile", {
+      method: "PUT",
+      body: JSON.stringify({ ...profile, complete_onboarding }),
+    }),
   dashboard: async () => {
     const settled = await Promise.allSettled([
-      request<FinanceSummary>("/finances/summary"), request<TaskItem[]>("/tasks"),
-      request<CalendarItem[]>("/calendar/events"), request<SubscriptionItem[]>("/subscriptions"),
-      request<MovementItem[]>("/finances/movements?limit=50"), request<PaymentItem[]>("/finances/upcoming-payments"),
+      request<FinanceSummary>("/finances/summary"),
+      request<TaskItem[]>("/tasks"),
+      request<CalendarItem[]>("/calendar/events"),
+      request<SubscriptionItem[]>("/subscriptions"),
+      request<MovementItem[]>("/finances/movements?limit=50"),
+      request<PaymentItem[]>("/finances/upcoming-payments"),
     ]);
-    const value = <T,>(index: number, fallback: T) => settled[index].status === "fulfilled" ? settled[index].value as T : fallback;
+    const value = <T>(index: number, fallback: T) =>
+      settled[index].status === "fulfilled"
+        ? (settled[index].value as T)
+        : fallback;
     return {
-      finance: value<FinanceSummary | null>(0, null), tasks: value<TaskItem[]>(1, []),
-      events: value<CalendarItem[]>(2, []), subscriptions: value<SubscriptionItem[]>(3, []),
-      movements: value<MovementItem[]>(4, []), payments: value<PaymentItem[]>(5, []),
+      finance: value<FinanceSummary | null>(0, null),
+      tasks: value<TaskItem[]>(1, []),
+      events: value<CalendarItem[]>(2, []),
+      subscriptions: value<SubscriptionItem[]>(3, []),
+      movements: value<MovementItem[]>(4, []),
+      payments: value<PaymentItem[]>(5, []),
     } satisfies DashboardData;
   },
   sportsOverview: () => request<SportsOverview>("/sports/overview"),
-  sportsMatch: (id: string) => request<MatchContext>(`/sports/matches/${encodeURIComponent(id)}`),
-  analyzeSportsMatch: (id: string) => request<MatchAnalysis>(`/sports/matches/${encodeURIComponent(id)}/analyze`, {
-    method: "POST",
-  }),
-  extractBetTicket: (image_data_url: string) => request<{
-    configured: boolean;
-    message?: string;
-    ticket: {
-      bookmaker: string | null;
-      stake: number | null;
-      totalOdds: number | null;
-      betType: "single" | "parlay";
-      selections: Array<{ match: string; market: string; selection: string; odds: number | null }>;
-      confidence: number;
-      fieldsToReview: string[];
-    } | null;
-  }>("/sports/bets/extract", {
-    method: "POST",
-    body: JSON.stringify({ image_data_url }),
-  }),
-  analyzeBet: (ticket: BetTicket) => request<BetRisk>("/sports/bets/analyze", {
-    method: "POST",
-    body: JSON.stringify(ticket),
-  }),
-  sportsHistory: (limit = 20) => request<{
-    matches: Array<Record<string, unknown>>;
-    bets: Array<Record<string, unknown>>;
-  }>(`/sports/history?limit=${limit}`),
+  sportsMatch: (id: string) =>
+    request<MatchContext>(`/sports/matches/${encodeURIComponent(id)}`),
+  analyzeSportsMatch: (id: string) =>
+    request<MatchAnalysis>(
+      `/sports/matches/${encodeURIComponent(id)}/analyze`,
+      {
+        method: "POST",
+      },
+    ),
+  extractBetTicket: (image_data_url: string) =>
+    request<{
+      configured: boolean;
+      message?: string;
+      ticket: {
+        bookmaker: string | null;
+        stake: number | null;
+        totalOdds: number | null;
+        betType: "single" | "parlay";
+        selections: Array<{
+          match: string;
+          market: string;
+          selection: string;
+          odds: number | null;
+        }>;
+        confidence: number;
+        fieldsToReview: string[];
+      } | null;
+    }>("/sports/bets/extract", {
+      method: "POST",
+      body: JSON.stringify({ image_data_url }),
+    }),
+  analyzeBet: (ticket: BetTicket) =>
+    request<BetRisk>("/sports/bets/analyze", {
+      method: "POST",
+      body: JSON.stringify(ticket),
+    }),
+  sportsHistory: (limit = 20) =>
+    request<{
+      matches: Array<Record<string, unknown>>;
+      bets: Array<Record<string, unknown>>;
+    }>(`/sports/history?limit=${limit}`),
 };

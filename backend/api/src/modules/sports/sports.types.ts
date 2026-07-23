@@ -12,12 +12,14 @@ export type TeamSummary = {
   longitude?: number;
   position: number;
   points: number;
+  matchesPlayed: number;
   form: string[];
   formLabel: string;
   goalsForAverage: number;
   goalsAgainstAverage: number;
   homeAwayStrength: number;
-  unavailablePlayers: number;
+  unavailablePlayers: number | null;
+  lastMatchAt?: string;
 };
 
 export type MatchWeather = {
@@ -67,6 +69,13 @@ export type AnalysisInput = {
   availability: AvailabilityItem[];
   headToHead: HeadToHeadItem[];
   restDays: { home: number; away: number };
+  coverage: {
+    standings: boolean;
+    form: boolean;
+    availability: boolean;
+    headToHead: boolean;
+    weather: boolean;
+  };
 };
 
 export type MatchAnalysis = {

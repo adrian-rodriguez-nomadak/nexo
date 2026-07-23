@@ -2,10 +2,29 @@ import assert from "node:assert/strict";
 import test from "node:test";
 
 import { demoContext } from "../src/modules/sports/demo.data.js";
+import { normalizeSportsDbTimestamp } from "../src/modules/sports/providers/thesportsdb.provider.js";
 import {
   analyzeBetRisk,
   analyzeMatch,
 } from "../src/modules/sports/sports.engine.js";
+
+test("interprets TheSportsDB timestamps as UTC before showing Monterrey time", () => {
+  const timestamp = normalizeSportsDbTimestamp({
+    strTimestamp: "2026-07-25T03:00:00",
+  });
+  const local = new Intl.DateTimeFormat("en-CA", {
+    year: "numeric",
+    month: "2-digit",
+    day: "2-digit",
+    hour: "2-digit",
+    minute: "2-digit",
+    hour12: false,
+    timeZone: "America/Monterrey",
+  }).format(new Date(timestamp));
+
+  assert.equal(timestamp, "2026-07-25T03:00:00Z");
+  assert.match(local, /2026-07-24.*21:00/);
+});
 
 test("match probabilities add up to 100 and expose supported markets", () => {
   const analysis = analyzeMatch(demoContext("demo-santos-tigres"));

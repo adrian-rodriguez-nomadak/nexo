@@ -24,7 +24,14 @@ const venues: Venue[] = [
     longitude: -103.3287,
   },
   {
-    aliases: ["atletico san luis", "san luis"],
+    aliases: ["atlante"],
+    stadium: "Estadio Azteca",
+    city: "Ciudad de México",
+    latitude: 19.3029,
+    longitude: -99.1505,
+  },
+  {
+    aliases: ["atletico san luis", "atletico de san luis", "san luis"],
     stadium: "Estadio Alfonso Lastras",
     city: "San Luis Potosí",
     latitude: 22.138,

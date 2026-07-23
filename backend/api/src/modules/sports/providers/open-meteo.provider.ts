@@ -20,13 +20,24 @@ export async function getMatchWeather(
     target < new Date(now.getTime() - 86_400_000)
   )
     return undefined;
-  const date = match.startsAt.slice(0, 10);
+  const venueTimezone =
+    match.home.city === "Tijuana"
+      ? "America/Tijuana"
+      : match.home.city === "Ciudad Juárez"
+        ? "America/Ciudad_Juarez"
+        : "America/Mexico_City";
+  const date = new Intl.DateTimeFormat("en-CA", {
+    year: "numeric",
+    month: "2-digit",
+    day: "2-digit",
+    timeZone: venueTimezone,
+  }).format(target);
   const params = new URLSearchParams({
     latitude: String(match.home.latitude),
     longitude: String(match.home.longitude),
     hourly:
       "temperature_2m,relative_humidity_2m,precipitation_probability,precipitation,weather_code,wind_speed_10m",
-    timezone: "America/Mexico_City",
+    timezone: venueTimezone,
     start_date: date,
     end_date: date,
   });
@@ -55,7 +66,7 @@ export async function getMatchWeather(
       new Intl.DateTimeFormat("en-US", {
         hour: "2-digit",
         hour12: false,
-        timeZone: "America/Mexico_City",
+        timeZone: venueTimezone,
       }).format(target),
     );
     const index = hourly.time.findIndex(
