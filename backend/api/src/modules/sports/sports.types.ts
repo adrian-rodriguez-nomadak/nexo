@@ -129,6 +129,11 @@ export type BetTicket = {
   bankroll: number;
   totalOdds: number;
   betType: "single" | "parlay";
+  recommendationProfile?:
+    | "very_conservative"
+    | "conservative"
+    | "balanced";
+  maxSuggestedOdds?: number;
   confirmed: boolean;
   selections: BetSelection[];
 };
@@ -150,4 +155,20 @@ export type BetRiskAnalysis = {
     | "not_recommended";
   warnings: string[];
   summary: string;
+  suggestedParlay?: {
+    selections: Array<{
+      matchId: string;
+      match: string;
+      market: string;
+      selection: string;
+      probability: number;
+      odds: number;
+      oddsSource: "api-football" | "simulated";
+      bookmaker?: string;
+    }>;
+    totalOdds: number;
+    estimatedProbability: number;
+    oddsSource: "real" | "mixed" | "simulated";
+    note: string;
+  };
 };

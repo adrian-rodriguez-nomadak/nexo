@@ -671,6 +671,8 @@ function TicketAnalyzer({ matches }: { matches: SportsMatch[] }) {
     bankroll: 10000,
     totalOdds: 3.4,
     betType: "parlay",
+    recommendationProfile: "conservative",
+    maxSuggestedOdds: 3,
     confirmed: false,
     selections: sampleSelections,
   });
@@ -850,6 +852,53 @@ function TicketAnalyzer({ matches }: { matches: SportsMatch[] }) {
                 setTicket({
                   ...ticket,
                   totalOdds: Number(event.target.value),
+                  confirmed: false,
+                })
+              }
+            />
+          </label>
+        </div>
+        <div className="recommendation-preferences">
+          <div>
+            <span className="sports-kicker">
+              <span /> ANTES DE RECOMENDAR
+            </span>
+            <strong>¿Qué tan conservadora quieres la propuesta?</strong>
+            <p>
+              Un momio límite mayor permite más selecciones, pero reduce la
+              probabilidad conjunta.
+            </p>
+          </div>
+          <label>
+            Perfil
+            <select
+              value={ticket.recommendationProfile}
+              onChange={(event) =>
+                setTicket({
+                  ...ticket,
+                  recommendationProfile: event.target
+                    .value as BetTicket["recommendationProfile"],
+                  confirmed: false,
+                })
+              }
+            >
+              <option value="very_conservative">Muy conservador</option>
+              <option value="conservative">Conservador</option>
+              <option value="balanced">Balanceado</option>
+            </select>
+          </label>
+          <label>
+            Momio total límite
+            <input
+              type="number"
+              min="1.2"
+              max="20"
+              step=".1"
+              value={ticket.maxSuggestedOdds}
+              onChange={(event) =>
+                setTicket({
+                  ...ticket,
+                  maxSuggestedOdds: Number(event.target.value),
                   confirmed: false,
                 })
               }
@@ -1107,6 +1156,59 @@ function RiskPanel({
           </p>
         ))}
       </div>
+      {risk.suggestedParlay && (
+        <section className="suggested-parlay">
+          <div className="suggested-parlay-head">
+            <div>
+              <span>COMBINADA CONSERVADORA</span>
+              <h4>Una alternativa de menor riesgo</h4>
+            </div>
+            <b className={risk.suggestedParlay.oddsSource}>
+              {risk.suggestedParlay.oddsSource === "real"
+                ? "Momios reales"
+                : risk.suggestedParlay.oddsSource === "mixed"
+                  ? "Momios mixtos"
+                  : "Momios simulados"}
+            </b>
+          </div>
+          <div className="suggested-parlay-selections">
+            {risk.suggestedParlay.selections.map((selection, index) => (
+              <article key={selection.matchId}>
+                <span>{String(index + 1).padStart(2, "0")}</span>
+                <div>
+                  <small>{selection.match}</small>
+                  <strong>{selection.selection}</strong>
+                  <p>
+                    {selection.market} · Modelo {selection.probability}%
+                  </p>
+                </div>
+                <div className="suggested-price">
+                  <strong>{selection.odds.toFixed(2)}</strong>
+                  <small>
+                    {selection.oddsSource === "api-football"
+                      ? selection.bookmaker ?? "Cuota real"
+                      : "Simulada"}
+                  </small>
+                </div>
+              </article>
+            ))}
+          </div>
+          <div className="suggested-parlay-total">
+            <div>
+              <span>CUOTA TOTAL</span>
+              <strong>{risk.suggestedParlay.totalOdds.toFixed(2)}</strong>
+            </div>
+            <div>
+              <span>PROB. ESTIMADA</span>
+              <strong>{risk.suggestedParlay.estimatedProbability}%</strong>
+            </div>
+          </div>
+          <p className="suggested-parlay-note">
+            <ShieldCheck size={13} />
+            {risk.suggestedParlay.note}
+          </p>
+        </section>
+      )}
     </aside>
   );
 }

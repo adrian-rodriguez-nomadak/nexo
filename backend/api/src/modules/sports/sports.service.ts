@@ -149,6 +149,103 @@ function probabilityForSelection(
   return undefined;
 }
 
+async function suggestedParlay(
+  profile: NonNullable<BetTicket["recommendationProfile"]> = "conservative",
+  maxTotalOdds = 3,
+) {
+  const settings = {
+    very_conservative: { minimumProbability: 70, maximumSelections: 3 },
+    conservative: { minimumProbability: 63, maximumSelections: 5 },
+    balanced: { minimumProbability: 57, maximumSelections: 7 },
+  }[profile];
+  const loaded = await loadOverview();
+  const candidates = await Promise.all(
+    loaded.matches.slice(0, 8).map(async (match) => {
+      const context = await sportsService.context(match.id);
+      if (!context) return null;
+      const analysis = analyzeMatch(context);
+      const safest = [...analysis.saferMarkets]
+        .filter(
+          (item) =>
+            item.risk !== "high" &&
+            item.probability >= settings.minimumProbability,
+        )
+        .sort((left, right) => right.probability - left.probability)[0];
+      if (!safest) return null;
+      const isDoubleChance = safest.market.includes(" o empate");
+      const favoriteIsHome = safest.market.startsWith(match.home.name);
+      const market = isDoubleChance ? "Doble oportunidad" : "Total de goles";
+      const selection = isDoubleChance
+        ? favoriteIsHome
+          ? "Local o empate"
+          : "Empate o visitante"
+        : "Más de 1.5 goles";
+      const realOdds =
+        match.providerFixtureId && apiFootballProvider.enabled()
+          ? await apiFootballProvider.conservativeOdds(
+              Number(match.providerFixtureId),
+              selection,
+            )
+          : null;
+      const simulatedOdds = Math.max(
+        1.1,
+        Math.round((0.94 / (safest.probability / 100)) * 100) / 100,
+      );
+      return {
+        matchId: match.id,
+        match: `${match.home.name} vs ${match.away.name}`,
+        market,
+        selection,
+        probability: safest.probability,
+        odds: realOdds?.odds ?? simulatedOdds,
+        oddsSource: realOdds ? ("api-football" as const) : ("simulated" as const),
+        bookmaker: realOdds?.bookmaker,
+      };
+    }),
+  );
+  const ranked = candidates
+    .filter((item): item is NonNullable<typeof item> => Boolean(item))
+    .sort((left, right) => right.probability - left.probability);
+  const selections: typeof ranked = [];
+  let accumulatedOdds = 1;
+  for (const candidate of ranked) {
+    if (selections.length >= settings.maximumSelections) break;
+    if (accumulatedOdds * candidate.odds > maxTotalOdds) continue;
+    selections.push(candidate);
+    accumulatedOdds *= candidate.odds;
+  }
+  if (selections.length < 2) return undefined;
+  const totalOdds =
+    Math.round(
+      selections.reduce((total, selection) => total * selection.odds, 1) * 100,
+    ) / 100;
+  const estimatedProbability =
+    Math.round(
+      selections.reduce(
+        (total, selection) => total * (selection.probability / 100),
+        1,
+      ) *
+        Math.pow(0.97, selections.length - 1) *
+        10000,
+    ) / 100;
+  const realCount = selections.filter(
+    (selection) => selection.oddsSource === "api-football",
+  ).length;
+  return {
+    selections,
+    totalOdds,
+    estimatedProbability,
+    oddsSource:
+      realCount === selections.length
+        ? ("real" as const)
+        : realCount
+          ? ("mixed" as const)
+          : ("simulated" as const),
+    note:
+      "Propuesta informativa de menor riesgo relativo; una combinada nunca es una apuesta segura.",
+  };
+}
+
 async function enrichTicketProbabilities(ticket: BetTicket) {
   const loaded = await loadOverview();
   const assessedSelections = await Promise.all(
@@ -383,12 +480,17 @@ export const sportsService = {
       selections: enriched.selections,
     };
     const result = analyzeBetRisk(normalizedTicket);
+    const recommendation = await suggestedParlay(
+      ticket.recommendationProfile,
+      ticket.maxSuggestedOdds,
+    );
     const saved = await sportsRepository.saveBetAnalysis(
       normalizedTicket,
       result,
     );
     return {
       ...result,
+      suggestedParlay: recommendation,
       assessedSelections: enriched.assessedSelections,
       analysisId: saved.id,
     };

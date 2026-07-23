@@ -23,6 +23,10 @@ export const betAnalysisSchema = z
     bankroll: z.coerce.number().positive().max(100_000_000),
     totalOdds: z.coerce.number().gt(1).max(100_000),
     betType: z.enum(["single", "parlay"]),
+    recommendationProfile: z
+      .enum(["very_conservative", "conservative", "balanced"])
+      .optional(),
+    maxSuggestedOdds: z.coerce.number().min(1.2).max(20).optional(),
     confirmed: z.literal(true),
     selections: z.array(betSelectionSchema).min(1).max(20),
   })

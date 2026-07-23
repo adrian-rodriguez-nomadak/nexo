@@ -71,6 +71,49 @@ function teamFromFixture(
 export const apiFootballProvider = {
   enabled: () => Boolean(env.apiFootballKey),
 
+  async conservativeOdds(
+    fixtureId: number,
+    market: string,
+  ): Promise<{ odds: number; bookmaker: string } | null> {
+    const rows = await apiFootball<Array<Record<string, unknown>>>(
+      `/odds?fixture=${fixtureId}`,
+    ).catch(() => []);
+    const bookmakers = (rows[0]?.bookmakers ?? []) as Array<
+      Record<string, unknown>
+    >;
+    const wantsGoals = market.toLowerCase().includes("1.5");
+    const wantsHome = market.toLowerCase().includes("local");
+    const wantsAway = market.toLowerCase().includes("visitante");
+    for (const bookmaker of bookmakers) {
+      const bets = (bookmaker.bets ?? []) as Array<Record<string, unknown>>;
+      for (const bet of bets) {
+        const betName = String(bet.name ?? "").toLowerCase();
+        const values = (bet.values ?? []) as Array<Record<string, unknown>>;
+        const value = values.find((candidate) => {
+          const label = String(candidate.value ?? "").toLowerCase();
+          if (wantsGoals)
+            return (
+              betName.includes("goals over") &&
+              (label === "over 1.5" || label === "over 1.5 goals")
+            );
+          if (!betName.includes("double chance")) return false;
+          if (wantsHome)
+            return ["home or draw", "1x", "home/draw"].includes(label);
+          if (wantsAway)
+            return ["draw or away", "x2", "draw/away"].includes(label);
+          return false;
+        });
+        const odds = Number(value?.odd);
+        if (Number.isFinite(odds) && odds > 1)
+          return {
+            odds,
+            bookmaker: String(bookmaker.name ?? "API-Football"),
+          };
+      }
+    }
+    return null;
+  },
+
   async upcoming(): Promise<MatchSummary[]> {
     const controller = new AbortController();
     const timeout = setTimeout(() => controller.abort(), 7_000);
