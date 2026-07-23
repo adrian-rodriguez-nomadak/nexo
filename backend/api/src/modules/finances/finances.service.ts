@@ -112,7 +112,7 @@ export async function getFinances(userId: string): Promise<{
         ), 0) AS movement_balance_cents
       FROM finance_accounts a
       LEFT JOIN finance_transactions t ON t.account_id = a.id
-      WHERE a.user_id = $1
+      WHERE a.nexo_user_id = $1
       GROUP BY a.id
       ORDER BY a.created_at ASC
     `, [userId]),
@@ -129,7 +129,7 @@ export async function getFinances(userId: string): Promise<{
         t.created_at
       FROM finance_transactions t
       INNER JOIN finance_accounts a ON a.id = t.account_id
-      WHERE a.user_id = $1
+      WHERE a.nexo_user_id = $1
       ORDER BY t.occurred_at DESC, t.created_at DESC
       LIMIT 200
     `, [userId]),
@@ -139,7 +139,7 @@ export async function getFinances(userId: string): Promise<{
         COALESCE(SUM(amount_cents) FILTER (WHERE kind = 'expense'), 0) AS expense_cents
       FROM finance_transactions
       WHERE account_id IN (
-        SELECT id FROM finance_accounts WHERE user_id = $1
+        SELECT id FROM finance_accounts WHERE nexo_user_id = $1
       )
     `, [userId]),
   ]);
@@ -174,7 +174,7 @@ export async function createFinanceAccount(input: {
   const id = randomUUID();
   const result = await query<AccountRow>(
     `INSERT INTO finance_accounts (
-      id, user_id, name, type, currency, initial_balance_cents, created_at
+      id, nexo_user_id, name, type, currency, initial_balance_cents, created_at
     ) VALUES ($1, $2, $3, $4, 'MXN', $5, NOW())
     RETURNING
       id,
@@ -208,7 +208,7 @@ export async function createFinanceTransaction(input: {
       )
       SELECT $1, a.id, $3, $4, $5, $6, $7, NOW()
       FROM finance_accounts a
-      WHERE a.id = $2 AND a.user_id = $8
+      WHERE a.id = $2 AND a.nexo_user_id = $8
       RETURNING *
     )
     SELECT
@@ -245,7 +245,7 @@ export async function deleteFinanceTransaction(
   const result = await query(
     `DELETE FROM finance_transactions t
      USING finance_accounts a
-     WHERE t.id = $1 AND a.id = t.account_id AND a.user_id = $2`,
+     WHERE t.id = $1 AND a.id = t.account_id AND a.nexo_user_id = $2`,
     [id, userId],
   );
   return (result.rowCount ?? 0) > 0;

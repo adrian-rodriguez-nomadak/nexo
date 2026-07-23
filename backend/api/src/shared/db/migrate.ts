@@ -33,8 +33,8 @@ const statements = [
   `,
   "CREATE INDEX IF NOT EXISTS captures_created_at_idx ON captures (created_at DESC)",
   "CREATE INDEX IF NOT EXISTS captures_module_idx ON captures (module)",
-  "ALTER TABLE captures ADD COLUMN IF NOT EXISTS user_id TEXT REFERENCES nexo_users(id) ON DELETE CASCADE",
-  "CREATE INDEX IF NOT EXISTS captures_user_created_idx ON captures (user_id, created_at DESC)",
+  "ALTER TABLE captures ADD COLUMN IF NOT EXISTS nexo_user_id TEXT REFERENCES nexo_users(id) ON DELETE CASCADE",
+  "CREATE INDEX IF NOT EXISTS captures_nexo_user_created_idx ON captures (nexo_user_id, created_at DESC)",
   `
     CREATE TABLE IF NOT EXISTS finance_accounts (
       id TEXT PRIMARY KEY,
@@ -58,8 +58,8 @@ const statements = [
     )
   `,
   "CREATE INDEX IF NOT EXISTS finance_accounts_created_at_idx ON finance_accounts (created_at)",
-  "ALTER TABLE finance_accounts ADD COLUMN IF NOT EXISTS user_id TEXT REFERENCES nexo_users(id) ON DELETE CASCADE",
-  "CREATE INDEX IF NOT EXISTS finance_accounts_user_idx ON finance_accounts (user_id)",
+  "ALTER TABLE finance_accounts ADD COLUMN IF NOT EXISTS nexo_user_id TEXT REFERENCES nexo_users(id) ON DELETE CASCADE",
+  "CREATE INDEX IF NOT EXISTS finance_accounts_nexo_user_idx ON finance_accounts (nexo_user_id)",
   "CREATE INDEX IF NOT EXISTS finance_transactions_account_idx ON finance_transactions (account_id)",
   "CREATE INDEX IF NOT EXISTS finance_transactions_occurred_at_idx ON finance_transactions (occurred_at DESC)",
 ];

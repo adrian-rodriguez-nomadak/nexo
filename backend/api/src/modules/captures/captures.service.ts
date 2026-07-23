@@ -40,7 +40,7 @@ export async function listCaptures(
     ? await query<CaptureRow>(
         `SELECT id, module, content, created_at, occurred_at, amount_cents
          FROM captures
-         WHERE user_id = $1 AND module = $2
+         WHERE nexo_user_id = $1 AND module = $2
          ORDER BY created_at DESC
          LIMIT 100`,
         [userId, module],
@@ -48,7 +48,7 @@ export async function listCaptures(
     : await query<CaptureRow>(
         `SELECT id, module, content, created_at, occurred_at, amount_cents
          FROM captures
-         WHERE user_id = $1
+         WHERE nexo_user_id = $1
          ORDER BY created_at DESC
          LIMIT 100`,
         [userId],
@@ -64,7 +64,7 @@ export async function createCapture(input: {
 }): Promise<CaptureRecord> {
   const id = randomUUID();
   const result = await query<CaptureRow>(
-    `INSERT INTO captures (id, user_id, module, content, created_at)
+    `INSERT INTO captures (id, nexo_user_id, module, content, created_at)
      VALUES ($1, $2, $3, $4, NOW())
      RETURNING id, module, content, created_at, occurred_at, amount_cents`,
     [id, input.userId, input.module, input.content],
@@ -78,7 +78,7 @@ export async function deleteCapture(
   id: string,
 ): Promise<boolean> {
   const result = await query(
-    "DELETE FROM captures WHERE id = $1 AND user_id = $2",
+    "DELETE FROM captures WHERE id = $1 AND nexo_user_id = $2",
     [id, userId],
   );
   return (result.rowCount ?? 0) > 0;
