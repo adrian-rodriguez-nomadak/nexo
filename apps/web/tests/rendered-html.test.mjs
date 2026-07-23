@@ -45,3 +45,34 @@ test("defines persistent capture routes and removes the starter preview", async 
   assert.match(migration, /CREATE TABLE `captures`/);
   assert.deepEqual(previewFiles, []);
 });
+
+test("defines the persistent finance module end to end", async () => {
+  const [panel, financeRoute, accountRoute, transactionRoute, store, migration] =
+    await Promise.all([
+      readFile(new URL("app/finances-panel.tsx", projectRoot), "utf8"),
+      readFile(new URL("app/api/finances/route.ts", projectRoot), "utf8"),
+      readFile(
+        new URL("app/api/finances/accounts/route.ts", projectRoot),
+        "utf8",
+      ),
+      readFile(
+        new URL("app/api/finances/transactions/route.ts", projectRoot),
+        "utf8",
+      ),
+      readFile(new URL("db/finances.ts", projectRoot), "utf8"),
+      readFile(
+        new URL("drizzle/0001_spotty_dragon_lord.sql", projectRoot),
+        "utf8",
+      ),
+    ]);
+
+  assert.match(panel, /Registrar dinero/);
+  assert.match(panel, /fetch\("\/api\/finances"/);
+  assert.match(financeRoute, /export async function GET/);
+  assert.match(accountRoute, /export async function POST/);
+  assert.match(transactionRoute, /export async function POST/);
+  assert.match(store, /CREATE TABLE IF NOT EXISTS finance_accounts/);
+  assert.match(store, /CREATE TABLE IF NOT EXISTS finance_transactions/);
+  assert.match(migration, /CREATE TABLE `finance_accounts`/);
+  assert.match(migration, /CREATE TABLE `finance_transactions`/);
+});

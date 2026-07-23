@@ -8,6 +8,8 @@ import {
   useState,
 } from "react";
 
+import { FinancesPanel } from "./finances-panel";
+
 type ModuleKey =
   | "finances"
   | "events"
@@ -238,7 +240,11 @@ export function NexoDashboard() {
         </div>
 
         <nav className="main-nav" aria-label="Navegación principal">
-          <button className="nav-item nav-item-active" type="button">
+          <button
+            className={`nav-item ${selectedModule === "all" ? "nav-item-active" : ""}`}
+            onClick={() => setSelectedModule("all")}
+            type="button"
+          >
             <span className="nav-symbol">●</span>
             Hoy
           </button>
@@ -294,7 +300,11 @@ export function NexoDashboard() {
         <header className="topbar">
           <div>
             <span className="eyebrow">{formatToday()}</span>
-            <h1>Tu día, conectado.</h1>
+            <h1>
+              {selectedModule === "finances"
+                ? "Tu dinero, claro."
+                : "Tu día, conectado."}
+            </h1>
           </div>
           <div className="profile">
             <span className="status-dot" />
@@ -303,6 +313,9 @@ export function NexoDashboard() {
           </div>
         </header>
 
+        {selectedModule === "finances" ? (
+          <FinancesPanel />
+        ) : (
         <section className="dashboard-grid">
           <div className="primary-column">
             <form className="capture-card" onSubmit={submitCapture}>
@@ -489,6 +502,7 @@ export function NexoDashboard() {
             </section>
           </aside>
         </section>
+        )}
       </main>
     </div>
   );
