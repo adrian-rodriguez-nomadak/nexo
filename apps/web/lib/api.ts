@@ -50,6 +50,115 @@ export type DashboardData = {
   payments: PaymentItem[];
 };
 
+export type SportsSource = "api-football" | "thesportsdb" | "open-meteo" | "demo";
+export type SportsTeam = {
+  id: string;
+  name: string;
+  shortName: string;
+  logoUrl?: string;
+  stadium?: string;
+  city?: string;
+  position: number;
+  points: number;
+  form: string[];
+  formLabel: string;
+  goalsForAverage: number;
+  goalsAgainstAverage: number;
+  homeAwayStrength: number;
+  unavailablePlayers: number;
+};
+export type SportsWeather = {
+  temperatureC: number;
+  precipitationProbability: number;
+  precipitationMm: number;
+  windKmh: number;
+  humidity: number;
+  label: string;
+  impact: "low" | "medium" | "high";
+  source: SportsSource;
+};
+export type SportsMatch = {
+  id: string;
+  startsAt: string;
+  matchday: string;
+  venue: string;
+  status: "scheduled" | "live" | "finished" | "postponed";
+  home: SportsTeam;
+  away: SportsTeam;
+  weather?: SportsWeather;
+  sources: SportsSource[];
+  dataFreshness: string;
+};
+export type SportsOverview = {
+  league: { name: string; season: number; country: string; coverage: string[] };
+  currentMatchday: string;
+  matches: SportsMatch[];
+  sourceStatus: {
+    mode: "demo" | "live";
+    errors: string[];
+    providers: Record<string, boolean>;
+  };
+};
+export type AvailabilityItem = {
+  teamId: string;
+  playerName: string;
+  status: string;
+  reason: string;
+  source: SportsSource;
+};
+export type MatchContext = {
+  match: SportsMatch;
+  availability: AvailabilityItem[];
+  headToHead: Array<{ date: string; home: string; away: string; homeScore: number; awayScore: number }>;
+  restDays: { home: number; away: number };
+};
+export type MatchAnalysis = {
+  analysisId: string;
+  matchId: string;
+  generatedAt: string;
+  modelVersion: string;
+  probabilities: { homeWin: number; draw: number; awayWin: number };
+  goals: { over1_5: number; over2_5: number; bothTeamsScore: number; expectedTotal: number };
+  confidence: number;
+  expectedScenario: string;
+  summary: string;
+  keyFactors: string[];
+  uncertainties: string[];
+  saferMarkets: Array<{ market: string; probability: number; risk: "low" | "medium" | "high" }>;
+  factorScores: Record<string, number>;
+};
+export type BetSelection = {
+  match: string;
+  market: string;
+  selection: string;
+  odds: number;
+  estimatedProbability?: number;
+};
+export type BetTicket = {
+  bookmaker?: string;
+  stake: number;
+  bankroll: number;
+  totalOdds: number;
+  betType: "single" | "parlay";
+  confirmed: boolean;
+  selections: BetSelection[];
+};
+export type BetRisk = {
+  analysisId: string;
+  riskScore: number;
+  riskLevel: "low" | "medium" | "high" | "critical";
+  requestedStake: number;
+  bankroll: number;
+  bankrollExposure: number;
+  impliedProbability: number;
+  estimatedProbability: number;
+  expectedValue: number;
+  recommendedMaximumStake: number;
+  decision: string;
+  warnings: string[];
+  summary: string;
+};
+
 export function getTokens(): Tokens | null {
   if (typeof window === "undefined") return null;
   const raw = localStorage.getItem("nexo.session");
@@ -111,4 +220,33 @@ export const api = {
       movements: value<MovementItem[]>(4, []), payments: value<PaymentItem[]>(5, []),
     } satisfies DashboardData;
   },
+  sportsOverview: () => request<SportsOverview>("/sports/overview"),
+  sportsMatch: (id: string) => request<MatchContext>(`/sports/matches/${encodeURIComponent(id)}`),
+  analyzeSportsMatch: (id: string) => request<MatchAnalysis>(`/sports/matches/${encodeURIComponent(id)}/analyze`, {
+    method: "POST",
+  }),
+  extractBetTicket: (image_data_url: string) => request<{
+    configured: boolean;
+    message?: string;
+    ticket: {
+      bookmaker: string | null;
+      stake: number | null;
+      totalOdds: number | null;
+      betType: "single" | "parlay";
+      selections: Array<{ match: string; market: string; selection: string; odds: number | null }>;
+      confidence: number;
+      fieldsToReview: string[];
+    } | null;
+  }>("/sports/bets/extract", {
+    method: "POST",
+    body: JSON.stringify({ image_data_url }),
+  }),
+  analyzeBet: (ticket: BetTicket) => request<BetRisk>("/sports/bets/analyze", {
+    method: "POST",
+    body: JSON.stringify(ticket),
+  }),
+  sportsHistory: (limit = 20) => request<{
+    matches: Array<Record<string, unknown>>;
+    bets: Array<Record<string, unknown>>;
+  }>(`/sports/history?limit=${limit}`),
 };

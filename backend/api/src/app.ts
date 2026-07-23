@@ -15,6 +15,7 @@ import { remindersRoutes } from "./modules/reminders/reminders.routes.js";
 import { inboxRoutes } from "./modules/inbox/inbox.routes.js";
 import { aiRoutes, publicAiRoutes } from "./modules/ai/ai.routes.js";
 import { syncRoutes } from "./modules/sync/sync.routes.js";
+import { sportsRoutes } from "./modules/sports/sports.routes.js";
 import { authMiddleware } from "./shared/middlewares/auth.middleware.js";
 import { withUserContext } from "./shared/auth/user-context.js";
 import { env } from "./config/env.js";
@@ -51,7 +52,7 @@ app.use(
     },
   }),
 );
-app.use(express.json({ limit: "256kb" }));
+app.use(express.json({ limit: "10mb" }));
 app.use(morgan("dev"));
 
 app.get("/", (_req, res) => {
@@ -79,5 +80,6 @@ app.use("/api/reminders", remindersRoutes);
 app.use("/api/inbox", inboxRoutes);
 app.use("/api/ai", aiRoutes);
 app.use("/api/sync", syncRoutes);
+app.use("/api/sports", sportsRoutes);
 
 app.use(errorMiddleware);

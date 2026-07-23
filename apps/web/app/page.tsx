@@ -1,8 +1,9 @@
 "use client";
 
 import { useEffect, useMemo, useState } from "react";
-import { ArrowDownLeft, ArrowRight, ArrowUpRight, CalendarDays, Check, ChevronRight, CircleDollarSign, Clock3, LogOut, Pencil, Sparkles, Target, UserRound, WalletCards, X } from "lucide-react";
+import { ArrowDownLeft, ArrowRight, ArrowUpRight, BarChart3, CalendarDays, Check, ChevronRight, CircleDollarSign, Clock3, LogOut, Pencil, Sparkles, Target, UserRound, WalletCards, X } from "lucide-react";
 import { api, DashboardData, getTokens, Person, Profile, setTokens } from "../lib/api";
+import SportsView from "./sports-view";
 
 const emptyProfile: Profile = {
   preferred_name: "", occupation: "", city: "", timezone: "", life_stage: "",
@@ -83,9 +84,9 @@ function Onboarding({ person, onComplete }: { person: Person; onComplete: (p: Pe
 }
 
 function Dashboard({ person, data, editing, setEditing, onSaved, onLogout }: { person: Person; data: DashboardData; editing: boolean; setEditing: (x:boolean)=>void; onSaved:(p:Person)=>void; onLogout:()=>void }) {
-  const [section, setSection] = useState<"context"|"goals"|"activity"|"finances">("context");
+  const [section, setSection] = useState<"context"|"goals"|"activity"|"finances"|"sports">("context");
   const completeness = useMemo(() => Math.round(Object.values(person.profile).filter((x) => Array.isArray(x) ? x.length : Boolean(x)).length / Object.keys(person.profile).length * 100), [person]);
-  return <main className="dashboard-page"><aside className="sidebar"><div className="brand"><Mark/><span>Nexo</span></div><nav><button className={section==="context"?"active":""} onClick={()=>setSection("context")}><UserRound size={18}/>Mi contexto</button><button className={section==="goals"?"active":""} onClick={()=>setSection("goals")}><Target size={18}/>Objetivos</button><button className={section==="activity"?"active":""} onClick={()=>setSection("activity")}><CalendarDays size={18}/>Actividad</button><button className={section==="finances"?"active":""} onClick={()=>setSection("finances")}><CircleDollarSign size={18}/>Finanzas</button></nav><button className="logout" onClick={onLogout}><LogOut size={17}/>Cerrar sesión</button></aside>
+  return <main className="dashboard-page"><aside className="sidebar"><div className="brand"><Mark/><span>Nexo</span></div><nav><button className={section==="context"?"active":""} onClick={()=>setSection("context")}><UserRound size={18}/>Mi contexto</button><button className={section==="goals"?"active":""} onClick={()=>setSection("goals")}><Target size={18}/>Objetivos</button><button className={section==="activity"?"active":""} onClick={()=>setSection("activity")}><CalendarDays size={18}/>Actividad</button><button className={section==="finances"?"active":""} onClick={()=>setSection("finances")}><CircleDollarSign size={18}/>Finanzas</button><button className={section==="sports"?"active":""} onClick={()=>setSection("sports")}><BarChart3 size={18}/>Liga MX <span className="nav-new">NUEVO</span></button></nav><button className="logout" onClick={onLogout}><LogOut size={17}/>Cerrar sesión</button></aside>
     <section className="content">{section === "context" && <><header><div><span className="eyebrow">TU ESPACIO PERSONAL</span><h1>Hola, {person.profile.preferred_name || person.user.name.split(" ")[0]}.</h1><p>Esto es lo que Nexo sabe de ti y usa para darte mejores respuestas.</p></div><button className="edit" onClick={() => setEditing(true)}><Pencil size={16}/>Editar mi contexto</button></header>
       <div className="context-score"><div><Sparkles size={21}/><div><strong>Tu contexto está al {completeness}%</strong><p>Agrega detalles cuando quieras para que Nexo sea cada vez más útil.</p></div></div><div className="progress"><i style={{width:`${completeness}%`}}/></div></div>
       <div className="dashboard-grid"><article className="profile-card"><span className="card-kicker">SOBRE TI</span><h2>{person.profile.occupation || "Cuéntanos a qué te dedicas"}</h2><p>{person.profile.life_stage || "Aún no has descrito tu momento actual."}</p><div className="meta"><span>{person.profile.city || "Sin ciudad"}</span><span>{person.user.email}</span></div></article>
@@ -96,6 +97,7 @@ function Dashboard({ person, data, editing, setEditing, onSaved, onLogout }: { p
       {section === "goals" && <GoalsView person={person} onEdit={()=>setEditing(true)}/>}
       {section === "activity" && <ActivityView data={data}/>}
       {section === "finances" && <FinancesView data={data} currency={person.user.currency}/>}
+      {section === "sports" && <SportsView/>}
     </section>{editing && <ProfileEditor person={person} onClose={() => setEditing(false)} onSaved={(p)=>{onSaved(p);setEditing(false);}} />}
   </main>;
 }

@@ -13,6 +13,14 @@ export const env = {
   refreshTokenDays: Number(process.env.REFRESH_TOKEN_DAYS ?? 30),
   openAiApiKey: process.env.OPENAI_API_KEY ?? "change_me",
   openAiModel: process.env.OPENAI_MODEL ?? "gpt-5.6-luna",
+  apiFootballKey: process.env.API_FOOTBALL_KEY ?? "",
+  apiFootballLeagueId: Number(process.env.API_FOOTBALL_LIGA_MX_ID ?? 262),
+  apiFootballSeason: Number(
+    process.env.API_FOOTBALL_SEASON ?? new Date().getUTCFullYear(),
+  ),
+  sportsDbApiKey: process.env.SPORTSDB_API_KEY ?? "123",
+  sportsDbLigaMxId: process.env.SPORTSDB_LIGA_MX_ID ?? "4350",
+  sportsDemoMode: process.env.SPORTS_DEMO_MODE !== "false",
   dbSync: process.env.DB_SYNC === "true",
   corsOrigins: (process.env.CORS_ORIGINS ?? "")
     .split(",")
