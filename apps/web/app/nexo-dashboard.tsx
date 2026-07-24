@@ -13,6 +13,7 @@ import { BetsPanel } from "./bets-panel";
 import type { ChatGPTUser } from "./chatgpt-auth";
 import { EventsPanel } from "./events-panel";
 import { FinancesPanel } from "./finances-panel";
+import { MealsPanel } from "./meals-panel";
 import { NotesPanel } from "./notes-panel";
 
 type ModuleKey =
@@ -141,6 +142,7 @@ export function NexoDashboard({
   const [captures, setCaptures] = useState<CaptureRecord[]>([]);
   const [betsCount, setBetsCount] = useState(0);
   const [eventsCount, setEventsCount] = useState(0);
+  const [mealsCount, setMealsCount] = useState(0);
   const [notesCount, setNotesCount] = useState(0);
   const [selectedModule, setSelectedModule] = useState<ModuleKey | "all">("all");
   const [captureModule, setCaptureModule] = useState<ModuleKey>("notes");
@@ -275,6 +277,8 @@ export function NexoDashboard({
       ? betsCount
       : module === "events"
         ? eventsCount
+        : module === "meals"
+          ? mealsCount
         : module === "notes"
           ? notesCount
           : captures.filter((capture) => capture.module === module).length;
@@ -354,6 +358,8 @@ export function NexoDashboard({
                     ? "Tus ideas, encontrables."
                     : selectedModule === "bets"
                       ? "Tus límites, primero."
+                      : selectedModule === "meals"
+                        ? "Tu alimentación, visible."
                       : "Tu día, conectado."}
             </h1>
           </div>
@@ -389,6 +395,11 @@ export function NexoDashboard({
         ) : selectedModule === "bets" ? (
           <BetsPanel
             onCountChange={setBetsCount}
+            sessionToken={sessionToken}
+          />
+        ) : selectedModule === "meals" ? (
+          <MealsPanel
+            onCountChange={setMealsCount}
             sessionToken={sessionToken}
           />
         ) : (
@@ -540,7 +551,7 @@ export function NexoDashboard({
             <section className="connections-card">
               <div className="section-heading compact-heading">
                 <div>
-                  <span className="eyebrow">Próximamente</span>
+                  <span className="eyebrow">Contexto compartido</span>
                   <h2>Conexiones</h2>
                 </div>
                 <span className="lock-mark">⌁</span>
@@ -552,7 +563,7 @@ export function NexoDashboard({
                 </span>
                 <span>
                   <strong>Comidas × Finanzas</strong>
-                  Costo y presupuesto
+                  Costo sincronizado
                 </span>
               </div>
               <div className="connection-item">

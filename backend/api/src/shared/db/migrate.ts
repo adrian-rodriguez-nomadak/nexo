@@ -161,6 +161,32 @@ const statements = [
   "ALTER TABLE nexo_bets ADD COLUMN IF NOT EXISTS stake_transaction_id TEXT REFERENCES finance_transactions(id) ON DELETE SET NULL",
   "ALTER TABLE nexo_bets ADD COLUMN IF NOT EXISTS settlement_transaction_id TEXT REFERENCES finance_transactions(id) ON DELETE SET NULL",
   "CREATE INDEX IF NOT EXISTS nexo_bets_finance_account_idx ON nexo_bets (finance_account_id)",
+  `
+    CREATE TABLE IF NOT EXISTS nexo_meals (
+      id TEXT PRIMARY KEY,
+      nexo_user_id TEXT NOT NULL REFERENCES nexo_users(id) ON DELETE CASCADE,
+      name TEXT NOT NULL,
+      meal_type TEXT NOT NULL
+        CHECK (meal_type IN ('breakfast', 'lunch', 'dinner', 'snack')),
+      notes TEXT,
+      calories INTEGER CHECK (calories IS NULL OR calories >= 0),
+      protein_grams NUMERIC(8, 1)
+        CHECK (protein_grams IS NULL OR protein_grams >= 0),
+      carbs_grams NUMERIC(8, 1)
+        CHECK (carbs_grams IS NULL OR carbs_grams >= 0),
+      fat_grams NUMERIC(8, 1)
+        CHECK (fat_grams IS NULL OR fat_grams >= 0),
+      cost_cents BIGINT NOT NULL DEFAULT 0 CHECK (cost_cents >= 0),
+      finance_account_id TEXT
+        REFERENCES finance_accounts(id) ON DELETE SET NULL,
+      finance_transaction_id TEXT
+        REFERENCES finance_transactions(id) ON DELETE SET NULL,
+      eaten_at TIMESTAMPTZ NOT NULL,
+      created_at TIMESTAMPTZ NOT NULL
+    )
+  `,
+  "CREATE INDEX IF NOT EXISTS nexo_meals_user_eaten_idx ON nexo_meals (nexo_user_id, eaten_at DESC)",
+  "CREATE INDEX IF NOT EXISTS nexo_meals_finance_account_idx ON nexo_meals (finance_account_id)",
 ];
 
 export async function migrate(): Promise<void> {

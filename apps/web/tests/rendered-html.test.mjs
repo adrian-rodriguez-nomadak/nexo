@@ -99,3 +99,19 @@ test("connects bet image imports to finances and limits", async () => {
   assert.match(panel, /"\/api\/bets\/extract-image"/);
   assert.match(panel, /accept="image\/png,image\/jpeg,image\/webp"/);
 });
+
+test("connects meals to macros and finances", async () => {
+  const [dashboard, panel] = await Promise.all([
+    readFile(new URL("app/nexo-dashboard.tsx", projectRoot), "utf8"),
+    readFile(new URL("app/meals-panel.tsx", projectRoot), "utf8"),
+  ]);
+
+  assert.match(dashboard, /MealsPanel/);
+  assert.match(dashboard, /Tu alimentación, visible\./);
+  assert.match(panel, /Agregar comida/);
+  assert.match(panel, /Proteína/);
+  assert.match(panel, /Cuenta de Finanzas/);
+  assert.match(panel, /apiFetch\("\/api\/meals", sessionToken\)/);
+  assert.match(panel, /`\/api\/meals\/\$\{id\}`/);
+  assert.match(panel, /financeAccountId:/);
+});

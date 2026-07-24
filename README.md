@@ -15,12 +15,13 @@ La primera base incluye:
 - boletos combinados de apuestas con saldo financiero, límite y resultados;
 - importación de capturas de apuestas con extracción visual editable;
 - conexión contable entre apuestas y cuentas de Finanzas;
+- registro de comidas con macros, costo y gasto opcional en Finanzas;
 - autenticación con ChatGPT y datos aislados por usuario;
 - API para consultar, crear y eliminar capturas;
 - pantalla principal "Hoy";
 - captura rápida persistente en web y temporal en móvil;
-- módulos dedicados de finanzas, eventos, notas y apuestas;
-- captura general para comidas, salud y gimnasio;
+- módulos dedicados de finanzas, eventos, notas, apuestas y comidas;
+- captura general para salud y gimnasio;
 - espacio de progreso para futuras relaciones entre módulos.
 
 La autenticación web está implementada. La aplicación móvil todavía funciona

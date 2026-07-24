@@ -35,6 +35,13 @@ También se puede subir una captura: Nexo extrae los campos, señala lo que falt
 y deja el formulario editable antes de guardar. El gasto inicial, los cobros y
 las devoluciones se sincronizan con la cuenta seleccionada.
 
+## Comidas
+
+El diario de comidas registra desayuno, comida, cena o snack con fecha,
+calorías, proteína, carbohidratos, grasa y notas. Un costo opcional genera un
+gasto en la cuenta de Finanzas elegida; al eliminar la comida también se elimina
+el movimiento relacionado.
+
 ## Desarrollo
 
 Configura la URL de la API:

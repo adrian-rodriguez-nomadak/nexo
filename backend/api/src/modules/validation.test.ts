@@ -41,6 +41,13 @@ import {
   normalizeNoteTags,
   normalizeNoteTitle,
 } from "./notes/notes.validation.js";
+import {
+  isMealType,
+  normalizeMealDate,
+  normalizeMealText,
+  normalizeOptionalMealDecimal,
+  normalizeOptionalMealInteger,
+} from "./meals/meals.validation.js";
 
 test("validates capture input", () => {
   assert.equal(isModuleKey("notes"), true);
@@ -196,6 +203,19 @@ test("validates note input", () => {
       "nueve",
     ]),
     null,
+  );
+});
+
+test("validates meal input", () => {
+  assert.equal(isMealType("breakfast"), true);
+  assert.equal(isMealType("brunch"), false);
+  assert.equal(normalizeMealText("  Pollo   con arroz ", 160), "Pollo con arroz");
+  assert.equal(normalizeOptionalMealInteger(650, 20_000), 650);
+  assert.equal(normalizeOptionalMealInteger(-1, 20_000), null);
+  assert.equal(normalizeOptionalMealDecimal(42.26, 2_000), 42.3);
+  assert.equal(
+    normalizeMealDate("2026-07-24T14:30:00-06:00"),
+    "2026-07-24T20:30:00.000Z",
   );
 });
 

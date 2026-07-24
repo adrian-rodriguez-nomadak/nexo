@@ -53,6 +53,7 @@ Variables requeridas:
   obligatoriamente sincronizados con una cuenta de Finanzas.
 - `/api/bets/extract-image`: extracción estructurada y editable de una captura
   PNG, JPG o WEBP. La imagen no se persiste en Nexo.
+- `/api/meals`: comidas, macros, costos y movimientos opcionales en Finanzas.
 
 Todas las rutas de módulos requieren un token Bearer y filtran los registros
 por el usuario autenticado.
