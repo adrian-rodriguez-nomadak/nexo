@@ -28,11 +28,11 @@ test("builds the authenticated Nexo dashboard", async () => {
   assert.match(authPortal, /\/api\/auth\/\$\{isRegister \? "register" : "login"\}/);
   assert.match(authPortal, /apiFetch\("\/api\/auth\/me"/);
   assert.match(authPortal, /sessionStorage/);
-  assert.match(dashboard, /Tu día, conectado\./);
-  assert.match(dashboard, /Captura rápida/);
+  assert.match(dashboard, /Bienvenido,/);
+  assert.match(dashboard, /Tu progreso, en perspectiva\./);
   assert.match(dashboard, /Finanzas/);
   assert.match(dashboard, /Gimnasio/);
-  assert.match(dashboard, /apiFetch\(\s*"\/api\/captures"/);
+  assert.doesNotMatch(dashboard, /Captura rápida|Todos|\/api\/captures/);
   assert.match(apiClient, /NEXT_PUBLIC_API_URL/);
   assert.match(apiClient, /authorization/);
   assert.match(apiClient, /http:\/\/localhost:3001/);
@@ -154,7 +154,7 @@ test("connects health profile, measurements and history", async () => {
 
   assert.match(dashboard, /import \{ HealthPanel \}/);
   assert.match(dashboard, /selectedModule === "health"/);
-  assert.match(dashboard, /setHealthCount/);
+  assert.match(dashboard, /<HealthPanel/);
   assert.match(panel, /Perfil de salud/);
   assert.match(panel, /Nueva medición/);
   assert.match(panel, /Historial de salud/);
@@ -177,6 +177,7 @@ test("connects welcome and cross-module progress", async () => {
   assert.match(dashboard, /ProgressPanel/);
   assert.match(dashboard, /setSelectedModule\("welcome"\)/);
   assert.match(dashboard, /setSelectedModule\("progress"\)/);
+  assert.doesNotMatch(dashboard, /selectedModule === "all"/);
   assert.match(welcome, /Hola,/);
   assert.match(welcome, /Construye tu punto de partida/);
   assert.match(welcome, /Comidas × Finanzas/);

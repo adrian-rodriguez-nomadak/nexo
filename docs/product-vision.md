@@ -36,14 +36,13 @@ la información que vive dentro de ellos.
 
 1. La persona conoce la propuesta desde el inicio público.
 2. Crea su cuenta o inicia sesión con correo y contraseña.
-3. Abre "Hoy" y escribe algo en lenguaje natural.
-4. Selecciona el módulo al que pertenece.
-5. La captura aparece inmediatamente en su día.
-6. Con suficientes registros, Nexo presenta relaciones y tendencias.
+3. Abre Inicio y elige el módulo relacionado con lo que quiere registrar.
+4. Usa el formulario especializado para guardar información completa.
+5. Inicio resume su contexto y Progreso presenta relaciones y tendencias.
 
 ## Orden de construcción
 
-1. Shell, captura y navegación.
+1. Shell, bienvenida y navegación.
 2. Persistencia local.
 3. Finanzas, eventos y notas. **Base web funcional.**
 4. Comidas, salud y gimnasio. **Base web funcional.**
