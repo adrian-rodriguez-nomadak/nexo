@@ -104,6 +104,7 @@ const statements = [
     )
   `,
   "CREATE INDEX IF NOT EXISTS nexo_bet_selections_bet_position_idx ON nexo_bet_selections (bet_id, position)",
+  "ALTER TABLE nexo_bet_selections ALTER COLUMN decimal_odds DROP NOT NULL",
   `
     INSERT INTO nexo_bet_selections (
       id,

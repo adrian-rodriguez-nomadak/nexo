@@ -1,6 +1,7 @@
 "use client";
 
 import {
+  type ChangeEvent,
   type FormEvent,
   useCallback,
   useEffect,
@@ -19,7 +20,7 @@ type BetSelection = {
   event: string;
   selection: string;
   market: string | null;
-  decimalOdds: number;
+  decimalOdds: number | null;
 };
 
 type BetSelectionDraft = {
@@ -74,6 +75,21 @@ type BetsData = {
   summary: BetSummary;
 };
 
+type ExtractedBetSlip = {
+  recognized: boolean;
+  sportsbook: Sportsbook;
+  stakeCents: number | null;
+  decimalOdds: number | null;
+  placedAt: string | null;
+  selections: Array<{
+    event: string;
+    selection: string;
+    market: string | null;
+    decimalOdds: number | null;
+  }>;
+  warnings: string[];
+};
+
 const emptySettings: BetSettings = {
   monthlyLimitCents: 0,
 };
@@ -107,7 +123,7 @@ function emptySelectionDraft(): BetSelectionDraft {
 }
 
 function initialSelectionDrafts(): BetSelectionDraft[] {
-  return [emptySelectionDraft(), emptySelectionDraft()];
+  return [emptySelectionDraft()];
 }
 
 const moneyFormatter = new Intl.NumberFormat("es-MX", {
@@ -140,6 +156,18 @@ function parseMoneyToCents(value: string): number | null {
 function toLocalInputValue(date: Date): string {
   const local = new Date(date.getTime() - date.getTimezoneOffset() * 60_000);
   return local.toISOString().slice(0, 16);
+}
+
+function readFileAsDataUrl(file: File): Promise<string> {
+  return new Promise((resolve, reject) => {
+    const reader = new FileReader();
+    reader.onload = () =>
+      typeof reader.result === "string"
+        ? resolve(reader.result)
+        : reject(new Error("No fue posible leer la imagen."));
+    reader.onerror = () => reject(new Error("No fue posible leer la imagen."));
+    reader.readAsDataURL(file);
+  });
 }
 
 function betProfitCents(bet: NexoBet): number | null {
@@ -182,7 +210,9 @@ export function BetsPanel({
   const [isLoading, setIsLoading] = useState(true);
   const [isSaving, setIsSaving] = useState(false);
   const [isSavingSettings, setIsSavingSettings] = useState(false);
+  const [isExtractingImage, setIsExtractingImage] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [extractionWarnings, setExtractionWarnings] = useState<string[]>([]);
 
   const [selections, setSelections] = useState<BetSelectionDraft[]>(
     initialSelectionDrafts,
@@ -190,6 +220,7 @@ export function BetsPanel({
   const [sportsbook, setSportsbook] = useState<Sportsbook>("Caliente");
   const [financeAccountId, setFinanceAccountId] = useState("");
   const [stake, setStake] = useState("");
+  const [ticketOdds, setTicketOdds] = useState("");
   const [placedAt, setPlacedAt] = useState(() =>
     toLocalInputValue(new Date()),
   );
@@ -251,13 +282,16 @@ export function BetsPanel({
     [bets, filter],
   );
 
-  const combinedOdds = useMemo(() => {
+  const derivedCombinedOdds = useMemo(() => {
     const odds = selections.map((selection) =>
       Number(selection.decimalOdds),
     );
     if (
       odds.some(
-        (value) => !Number.isFinite(value) || value < 1.01,
+        (value, index) =>
+          !selections[index]?.decimalOdds ||
+          !Number.isFinite(value) ||
+          value < 1.01,
       )
     ) {
       return null;
@@ -267,6 +301,14 @@ export function BetsPanel({
       ? Math.round(combined * 1_000) / 1_000
       : null;
   }, [selections]);
+  const providedTicketOdds = Number(ticketOdds);
+  const effectiveOdds =
+    ticketOdds &&
+    Number.isFinite(providedTicketOdds) &&
+    providedTicketOdds >= 1.01 &&
+    providedTicketOdds <= 1_000
+      ? Math.round(providedTicketOdds * 1_000) / 1_000
+      : derivedCombinedOdds;
 
   function updateSelection(
     index: number,
@@ -290,10 +332,92 @@ export function BetsPanel({
 
   function removeSelection(index: number) {
     setSelections((current) =>
-      current.length > 2
+      current.length > 1
         ? current.filter((_, selectionIndex) => selectionIndex !== index)
         : current,
     );
+  }
+
+  async function importBetImage(event: ChangeEvent<HTMLInputElement>) {
+    const input = event.currentTarget;
+    const file = input.files?.[0];
+    if (!file) return;
+    input.value = "";
+
+    if (
+      !["image/png", "image/jpeg", "image/webp"].includes(file.type) ||
+      file.size > 5 * 1024 * 1024
+    ) {
+      setError("Usa una imagen PNG, JPG o WEBP de máximo 5 MB.");
+      return;
+    }
+
+    setIsExtractingImage(true);
+    setError(null);
+    setExtractionWarnings([]);
+    try {
+      const imageDataUrl = await readFileAsDataUrl(file);
+      const response = await apiFetch(
+        "/api/bets/extract-image",
+        sessionToken,
+        {
+          method: "POST",
+          headers: { "content-type": "application/json" },
+          body: JSON.stringify({ imageDataUrl }),
+        },
+      );
+      const data = (await response.json()) as {
+        extracted?: ExtractedBetSlip;
+        error?: string;
+      };
+      if (!response.ok || !data.extracted) {
+        throw new Error(data.error ?? "No fue posible leer el boleto.");
+      }
+      if (
+        !data.extracted.recognized ||
+        data.extracted.selections.length === 0
+      ) {
+        throw new Error("La imagen no parece contener un boleto de apuesta.");
+      }
+
+      setSelections(
+        data.extracted.selections.map((selection) => ({
+          event: selection.event,
+          selection: selection.selection,
+          market: selection.market ?? "",
+          decimalOdds:
+            selection.decimalOdds === null
+              ? ""
+              : String(selection.decimalOdds),
+        })),
+      );
+      setSportsbook(data.extracted.sportsbook);
+      setStake(
+        data.extracted.stakeCents === null
+          ? ""
+          : String(data.extracted.stakeCents / 100),
+      );
+      setTicketOdds(
+        data.extracted.decimalOdds === null
+          ? ""
+          : String(data.extracted.decimalOdds),
+      );
+      if (data.extracted.placedAt) {
+        const extractedDate = new Date(data.extracted.placedAt);
+        if (Number.isFinite(extractedDate.getTime())) {
+          setPlacedAt(toLocalInputValue(extractedDate));
+        }
+      }
+      setExtractionWarnings(data.extracted.warnings);
+    } catch (caught) {
+      setError(
+        caught instanceof Error
+          ? caught.message
+          : "No fue posible leer el boleto.",
+      );
+    } finally {
+      setIsExtractingImage(false);
+    }
   }
 
   const limitUsage =
@@ -312,7 +436,7 @@ export function BetsPanel({
     const placedDate = new Date(placedAt);
     if (
       !financeAccountId ||
-      !combinedOdds ||
+      !effectiveOdds ||
       selections.some(
         (selection) =>
           selection.event.trim().length < 2 ||
@@ -322,7 +446,7 @@ export function BetsPanel({
       !Number.isFinite(placedDate.getTime())
     ) {
       setError(
-        "Elige una cuenta y completa al menos dos selecciones con cuotas válidas.",
+        "Elige una cuenta y completa al menos una selección y la cuota total.",
       );
       return;
     }
@@ -336,11 +460,14 @@ export function BetsPanel({
         body: JSON.stringify({
           selections: selections.map((selection) => ({
             ...selection,
-            decimalOdds: Number(selection.decimalOdds),
+            decimalOdds: selection.decimalOdds
+              ? Number(selection.decimalOdds)
+              : null,
           })),
           sportsbook,
           financeAccountId,
           stakeCents,
+          decimalOdds: effectiveOdds,
           placedAt: placedDate.toISOString(),
         }),
       });
@@ -354,6 +481,7 @@ export function BetsPanel({
 
       setSelections(initialSelectionDrafts());
       setStake("");
+      setTicketOdds("");
       setPlacedAt(toLocalInputValue(new Date()));
       await loadBets();
     } catch (caught) {
@@ -530,14 +658,41 @@ export function BetsPanel({
             <div className="bets-card-heading">
               <div>
                 <span className="eyebrow">Nueva</span>
-                <h2>Registrar boleto combinado</h2>
+                <h2>Registrar boleto</h2>
               </div>
               <span className="bets-odds-mark">
-                {combinedOdds ? combinedOdds.toFixed(3) : "—"}
+                {effectiveOdds ? effectiveOdds.toFixed(3) : "—"}
               </span>
             </div>
 
             <div className="bet-fields">
+              <label className="bet-image-import">
+                <input
+                  accept="image/png,image/jpeg,image/webp"
+                  disabled={isExtractingImage}
+                  onChange={(event) => void importBetImage(event)}
+                  type="file"
+                />
+                <span className="bet-image-import-mark">▣</span>
+                <span>
+                  <strong>
+                    {isExtractingImage
+                      ? "Leyendo boleto…"
+                      : "Importar boleto desde imagen"}
+                  </strong>
+                  <small>
+                    Nexo extrae los datos y tú los revisas antes de guardar.
+                  </small>
+                </span>
+              </label>
+              {extractionWarnings.length > 0 ? (
+                <div className="bet-extraction-warnings">
+                  <strong>Revisa estos datos</strong>
+                  {extractionWarnings.map((warning) => (
+                    <span key={warning}>{warning}</span>
+                  ))}
+                </div>
+              ) : null}
               <div className="bet-ticket-heading">
                 <span>Selecciones</span>
                 <button
@@ -552,7 +707,7 @@ export function BetsPanel({
                 {selections.map((selection, index) => (
                   <fieldset className="bet-selection-card" key={index}>
                     <legend>Selección {index + 1}</legend>
-                    {selections.length > 2 ? (
+                    {selections.length > 1 ? (
                       <button
                         aria-label={`Eliminar selección ${index + 1}`}
                         className="bet-selection-remove"
@@ -592,7 +747,7 @@ export function BetsPanel({
                         />
                       </label>
                       <label>
-                        <span>Cuota</span>
+                        <span>Cuota individual</span>
                         <input
                           inputMode="decimal"
                           min="1.01"
@@ -603,8 +758,7 @@ export function BetsPanel({
                               event.target.value,
                             )
                           }
-                          placeholder="1.80"
-                          required
+                          placeholder="Opcional"
                           step="0.001"
                           type="number"
                           value={selection.decimalOdds}
@@ -625,6 +779,25 @@ export function BetsPanel({
                   </fieldset>
                 ))}
               </div>
+              <label>
+                <span>Cuota total del boleto</span>
+                <input
+                  inputMode="decimal"
+                  min="1.01"
+                  onChange={(event) => setTicketOdds(event.target.value)}
+                  placeholder={
+                    derivedCombinedOdds
+                      ? `Calculada: ${derivedCombinedOdds.toFixed(3)}`
+                      : "Ej. 4.19"
+                  }
+                  step="0.001"
+                  type="number"
+                  value={ticketOdds}
+                />
+                <small>
+                  Escríbela si la imagen no muestra las cuotas individuales.
+                </small>
+              </label>
               <label className="bet-finance-field">
                 <span>Cuenta de Finanzas obligatoria</span>
                 <select
@@ -695,7 +868,7 @@ export function BetsPanel({
                   isSaving ||
                   financeAccounts.length === 0 ||
                   !financeAccountId ||
-                  !combinedOdds
+                  !effectiveOdds
                 }
                 type="submit"
               >
@@ -792,7 +965,11 @@ export function BetsPanel({
                                   ? ` · ${selection.market}`
                                   : ""}
                               </strong>
-                              <b>{selection.decimalOdds.toFixed(3)}</b>
+                              <b>
+                                {selection.decimalOdds === null
+                                  ? "—"
+                                  : selection.decimalOdds.toFixed(3)}
+                              </b>
                             </p>
                           ))}
                         </div>

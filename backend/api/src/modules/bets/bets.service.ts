@@ -3,7 +3,6 @@ import { randomUUID } from "node:crypto";
 import { pool, query } from "../../shared/db/database.js";
 import {
   betPayoutCents,
-  combinedBetOdds,
   type NormalizedBetSelection,
   type BetStatus,
   type Sportsbook,
@@ -93,7 +92,7 @@ type SelectionRow = {
   event: string;
   selection: string;
   market: string | null;
-  decimal_odds: string;
+  decimal_odds: string | null;
 };
 
 function mapBet(
@@ -250,7 +249,8 @@ export async function getBets(userId: string): Promise<{
       event: row.event,
       selection: row.selection,
       market: row.market,
-      decimalOdds: Number(row.decimal_odds),
+      decimalOdds:
+        row.decimal_odds === null ? null : Number(row.decimal_odds),
     };
     const current = selectionsByBet.get(row.bet_id) ?? [];
     current.push(selection);
@@ -299,6 +299,7 @@ export async function createBet(input: {
   sportsbook: Sportsbook;
   financeAccountId: string;
   stakeCents: number;
+  decimalOdds: number;
   placedAt: string;
 }): Promise<
   | { bet: NexoBet; error: null }
@@ -308,7 +309,6 @@ export async function createBet(input: {
   const betId = randomUUID();
   const stakeTransactionId = randomUUID();
   const firstSelection = input.selections[0]!;
-  const decimalOdds = combinedBetOdds(input.selections)!;
 
   try {
     await client.query("BEGIN");
@@ -433,7 +433,7 @@ export async function createBet(input: {
         input.financeAccountId,
         stakeTransactionId,
         input.stakeCents,
-        decimalOdds,
+        input.decimalOdds,
         input.placedAt,
         financeAccountName,
       ],

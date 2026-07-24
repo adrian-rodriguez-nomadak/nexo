@@ -2461,6 +2461,71 @@ a:focus-visible {
   gap: 12px;
 }
 
+.bet-image-import {
+  display: flex !important;
+  align-items: center;
+  grid-template-columns: none !important;
+  gap: 11px !important;
+  padding: 13px;
+  border: 1px dashed rgba(211, 155, 255, 0.38);
+  border-radius: 14px;
+  background: rgba(211, 155, 255, 0.055);
+  cursor: pointer;
+}
+
+.bet-image-import input {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  overflow: hidden;
+  opacity: 0;
+}
+
+.bet-image-import-mark {
+  display: grid;
+  width: 34px;
+  height: 34px;
+  flex: 0 0 auto;
+  place-items: center;
+  border-radius: 10px;
+  background: #d39bff;
+  color: #17121a !important;
+  font-size: 15px !important;
+}
+
+.bet-image-import > span:last-child {
+  display: grid;
+  gap: 3px;
+}
+
+.bet-image-import strong {
+  color: var(--text);
+  font-size: 10px;
+}
+
+.bet-image-import small {
+  color: var(--muted);
+  font-size: 8px;
+  line-height: 1.4;
+}
+
+.bet-extraction-warnings {
+  display: grid;
+  gap: 4px;
+  padding: 10px 12px;
+  border: 1px solid rgba(255, 209, 102, 0.2);
+  border-radius: 11px;
+  background: rgba(255, 209, 102, 0.055);
+  color: #b9a873;
+  font-size: 8px;
+  line-height: 1.4;
+}
+
+.bet-extraction-warnings strong {
+  color: #ffd166;
+  font-size: 9px;
+}
+
 .bet-ticket-heading > span {
   color: var(--muted);
   font-size: 9px;

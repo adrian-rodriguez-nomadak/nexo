@@ -34,6 +34,8 @@ Variables requeridas:
   una identidad verificada de ChatGPT en una sesión de Nexo. Si no está
   definido, se reutiliza `JWT_SECRET` para facilitar la migración del servicio
   anterior.
+- `OPENAI_API_KEY`: habilita la lectura de capturas de boletos mediante visión.
+- `OPENAI_VISION_MODEL`: modelo multimodal; por defecto `gpt-5.6-sol`.
 
 ## Autenticación
 
@@ -49,6 +51,8 @@ Variables requeridas:
 - `/api/notes`: notas editables, etiquetas, búsqueda local y marcadores.
 - `/api/bets`: boletos combinados, saldo financiero, límites y resultados
   obligatoriamente sincronizados con una cuenta de Finanzas.
+- `/api/bets/extract-image`: extracción estructurada y editable de una captura
+  PNG, JPG o WEBP. La imagen no se persiste en Nexo.
 
 Todas las rutas de módulos requieren un token Bearer y filtran los registros
 por el usuario autenticado.

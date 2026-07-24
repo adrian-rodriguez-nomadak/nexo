@@ -76,13 +76,13 @@ test("connects the notes module to the independent API", async () => {
   assert.match(panel, /togglePinned/);
 });
 
-test("connects combined bets to finances and limits", async () => {
+test("connects bet image imports to finances and limits", async () => {
   const panel = await readFile(
     new URL("app/bets-panel.tsx", projectRoot),
     "utf8",
   );
 
-  assert.match(panel, /Registrar boleto combinado/);
+  assert.match(panel, /Registrar boleto/);
   assert.match(panel, /Saldo total en Finanzas/);
   assert.match(panel, /Límite mensual/);
   assert.match(panel, /apiFetch\("\/api\/bets", sessionToken\)/);
@@ -93,6 +93,9 @@ test("connects combined bets to finances and limits", async () => {
   assert.match(panel, /financeAccountId,/);
   assert.match(panel, /Finanzas · \$\{bet\.financeAccountName\}/);
   assert.match(panel, /\["Caliente", "Draftea", "Otro"\]/);
-  assert.match(panel, /combinedOdds/);
-  assert.match(panel, /selections\.length > 2/);
+  assert.match(panel, /effectiveOdds/);
+  assert.match(panel, /selections\.length > 1/);
+  assert.match(panel, /Importar boleto desde imagen/);
+  assert.match(panel, /"\/api\/bets\/extract-image"/);
+  assert.match(panel, /accept="image\/png,image\/jpeg,image\/webp"/);
 });

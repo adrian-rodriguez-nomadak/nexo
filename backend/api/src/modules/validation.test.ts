@@ -16,7 +16,9 @@ import {
   normalizeBetOdds,
   normalizeBetSelections,
   normalizeBetText,
+  resolveBetOdds,
 } from "./bets/bets.validation.js";
+import { isValidBetImageDataUrl } from "./bets/bets.image.js";
 import {
   isModuleKey,
   normalizeCaptureContent,
@@ -75,7 +77,24 @@ test("validates bet input", () => {
   ]);
   assert.equal(selections?.length, 2);
   assert.equal(combinedBetOdds(selections ?? []), 2.7);
-  assert.equal(normalizeBetSelections([selections?.[0]]), null);
+  assert.equal(normalizeBetSelections([selections?.[0]])?.length, 1);
+  assert.equal(resolveBetOdds(selections ?? [], null), 2.7);
+  assert.equal(
+    resolveBetOdds(
+      [
+        {
+          decimalOdds: null,
+        },
+      ],
+      4.19,
+    ),
+    4.19,
+  );
+  assert.equal(
+    isValidBetImageDataUrl("data:image/jpeg;base64,YWJjZA=="),
+    true,
+  );
+  assert.equal(isValidBetImageDataUrl("data:text/plain;base64,YWJjZA=="), false);
   assert.equal(betPayoutCents(10_000, 1.8, "won"), 18_000);
   assert.equal(betPayoutCents(10_000, 1.8, "void"), 10_000);
   assert.equal(betPayoutCents(10_000, 1.8, "lost"), null);

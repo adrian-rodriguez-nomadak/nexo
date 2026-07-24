@@ -13,6 +13,7 @@ La primera base incluye:
 - agenda de eventos persistente;
 - biblioteca de notas con búsqueda, etiquetas y notas fijadas;
 - boletos combinados de apuestas con saldo financiero, límite y resultados;
+- importación de capturas de apuestas con extracción visual editable;
 - conexión contable entre apuestas y cuentas de Finanzas;
 - autenticación con ChatGPT y datos aislados por usuario;
 - API para consultar, crear y eliminar capturas;

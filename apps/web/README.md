@@ -28,10 +28,12 @@ nota.
 
 El registro de apuestas controla monto en juego, cuotas y resultados usando el
 saldo real de las cuentas de Finanzas.
-Cada boleto requiere una cuenta de Finanzas y al menos dos selecciones; la cuota
-combinada se calcula con las cuotas individuales. Las casas disponibles
-inicialmente son Caliente, Draftea y Otro. El gasto inicial, los cobros y las
-devoluciones se sincronizan automáticamente con la cuenta seleccionada.
+Cada boleto requiere una cuenta de Finanzas y admite una o más selecciones. La
+cuota total puede escribirse directamente o calcularse con las cuotas
+individuales. Las casas disponibles inicialmente son Caliente, Draftea y Otro.
+También se puede subir una captura: Nexo extrae los campos, señala lo que falta
+y deja el formulario editable antes de guardar. El gasto inicial, los cobros y
+las devoluciones se sincronizan con la cuenta seleccionada.
 
 ## Desarrollo
 

@@ -2,6 +2,10 @@ import { Router } from "express";
 
 import { asyncHandler } from "../../shared/http/async-handler.js";
 import {
+  analyzeBetImage,
+  isValidBetImageDataUrl,
+} from "./bets.image.js";
+import {
   createBet,
   deleteBet,
   getBets,
@@ -14,9 +18,39 @@ import {
   isValidBetCents,
   normalizeBetDate,
   normalizeBetSelections,
+  resolveBetOdds,
 } from "./bets.validation.js";
 
 export const betsRouter = Router();
+
+betsRouter.post(
+  "/extract-image",
+  asyncHandler(async (request, response) => {
+    const { imageDataUrl } = (request.body ?? {}) as Record<string, unknown>;
+    if (!isValidBetImageDataUrl(imageDataUrl)) {
+      response.status(400).json({
+        error: "Sube una imagen PNG, JPG o WEBP de máximo 5 MB.",
+      });
+      return;
+    }
+
+    try {
+      const extracted = await analyzeBetImage(imageDataUrl);
+      response.json({ extracted });
+    } catch (error) {
+      if (
+        error instanceof Error &&
+        error.message === "OPENAI_API_KEY_NOT_CONFIGURED"
+      ) {
+        response.status(503).json({
+          error: "La lectura de imágenes todavía no está configurada.",
+        });
+        return;
+      }
+      throw error;
+    }
+  }),
+);
 
 betsRouter.get(
   "/",
@@ -33,6 +67,7 @@ betsRouter.post(
       sportsbook,
       financeAccountId,
       stakeCents,
+      decimalOdds,
       placedAt,
     } = (request.body ?? {}) as Record<string, unknown>;
     const normalizedSelections = normalizeBetSelections(selections);
@@ -43,17 +78,21 @@ betsRouter.post(
         ? financeAccountId
         : null;
     const normalizedPlacedAt = normalizeBetDate(placedAt);
+    const normalizedOdds = normalizedSelections
+      ? resolveBetOdds(normalizedSelections, decimalOdds)
+      : null;
 
     if (
       !normalizedSelections ||
       !isSportsbook(sportsbook) ||
       !normalizedFinanceAccountId ||
       !isValidBetCents(stakeCents) ||
+      !normalizedOdds ||
       !normalizedPlacedAt
     ) {
       response.status(400).json({
         error:
-          "Elige una cuenta y completa al menos dos selecciones válidas.",
+          "Elige una cuenta y completa al menos una selección válida.",
       });
       return;
     }
@@ -64,6 +103,7 @@ betsRouter.post(
       sportsbook,
       financeAccountId: normalizedFinanceAccountId,
       stakeCents,
+      decimalOdds: normalizedOdds,
       placedAt: normalizedPlacedAt,
     });
     if (result.error === "account_not_found") {

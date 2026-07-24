@@ -18,7 +18,8 @@ la información que vive dentro de ellos.
 
 - **Apuestas × Finanzas:** el stake se registra como gasto; una apuesta ganada
   registra el cobro completo como ingreso y una apuesta nula devuelve el stake.
-  Todo boleto exige una cuenta y agrupa dos o más selecciones.
+  Todo boleto exige una cuenta y contiene una o más selecciones. Puede
+  capturarse manualmente o importarse desde una imagen para revisión.
 
 ## Primer recorrido
 
