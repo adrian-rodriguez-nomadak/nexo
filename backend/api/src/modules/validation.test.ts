@@ -90,6 +90,40 @@ test("validates bet input", () => {
     ),
     4.19,
   );
+  const imageTicketSelections = normalizeBetSelections([
+    {
+      event: "TIJ vs LEO",
+      selection: "Tijuana",
+      market: "Gana",
+      decimalOdds: null,
+    },
+    {
+      event: "TIJ vs LEO",
+      selection: "Más 2.5",
+      market: "Goles totales",
+      decimalOdds: null,
+    },
+    {
+      event: "TIJ vs LEO",
+      selection: "Más 7.5",
+      market: "Tiros de esquina",
+      decimalOdds: null,
+    },
+    {
+      event: "TIJ vs LEO",
+      selection: "Tijuana | Más 1.5",
+      market: "Total de goles",
+      decimalOdds: null,
+    },
+    {
+      event: "TIJ vs LEO",
+      selection: "León | Más 0.5",
+      market: "Total de goles",
+      decimalOdds: null,
+    },
+  ]);
+  assert.equal(imageTicketSelections?.length, 5);
+  assert.equal(resolveBetOdds(imageTicketSelections ?? [], 4.19), 4.19);
   assert.equal(
     isValidBetImageDataUrl("data:image/jpeg;base64,YWJjZA=="),
     true,

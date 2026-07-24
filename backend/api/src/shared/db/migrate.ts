@@ -98,7 +98,7 @@ const statements = [
       event TEXT NOT NULL,
       selection TEXT NOT NULL,
       market TEXT,
-      decimal_odds NUMERIC(10, 3) NOT NULL CHECK (decimal_odds >= 1.01),
+      decimal_odds NUMERIC(10, 3) CHECK (decimal_odds >= 1.01),
       position INTEGER NOT NULL CHECK (position >= 0),
       created_at TIMESTAMPTZ NOT NULL
     )
