@@ -222,6 +222,71 @@ const statements = [
     )
   `,
   "CREATE INDEX IF NOT EXISTS nexo_workout_exercises_workout_position_idx ON nexo_workout_exercises (workout_id, position)",
+  `
+    CREATE TABLE IF NOT EXISTS nexo_health_profiles (
+      nexo_user_id TEXT PRIMARY KEY
+        REFERENCES nexo_users(id) ON DELETE CASCADE,
+      height_cm NUMERIC(5, 1)
+        CHECK (height_cm IS NULL OR height_cm BETWEEN 50 AND 250),
+      birth_date DATE,
+      biological_sex TEXT
+        CHECK (
+          biological_sex IS NULL OR
+          biological_sex IN ('female', 'male', 'intersex', 'unspecified')
+        ),
+      blood_type TEXT
+        CHECK (
+          blood_type IS NULL OR
+          blood_type IN ('A+', 'A-', 'B+', 'B-', 'AB+', 'AB-', 'O+', 'O-')
+        ),
+      allergies TEXT[] NOT NULL DEFAULT '{}',
+      conditions TEXT[] NOT NULL DEFAULT '{}',
+      medications TEXT[] NOT NULL DEFAULT '{}',
+      emergency_contact_name TEXT,
+      emergency_contact_phone TEXT,
+      target_weight_kg NUMERIC(6, 1)
+        CHECK (
+          target_weight_kg IS NULL OR target_weight_kg BETWEEN 20 AND 500
+        ),
+      notes TEXT,
+      updated_at TIMESTAMPTZ NOT NULL
+    )
+  `,
+  `
+    CREATE TABLE IF NOT EXISTS nexo_health_entries (
+      id TEXT PRIMARY KEY,
+      nexo_user_id TEXT NOT NULL
+        REFERENCES nexo_users(id) ON DELETE CASCADE,
+      measured_at TIMESTAMPTZ NOT NULL,
+      weight_kg NUMERIC(6, 1)
+        CHECK (weight_kg IS NULL OR weight_kg BETWEEN 20 AND 500),
+      sleep_hours NUMERIC(4, 1)
+        CHECK (sleep_hours IS NULL OR sleep_hours BETWEEN 0 AND 24),
+      water_ml INTEGER
+        CHECK (water_ml IS NULL OR water_ml BETWEEN 0 AND 20000),
+      heart_rate_bpm INTEGER
+        CHECK (heart_rate_bpm IS NULL OR heart_rate_bpm BETWEEN 20 AND 300),
+      systolic_mm_hg INTEGER
+        CHECK (systolic_mm_hg IS NULL OR systolic_mm_hg BETWEEN 50 AND 300),
+      diastolic_mm_hg INTEGER
+        CHECK (diastolic_mm_hg IS NULL OR diastolic_mm_hg BETWEEN 30 AND 200),
+      glucose_mg_dl NUMERIC(6, 1)
+        CHECK (glucose_mg_dl IS NULL OR glucose_mg_dl BETWEEN 20 AND 1000),
+      oxygen_percent NUMERIC(5, 1)
+        CHECK (oxygen_percent IS NULL OR oxygen_percent BETWEEN 50 AND 100),
+      temperature_c NUMERIC(4, 1)
+        CHECK (temperature_c IS NULL OR temperature_c BETWEEN 30 AND 45),
+      mood INTEGER CHECK (mood IS NULL OR mood BETWEEN 1 AND 5),
+      symptoms TEXT[] NOT NULL DEFAULT '{}',
+      notes TEXT,
+      created_at TIMESTAMPTZ NOT NULL,
+      CHECK (
+        (systolic_mm_hg IS NULL AND diastolic_mm_hg IS NULL) OR
+        (systolic_mm_hg IS NOT NULL AND diastolic_mm_hg IS NOT NULL)
+      )
+    )
+  `,
+  "CREATE INDEX IF NOT EXISTS nexo_health_entries_user_measured_idx ON nexo_health_entries (nexo_user_id, measured_at DESC)",
 ];
 
 export async function migrate(): Promise<void> {

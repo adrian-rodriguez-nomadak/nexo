@@ -140,3 +140,22 @@ test("connects gym sessions to exercises and progress", async () => {
   assert.match(panel, /workoutTitleFromDate/);
   assert.doesNotMatch(panel, /Nombre de la sesión/);
 });
+
+test("connects health profile, measurements and history", async () => {
+  const [dashboard, panel] = await Promise.all([
+    readFile(new URL("app/nexo-dashboard.tsx", projectRoot), "utf8"),
+    readFile(new URL("app/health-panel.tsx", projectRoot), "utf8"),
+  ]);
+
+  assert.match(dashboard, /import \{ HealthPanel \}/);
+  assert.match(dashboard, /selectedModule === "health"/);
+  assert.match(dashboard, /setHealthCount/);
+  assert.match(panel, /Perfil de salud/);
+  assert.match(panel, /Nueva medición/);
+  assert.match(panel, /Historial de salud/);
+  assert.match(panel, /apiFetch\("\/api\/health", sessionToken\)/);
+  assert.match(panel, /"\/api\/health\/profile"/);
+  assert.match(panel, /"\/api\/health\/entries"/);
+  assert.match(panel, /`\/api\/health\/entries\/\$\{id\}`/);
+  assert.match(panel, /no diagnostica/);
+});

@@ -51,6 +51,13 @@ fuerza, cardio o movilidad. El historial calcula sesiones y minutos semanales,
 volumen total de fuerza y la carga máxima registrada. El nombre de la sesión se
 genera con su fecha y el catálogo opcional de ejercicios proviene de wger.
 
+## Salud
+
+El perfil privado guarda altura, tipo de sangre, alergias, antecedentes,
+medicamentos, contacto de emergencia y peso meta. El historial admite peso,
+sueño, agua, presión, pulso, glucosa, oxígeno, temperatura, estado de ánimo,
+síntomas y notas sin presentar diagnósticos.
+
 ## Desarrollo
 
 Configura la URL de la API:

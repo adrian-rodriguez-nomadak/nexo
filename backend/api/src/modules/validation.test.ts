@@ -54,6 +54,15 @@ import {
   normalizeGymText,
 } from "./gym/gym.validation.js";
 import { searchExerciseCatalog } from "./gym/gym.catalog.js";
+import {
+  hasHealthValue,
+  isBiologicalSex,
+  isBloodType,
+  normalizeHealthDate,
+  normalizeHealthDecimal,
+  normalizeHealthInteger,
+  normalizeHealthList,
+} from "./health/health.validation.js";
 import { searchFoodCatalog } from "./meals/meals.catalog.js";
 
 test("validates capture input", () => {
@@ -267,6 +276,26 @@ test("validates gym input", () => {
     normalizeGymDate("2026-07-24T18:00:00-06:00"),
     "2026-07-25T00:00:00.000Z",
   );
+});
+
+test("validates health profile and measurements", () => {
+  assert.equal(isBiologicalSex("female"), true);
+  assert.equal(isBiologicalSex("unknown"), false);
+  assert.equal(isBloodType("O+"), true);
+  assert.equal(isBloodType("C"), false);
+  assert.deepEqual(
+    normalizeHealthList([" Penicilina ", "Cacahuate", "penicilina"]),
+    ["Penicilina", "Cacahuate"],
+  );
+  assert.equal(normalizeHealthList("Penicilina"), null);
+  assert.equal(normalizeHealthDecimal(72.26, 20, 500), 72.3);
+  assert.equal(normalizeHealthDecimal(19, 20, 500), null);
+  assert.equal(normalizeHealthInteger(120, 50, 300), 120);
+  assert.equal(normalizeHealthInteger(120.5, 50, 300), null);
+  assert.equal(normalizeHealthDate("2020-02-29"), "2020-02-29");
+  assert.equal(normalizeHealthDate("2021-02-29"), null);
+  assert.equal(hasHealthValue(0), true);
+  assert.equal(hasHealthValue(""), false);
 });
 
 test("normalizes exercise and food catalog responses", async () => {

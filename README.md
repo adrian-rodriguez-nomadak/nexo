@@ -17,12 +17,16 @@ La primera base incluye:
 - conexión contable entre apuestas y cuentas de Finanzas;
 - registro de comidas con macros, costo y gasto opcional en Finanzas;
 - sesiones de gimnasio con ejercicios, volumen, tiempo y progreso;
+- perfil de salud con altura, tipo de sangre, alergias, antecedentes,
+  medicamentos, contacto de emergencia y peso meta;
+- historial de peso, sueño, agua, presión, pulso, glucosa, oxígeno,
+  temperatura, estado de ánimo y síntomas;
 - autenticación con ChatGPT y datos aislados por usuario;
 - API para consultar, crear y eliminar capturas;
 - pantalla principal "Hoy";
 - captura rápida persistente en web y temporal en móvil;
-- módulos dedicados de finanzas, eventos, notas, apuestas, comidas y gimnasio;
-- captura general para salud;
+- módulos dedicados de finanzas, eventos, notas, apuestas, comidas, salud y
+  gimnasio;
 - espacio de progreso para futuras relaciones entre módulos.
 
 La autenticación web está implementada. La aplicación móvil todavía funciona

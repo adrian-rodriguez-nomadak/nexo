@@ -58,6 +58,11 @@ Variables requeridas:
   respaldo de ingredientes de wger.
 - `/api/gym`: sesiones, ejercicios de fuerza, cardio, movilidad y volumen.
 - `/api/gym/catalog`: búsqueda limitada y cacheada en el catálogo de wger.
+- `/api/health`: perfil privado e historial de mediciones de salud.
+- `/api/health/profile`: altura, datos médicos declarados, contacto de
+  emergencia y objetivo de peso.
+- `/api/health/entries`: peso, sueño, hidratación, presión, pulso, glucosa,
+  oxígeno, temperatura, ánimo, síntomas y notas.
 
 Todas las rutas de módulos requieren un token Bearer y filtran los registros
 por el usuario autenticado.
