@@ -66,6 +66,8 @@ Variables requeridas:
   emergencia y objetivo de peso.
 - `/api/health/entries`: peso, sueño, hidratación, presión, pulso, glucosa,
   oxígeno, temperatura, ánimo, síntomas y notas.
+- `/api/progress`: resumen agregado de 7 o 30 días para bienvenida, actividad,
+  tendencias y conexiones entre módulos.
 
 Todas las rutas de módulos requieren un token Bearer y filtran los registros
 por el usuario autenticado.

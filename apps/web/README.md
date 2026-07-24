@@ -58,6 +58,13 @@ medicamentos, contacto de emergencia y peso meta. El historial admite peso,
 sueño, agua, presión, pulso, glucosa, oxígeno, temperatura, estado de ánimo,
 síntomas y notas sin presentar diagnósticos.
 
+## Inicio y Progreso
+
+Inicio ofrece una bienvenida personalizada, estado de configuración, próximo
+evento, saldo y accesos rápidos. Progreso combina periodos de 7 o 30 días para
+mostrar actividad, flujo financiero, salud, gimnasio, alimentación, apuestas,
+agenda, notas y las conexiones entre esos datos.
+
 ## Desarrollo
 
 Configura la URL de la API:

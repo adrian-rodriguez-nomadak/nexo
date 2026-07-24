@@ -16,6 +16,8 @@ import { GymPanel } from "./gym-panel";
 import { HealthPanel } from "./health-panel";
 import { MealsPanel } from "./meals-panel";
 import { NotesPanel } from "./notes-panel";
+import { ProgressPanel } from "./progress-panel";
+import { WelcomePanel } from "./welcome-panel";
 
 type DashboardUser = {
   displayName: string;
@@ -31,6 +33,8 @@ type ModuleKey =
   | "meals"
   | "health"
   | "gym";
+
+type DashboardView = ModuleKey | "all" | "welcome" | "progress";
 
 type CaptureRecord = {
   id: string;
@@ -155,7 +159,8 @@ export function NexoDashboard({
   const [healthCount, setHealthCount] = useState(0);
   const [mealsCount, setMealsCount] = useState(0);
   const [notesCount, setNotesCount] = useState(0);
-  const [selectedModule, setSelectedModule] = useState<ModuleKey | "all">("all");
+  const [selectedModule, setSelectedModule] =
+    useState<DashboardView>("welcome");
   const [captureModule, setCaptureModule] = useState<ModuleKey>("notes");
   const [content, setContent] = useState("");
   const [isLoading, setIsLoading] = useState(true);
@@ -193,7 +198,9 @@ export function NexoDashboard({
 
   const visibleCaptures = useMemo(
     () =>
-      selectedModule === "all"
+      selectedModule === "all" ||
+      selectedModule === "welcome" ||
+      selectedModule === "progress"
         ? captures
         : captures.filter((capture) => capture.module === selectedModule),
     [captures, selectedModule],
@@ -309,14 +316,18 @@ export function NexoDashboard({
 
         <nav className="main-nav" aria-label="Navegación principal">
           <button
-            className={`nav-item ${selectedModule === "all" ? "nav-item-active" : ""}`}
-            onClick={() => setSelectedModule("all")}
+            className={`nav-item ${selectedModule === "welcome" ? "nav-item-active" : ""}`}
+            onClick={() => setSelectedModule("welcome")}
             type="button"
           >
             <span className="nav-symbol">●</span>
-            Hoy
+            Inicio
           </button>
-          <button className="nav-item" type="button">
+          <button
+            className={`nav-item ${selectedModule === "progress" ? "nav-item-active" : ""}`}
+            onClick={() => setSelectedModule("progress")}
+            type="button"
+          >
             <span className="nav-symbol">◇</span>
             Progreso
           </button>
@@ -368,6 +379,10 @@ export function NexoDashboard({
             <h1>
               {selectedModule === "finances"
                 ? "Tu dinero, claro."
+                : selectedModule === "welcome"
+                  ? `Bienvenido, ${user.displayName.split(/\s+/)[0] ?? user.displayName}.`
+                  : selectedModule === "progress"
+                    ? "Tu progreso, en perspectiva."
                 : selectedModule === "events"
                   ? "Tu agenda, en orden."
                   : selectedModule === "notes"
@@ -400,7 +415,16 @@ export function NexoDashboard({
           </div>
         </header>
 
-        {selectedModule === "finances" ? (
+        {selectedModule === "welcome" ? (
+          <WelcomePanel
+            displayName={user.displayName}
+            onOpenModule={(module) => setSelectedModule(module)}
+            onOpenProgress={() => setSelectedModule("progress")}
+            sessionToken={sessionToken}
+          />
+        ) : selectedModule === "progress" ? (
+          <ProgressPanel sessionToken={sessionToken} />
+        ) : selectedModule === "finances" ? (
           <FinancesPanel sessionToken={sessionToken} />
         ) : selectedModule === "events" ? (
           <EventsPanel

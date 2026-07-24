@@ -28,6 +28,9 @@ la información que vive dentro de ellos.
 - **Salud × hábitos:** Salud conserva un perfil estable y una línea de tiempo
   de señales personales. El IMC mostrado es una estimación informativa; Nexo
   organiza contexto y no presenta diagnósticos.
+- **Bienvenida y progreso:** Inicio ayuda a completar el punto de partida y
+  Progreso agrega periodos de 7 o 30 días para hacer visibles la constancia,
+  las tendencias y las conexiones entre módulos.
 
 ## Primer recorrido
 

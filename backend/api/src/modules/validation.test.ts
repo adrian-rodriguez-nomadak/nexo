@@ -65,6 +65,7 @@ import {
   normalizeHealthList,
 } from "./health/health.validation.js";
 import { searchFoodCatalog } from "./meals/meals.catalog.js";
+import { normalizeProgressDays } from "./progress/progress.validation.js";
 
 test("validates capture input", () => {
   assert.equal(isModuleKey("notes"), true);
@@ -297,6 +298,13 @@ test("validates health profile and measurements", () => {
   assert.equal(normalizeHealthDate("2021-02-29"), null);
   assert.equal(hasHealthValue(0), true);
   assert.equal(hasHealthValue(""), false);
+});
+
+test("normalizes progress periods", () => {
+  assert.equal(normalizeProgressDays("7"), 7);
+  assert.equal(normalizeProgressDays(7), 7);
+  assert.equal(normalizeProgressDays("30"), 30);
+  assert.equal(normalizeProgressDays("all"), 30);
 });
 
 test("normalizes exercise and food catalog responses", async () => {

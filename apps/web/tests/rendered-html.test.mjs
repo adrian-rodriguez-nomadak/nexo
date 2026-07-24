@@ -164,3 +164,24 @@ test("connects health profile, measurements and history", async () => {
   assert.match(panel, /`\/api\/health\/entries\/\$\{id\}`/);
   assert.match(panel, /no diagnostica/);
 });
+
+test("connects welcome and cross-module progress", async () => {
+  const [dashboard, welcome, progress, progressData] = await Promise.all([
+    readFile(new URL("app/nexo-dashboard.tsx", projectRoot), "utf8"),
+    readFile(new URL("app/welcome-panel.tsx", projectRoot), "utf8"),
+    readFile(new URL("app/progress-panel.tsx", projectRoot), "utf8"),
+    readFile(new URL("app/progress-data.ts", projectRoot), "utf8"),
+  ]);
+
+  assert.match(dashboard, /WelcomePanel/);
+  assert.match(dashboard, /ProgressPanel/);
+  assert.match(dashboard, /setSelectedModule\("welcome"\)/);
+  assert.match(dashboard, /setSelectedModule\("progress"\)/);
+  assert.match(welcome, /Hola,/);
+  assert.match(welcome, /Construye tu punto de partida/);
+  assert.match(welcome, /Comidas × Finanzas/);
+  assert.match(progress, /Registros por día/);
+  assert.match(progress, /Conexiones del periodo/);
+  assert.match(progress, /selectDays\(30\)/);
+  assert.match(progressData, /`\/api\/progress\?days=\$\{days\}`/);
+});

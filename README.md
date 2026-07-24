@@ -24,7 +24,9 @@ La primera base incluye:
 - inicio público, registro e inicio de sesión por correo con datos aislados por
   usuario;
 - API para consultar, crear y eliminar capturas;
-- pantalla principal "Hoy";
+- pantalla principal "Inicio";
+- bienvenida personalizada con primeros pasos y resumen semanal;
+- progreso agregado de 7 y 30 días con tendencias y conexiones entre módulos;
 - captura rápida persistente en web y temporal en móvil;
 - módulos dedicados de finanzas, eventos, notas, apuestas, comidas, salud y
   gimnasio;
