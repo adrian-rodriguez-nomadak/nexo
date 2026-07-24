@@ -2470,6 +2470,7 @@ a:focus-visible {
 }
 
 .bet-fields input,
+.bet-fields select,
 .bet-settings-card input {
   width: 100%;
   min-width: 0;
@@ -2485,6 +2486,7 @@ a:focus-visible {
 }
 
 .bet-fields input:focus,
+.bet-fields select:focus,
 .bet-settings-card input:focus {
   border-color: rgba(211, 155, 255, 0.55);
   box-shadow: 0 0 0 3px rgba(211, 155, 255, 0.08);
@@ -2493,6 +2495,23 @@ a:focus-visible {
 .bet-fields input::placeholder,
 .bet-settings-card input::placeholder {
   color: #5f5f62;
+}
+
+.bet-finance-field {
+  padding: 12px;
+  border: 1px solid rgba(120, 214, 163, 0.2);
+  border-radius: 13px;
+  background: rgba(120, 214, 163, 0.045);
+}
+
+.bet-finance-field select {
+  border-color: rgba(120, 214, 163, 0.2);
+}
+
+.bet-finance-field > small {
+  color: #777d78;
+  font-size: 8px;
+  line-height: 1.45;
 }
 
 .bet-primary-button,
@@ -2637,6 +2656,25 @@ a:focus-visible {
 .bet-item-main small {
   color: #70706d;
   font-size: 8px;
+}
+
+.bet-finance-link {
+  display: block;
+  width: fit-content;
+  margin-top: 7px;
+  padding: 4px 7px;
+  border: 1px solid rgba(120, 214, 163, 0.18);
+  border-radius: 7px;
+  background: rgba(120, 214, 163, 0.06);
+  color: #78d6a3;
+  font-size: 8px;
+  font-weight: 750;
+}
+
+.bet-finance-link-off {
+  border-color: rgba(155, 155, 150, 0.14);
+  background: rgba(155, 155, 150, 0.04);
+  color: #777773;
 }
 
 .bet-item-money {

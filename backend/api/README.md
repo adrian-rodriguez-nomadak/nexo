@@ -47,7 +47,8 @@ Variables requeridas:
 - `/api/finances`: cuentas, ingresos, gastos, balances y movimientos.
 - `/api/events`: agenda personal con fecha, horario, ubicación y detalles.
 - `/api/notes`: notas editables, etiquetas, búsqueda local y marcadores.
-- `/api/bets`: bankroll, límites mensuales, apuestas y resultados.
+- `/api/bets`: bankroll, límites mensuales, apuestas, resultados y movimientos
+  sincronizados con cuentas de Finanzas.
 
 Todas las rutas de módulos requieren un token Bearer y filtran los registros
 por el usuario autenticado.

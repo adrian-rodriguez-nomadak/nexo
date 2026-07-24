@@ -7,6 +7,7 @@ import {
   normalizeEmail,
 } from "./auth/auth.utils.js";
 import {
+  betPayoutCents,
   isBetStatus,
   isValidBetCents,
   normalizeBetDate,
@@ -52,6 +53,9 @@ test("validates bet input", () => {
   assert.equal(isValidBetCents(0, { allowZero: true }), true);
   assert.equal(isBetStatus("won"), true);
   assert.equal(isBetStatus("cancelled"), false);
+  assert.equal(betPayoutCents(10_000, 1.8, "won"), 18_000);
+  assert.equal(betPayoutCents(10_000, 1.8, "void"), 10_000);
+  assert.equal(betPayoutCents(10_000, 1.8, "lost"), null);
   assert.equal(
     normalizeBetDate("2026-07-24T18:00:00-06:00"),
     "2026-07-25T00:00:00.000Z",

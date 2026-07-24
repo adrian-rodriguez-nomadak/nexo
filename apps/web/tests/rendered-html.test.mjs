@@ -88,4 +88,7 @@ test("connects the bets module to bankroll and limits", async () => {
   assert.match(panel, /"\/api\/bets\/settings"/);
   assert.match(panel, /`\/api\/bets\/\$\{id\}\/status`/);
   assert.match(panel, /Nunca persigas/);
+  assert.match(panel, /Conectar con Finanzas/);
+  assert.match(panel, /financeAccountId: financeAccountId \|\| null/);
+  assert.match(panel, /Finanzas · \$\{bet\.financeAccountName\}/);
 });

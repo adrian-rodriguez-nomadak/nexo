@@ -34,6 +34,7 @@ betsRouter.post(
       selection,
       market,
       sportsbook,
+      financeAccountId,
       stakeCents,
       decimalOdds,
       placedAt,
@@ -42,17 +43,28 @@ betsRouter.post(
     const normalizedSelection = normalizeBetText(selection, 120);
     const normalizedMarket = normalizeOptionalBetText(market, 100);
     const normalizedSportsbook = normalizeOptionalBetText(sportsbook, 80);
+    const normalizedFinanceAccountId =
+      typeof financeAccountId === "string" &&
+      financeAccountId.length > 0 &&
+      financeAccountId.length <= 100
+        ? financeAccountId
+        : null;
     const normalizedOdds = normalizeBetOdds(decimalOdds);
     const normalizedPlacedAt = normalizeBetDate(placedAt);
     const hasMarket = market !== null && market !== undefined && market !== "";
     const hasSportsbook =
       sportsbook !== null && sportsbook !== undefined && sportsbook !== "";
+    const hasFinanceAccount =
+      financeAccountId !== null &&
+      financeAccountId !== undefined &&
+      financeAccountId !== "";
 
     if (
       !normalizedEvent ||
       !normalizedSelection ||
       (hasMarket && !normalizedMarket) ||
       (hasSportsbook && !normalizedSportsbook) ||
+      (hasFinanceAccount && !normalizedFinanceAccountId) ||
       !isValidBetCents(stakeCents) ||
       !normalizedOdds ||
       !normalizedPlacedAt
@@ -63,24 +75,31 @@ betsRouter.post(
       return;
     }
 
-    const bet = await createBet({
+    const result = await createBet({
       userId: request.authUser!.id,
       event: normalizedEvent,
       selection: normalizedSelection,
       market: normalizedMarket,
       sportsbook: normalizedSportsbook,
+      financeAccountId: normalizedFinanceAccountId,
       stakeCents,
       decimalOdds: normalizedOdds,
       placedAt: normalizedPlacedAt,
     });
-    if (!bet) {
+    if (result.error === "account_not_found") {
+      response.status(404).json({
+        error: "La cuenta de Finanzas seleccionada no existe.",
+      });
+      return;
+    }
+    if (result.error === "limit_exceeded") {
       response.status(409).json({
         error: "Esta apuesta supera tu límite mensual disponible.",
       });
       return;
     }
 
-    response.status(201).json({ bet });
+    response.status(201).json({ bet: result.bet });
   }),
 );
 

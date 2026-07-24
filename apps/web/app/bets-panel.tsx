@@ -19,6 +19,9 @@ type NexoBet = {
   selection: string;
   market: string | null;
   sportsbook: string | null;
+  financeAccountId: string | null;
+  financeAccountName: string | null;
+  financeSynced: boolean;
   stakeCents: number;
   decimalOdds: number;
   status: BetStatus;
@@ -30,6 +33,12 @@ type NexoBet = {
 type BetSettings = {
   bankrollCents: number;
   monthlyLimitCents: number;
+};
+
+type BetFinanceAccount = {
+  id: string;
+  name: string;
+  balanceCents: number;
 };
 
 type BetSummary = {
@@ -45,6 +54,7 @@ type BetSummary = {
 
 type BetsData = {
   bets: NexoBet[];
+  financeAccounts: BetFinanceAccount[];
   settings: BetSettings;
   summary: BetSummary;
 };
@@ -122,6 +132,7 @@ async function fetchBets(sessionToken: string): Promise<BetsData> {
 
   return {
     bets: data.bets ?? [],
+    financeAccounts: data.financeAccounts ?? [],
     settings: data.settings ?? emptySettings,
     summary: data.summary ?? emptySummary,
   };
@@ -135,6 +146,9 @@ export function BetsPanel({
   sessionToken: string;
 }) {
   const [bets, setBets] = useState<NexoBet[]>([]);
+  const [financeAccounts, setFinanceAccounts] = useState<BetFinanceAccount[]>(
+    [],
+  );
   const [summary, setSummary] = useState<BetSummary>(emptySummary);
   const [filter, setFilter] = useState<BetFilter>("all");
   const [isLoading, setIsLoading] = useState(true);
@@ -146,6 +160,7 @@ export function BetsPanel({
   const [selection, setSelection] = useState("");
   const [market, setMarket] = useState("");
   const [sportsbook, setSportsbook] = useState("");
+  const [financeAccountId, setFinanceAccountId] = useState("");
   const [stake, setStake] = useState("");
   const [decimalOdds, setDecimalOdds] = useState("");
   const [placedAt, setPlacedAt] = useState(() =>
@@ -157,6 +172,7 @@ export function BetsPanel({
   const applyData = useCallback(
     (data: BetsData) => {
       setBets(data.bets);
+      setFinanceAccounts(data.financeAccounts);
       setSummary(data.summary);
       setBankroll(String(data.settings.bankrollCents / 100 || ""));
       setMonthlyLimit(String(data.settings.monthlyLimitCents / 100 || ""));
@@ -243,6 +259,7 @@ export function BetsPanel({
           selection,
           market,
           sportsbook,
+          financeAccountId: financeAccountId || null,
           stakeCents,
           decimalOdds: odds,
           placedAt: placedDate.toISOString(),
@@ -475,6 +492,27 @@ export function BetsPanel({
                   />
                 </label>
               </div>
+              <label className="bet-finance-field">
+                <span>Conectar con Finanzas</span>
+                <select
+                  onChange={(event) =>
+                    setFinanceAccountId(event.target.value)
+                  }
+                  value={financeAccountId}
+                >
+                  <option value="">No sincronizar movimientos</option>
+                  {financeAccounts.map((account) => (
+                    <option key={account.id} value={account.id}>
+                      {account.name} · {formatMoney(account.balanceCents)}
+                    </option>
+                  ))}
+                </select>
+                <small>
+                  {financeAccounts.length > 0
+                    ? "El monto saldrá como gasto; cobros y devoluciones volverán a esta cuenta."
+                    : "Primero crea una cuenta en el módulo Finanzas para activar la conexión."}
+                </small>
+              </label>
               <div className="bet-field-row">
                 <label>
                   <span>Monto MXN</span>
@@ -628,6 +666,17 @@ export function BetsPanel({
                           {dateFormatter.format(new Date(bet.placedAt))}
                           {bet.sportsbook ? ` · ${bet.sportsbook}` : ""}
                         </small>
+                        <span
+                          className={
+                            bet.financeSynced
+                              ? "bet-finance-link"
+                              : "bet-finance-link bet-finance-link-off"
+                          }
+                        >
+                          {bet.financeSynced
+                            ? `Finanzas · ${bet.financeAccountName}`
+                            : "Sin movimiento financiero"}
+                        </span>
                       </div>
                       <div className="bet-item-money">
                         <strong>{formatMoney(bet.stakeCents)}</strong>

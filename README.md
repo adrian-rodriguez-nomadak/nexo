@@ -13,6 +13,7 @@ La primera base incluye:
 - agenda de eventos persistente;
 - biblioteca de notas con búsqueda, etiquetas y notas fijadas;
 - apuestas con bankroll, límite mensual y seguimiento de resultados;
+- conexión contable entre apuestas y cuentas de Finanzas;
 - autenticación con ChatGPT y datos aislados por usuario;
 - API para consultar, crear y eliminar capturas;
 - pantalla principal "Hoy";

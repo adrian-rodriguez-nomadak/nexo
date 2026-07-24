@@ -28,7 +28,9 @@ nota.
 
 El registro de apuestas controla bankroll, monto en juego, cuotas y resultados.
 Incluye un límite mensual obligatorio cuando se configura, cálculo de
-ganancias o pérdidas y mensajes de juego responsable.
+ganancias o pérdidas y mensajes de juego responsable. Cada apuesta puede
+conectarse con una cuenta de Finanzas: registra el gasto inicial y sincroniza
+automáticamente cobros o devoluciones según el resultado.
 
 ## Desarrollo
 

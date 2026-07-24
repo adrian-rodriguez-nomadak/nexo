@@ -14,6 +14,11 @@ la información que vive dentro de ellos.
 4. Los datos sensibles son privados por diseño.
 5. El módulo de apuestas prioriza límites, riesgo y juego responsable.
 
+## Conexiones funcionales
+
+- **Apuestas × Finanzas:** el stake se registra como gasto; una apuesta ganada
+  registra el cobro completo como ingreso y una apuesta nula devuelve el stake.
+
 ## Primer recorrido
 
 1. La persona abre "Hoy".

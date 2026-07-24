@@ -50,3 +50,13 @@ export function normalizeBetDate(value: unknown): string | null {
   if (!Number.isFinite(timestamp)) return null;
   return new Date(timestamp).toISOString();
 }
+
+export function betPayoutCents(
+  stakeCents: number,
+  decimalOdds: number,
+  status: BetStatus,
+): number | null {
+  if (status === "won") return Math.round(stakeCents * decimalOdds);
+  if (status === "void") return stakeCents;
+  return null;
+}
