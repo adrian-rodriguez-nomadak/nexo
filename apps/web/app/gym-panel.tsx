@@ -46,6 +46,13 @@ type ExerciseDraft = {
   notes: string;
 };
 
+type ExerciseCatalogItem = {
+  id: string;
+  name: string;
+  category: string | null;
+  source: "wger";
+};
+
 const kindLabels: Record<ExerciseKind, string> = {
   strength: "Fuerza",
   cardio: "Cardio",
@@ -58,6 +65,13 @@ const dateFormatter = new Intl.DateTimeFormat("es-MX", {
   month: "short",
   hour: "numeric",
   minute: "2-digit",
+});
+
+const sessionDateFormatter = new Intl.DateTimeFormat("es-MX", {
+  weekday: "long",
+  day: "numeric",
+  month: "long",
+  year: "numeric",
 });
 
 function toLocalInputValue(date: Date): string {
@@ -82,6 +96,13 @@ function optionalNumber(value: string): number | null {
   if (!value.trim()) return null;
   const parsed = Number(value);
   return Number.isFinite(parsed) ? parsed : null;
+}
+
+function workoutTitleFromDate(value: string): string {
+  const date = new Date(value);
+  return Number.isFinite(date.getTime())
+    ? `Sesión · ${sessionDateFormatter.format(date)}`
+    : "Sesión";
 }
 
 function workoutVolume(workout: GymWorkout): number {
@@ -135,9 +156,14 @@ export function GymPanel({
   const [currentTime] = useState(Date.now);
   const [isLoading, setIsLoading] = useState(true);
   const [isSaving, setIsSaving] = useState(false);
+  const [catalogLoadingIndex, setCatalogLoadingIndex] = useState<number | null>(
+    null,
+  );
+  const [catalogResults, setCatalogResults] = useState<
+    Record<number, ExerciseCatalogItem[]>
+  >({});
   const [error, setError] = useState<string | null>(null);
 
-  const [title, setTitle] = useState("");
   const [notes, setNotes] = useState("");
   const [durationMinutes, setDurationMinutes] = useState("60");
   const [trainedAt, setTrainedAt] = useState(() =>
@@ -243,6 +269,7 @@ export function GymPanel({
       ),
     0,
   );
+  const generatedTitle = workoutTitleFromDate(trainedAt);
 
   function updateExercise(
     index: number,
@@ -265,17 +292,60 @@ export function GymPanel({
   }
 
   function addExercise() {
+    setCatalogResults({});
     setExercises((current) =>
       current.length < 30 ? [...current, emptyExercise()] : current,
     );
   }
 
   function removeExercise(index: number) {
+    setCatalogResults({});
     setExercises((current) =>
       current.length > 1
         ? current.filter((_, exerciseIndex) => exerciseIndex !== index)
         : current,
     );
+  }
+
+  async function searchExercise(index: number) {
+    const query = exercises[index]?.name.trim() ?? "";
+    if (query.length < 2 || catalogLoadingIndex !== null) {
+      setError("Escribe al menos dos caracteres para buscar.");
+      return;
+    }
+
+    setCatalogLoadingIndex(index);
+    setError(null);
+    try {
+      const response = await apiFetch(
+        `/api/gym/catalog?q=${encodeURIComponent(query)}`,
+        sessionToken,
+      );
+      const data = (await response.json()) as {
+        exercises?: ExerciseCatalogItem[];
+        error?: string;
+      };
+      if (!response.ok) {
+        throw new Error(data.error ?? "No fue posible buscar ejercicios.");
+      }
+      setCatalogResults((current) => ({
+        ...current,
+        [index]: data.exercises ?? [],
+      }));
+    } catch (caught) {
+      setError(
+        caught instanceof Error
+          ? caught.message
+          : "No fue posible buscar ejercicios.",
+      );
+    } finally {
+      setCatalogLoadingIndex(null);
+    }
+  }
+
+  function chooseExercise(index: number, item: ExerciseCatalogItem) {
+    updateExercise(index, "name", item.name);
+    setCatalogResults((current) => ({ ...current, [index]: [] }));
   }
 
   async function submitWorkout(event: FormEvent<HTMLFormElement>) {
@@ -299,7 +369,6 @@ export function GymPanel({
       );
     });
     if (
-      title.trim().length < 2 ||
       !Number.isSafeInteger(parsedDuration) ||
       parsedDuration < 1 ||
       invalidExercise ||
@@ -318,7 +387,7 @@ export function GymPanel({
         method: "POST",
         headers: { "content-type": "application/json" },
         body: JSON.stringify({
-          title,
+          title: generatedTitle,
           notes,
           durationMinutes: parsedDuration,
           trainedAt: trainedDate.toISOString(),
@@ -344,7 +413,6 @@ export function GymPanel({
         );
       }
 
-      setTitle("");
       setNotes("");
       setDurationMinutes("60");
       setTrainedAt(toLocalInputValue(new Date()));
@@ -437,16 +505,10 @@ export function GymPanel({
           </div>
 
           <div className="gym-session-fields">
-            <label>
-              <span>Nombre de la sesión</span>
-              <input
-                maxLength={120}
-                onChange={(event) => setTitle(event.target.value)}
-                placeholder="Ej. Pierna y core"
-                required
-                value={title}
-              />
-            </label>
+            <div className="gym-auto-title">
+              <span>Nombre automático</span>
+              <strong>{generatedTitle}</strong>
+            </div>
             <div className="gym-field-row">
               <label>
                 <span>Fecha y hora</span>
@@ -526,23 +588,57 @@ export function GymPanel({
                   </label>
                   <label>
                     <span>Ejercicio</span>
-                    <input
-                      maxLength={120}
-                      onChange={(event) =>
-                        updateExercise(index, "name", event.target.value)
-                      }
-                      placeholder={
-                        exercise.kind === "strength"
-                          ? "Ej. Sentadilla"
-                          : exercise.kind === "cardio"
-                            ? "Ej. Caminadora"
-                            : "Ej. Estiramiento"
-                      }
-                      required
-                      value={exercise.name}
-                    />
+                    <span className="gym-catalog-input">
+                      <input
+                        maxLength={120}
+                        onChange={(event) =>
+                          updateExercise(index, "name", event.target.value)
+                        }
+                        placeholder={
+                          exercise.kind === "strength"
+                            ? "Ej. Press de banca"
+                            : exercise.kind === "cardio"
+                              ? "Ej. Caminadora"
+                              : "Ej. Estiramiento"
+                        }
+                        required
+                        value={exercise.name}
+                      />
+                      <button
+                        disabled={
+                          exercise.name.trim().length < 2 ||
+                          catalogLoadingIndex !== null
+                        }
+                        onClick={() => void searchExercise(index)}
+                        type="button"
+                      >
+                        {catalogLoadingIndex === index ? "…" : "Buscar"}
+                      </button>
+                    </span>
                   </label>
                 </div>
+
+                {catalogResults[index] ? (
+                  <div className="gym-catalog-results">
+                    {catalogResults[index].length === 0 ? (
+                      <p>
+                        Sin coincidencias. Puedes conservar el nombre manual.
+                      </p>
+                    ) : (
+                      catalogResults[index].map((item) => (
+                        <button
+                          key={item.id}
+                          onClick={() => chooseExercise(index, item)}
+                          type="button"
+                        >
+                          <strong>{item.name}</strong>
+                          <span>{item.category ?? "Ejercicio"}</span>
+                        </button>
+                      ))
+                    )}
+                    <small>Catálogo gratuito de wger</small>
+                  </div>
+                ) : null}
 
                 {exercise.kind === "strength" ? (
                   <div className="gym-metric-grid gym-strength-grid">
@@ -662,7 +758,7 @@ export function GymPanel({
 
           <button
             className="gym-submit-button"
-            disabled={isSaving || title.trim().length < 2}
+            disabled={isSaving}
             type="submit"
           >
             {isSaving ? "Guardando…" : "Guardar entrenamiento"}
@@ -763,4 +859,3 @@ export function GymPanel({
     </section>
   );
 }
-

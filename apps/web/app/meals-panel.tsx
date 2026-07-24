@@ -35,6 +35,17 @@ type FinanceAccount = {
   balanceCents: number;
 };
 
+type FoodCatalogItem = {
+  id: string;
+  name: string;
+  brand: string | null;
+  caloriesPer100g: number | null;
+  proteinPer100g: number | null;
+  carbsPer100g: number | null;
+  fatPer100g: number | null;
+  source: "open-food-facts" | "wger";
+};
+
 type MealFilter = "today" | "week" | "all";
 
 const mealTypeLabels: Record<MealType, string> = {
@@ -95,6 +106,10 @@ export function MealsPanel({
   const [currentTime] = useState(Date.now);
   const [isLoading, setIsLoading] = useState(true);
   const [isSaving, setIsSaving] = useState(false);
+  const [isSearchingFood, setIsSearchingFood] = useState(false);
+  const [foodResults, setFoodResults] = useState<FoodCatalogItem[] | null>(
+    null,
+  );
   const [error, setError] = useState<string | null>(null);
 
   const [name, setName] = useState("");
@@ -209,6 +224,54 @@ export function MealsPanel({
   const parsedCost = Number(cost);
   const hasCost = Number.isFinite(parsedCost) && parsedCost > 0;
 
+  async function searchFood() {
+    const query = name.trim();
+    if (query.length < 2 || isSearchingFood) {
+      setError("Escribe al menos dos caracteres para buscar alimentos.");
+      return;
+    }
+
+    setIsSearchingFood(true);
+    setError(null);
+    try {
+      const response = await apiFetch(
+        `/api/meals/catalog?q=${encodeURIComponent(query)}`,
+        sessionToken,
+      );
+      const data = (await response.json()) as {
+        foods?: FoodCatalogItem[];
+        error?: string;
+      };
+      if (!response.ok) {
+        throw new Error(data.error ?? "No fue posible buscar alimentos.");
+      }
+      setFoodResults(data.foods ?? []);
+    } catch (caught) {
+      setError(
+        caught instanceof Error
+          ? caught.message
+          : "No fue posible buscar alimentos.",
+      );
+    } finally {
+      setIsSearchingFood(false);
+    }
+  }
+
+  function chooseFood(item: FoodCatalogItem) {
+    setName(item.name);
+    setCalories(
+      item.caloriesPer100g === null ? "" : String(item.caloriesPer100g),
+    );
+    setProteinGrams(
+      item.proteinPer100g === null ? "" : String(item.proteinPer100g),
+    );
+    setCarbsGrams(
+      item.carbsPer100g === null ? "" : String(item.carbsPer100g),
+    );
+    setFatGrams(item.fatPer100g === null ? "" : String(item.fatPer100g));
+    setFoodResults(null);
+  }
+
   async function submitMeal(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
     if (isSaving || name.trim().length < 2) return;
@@ -262,6 +325,7 @@ export function MealsPanel({
       setCarbsGrams("");
       setFatGrams("");
       setCost("");
+      setFoodResults(null);
       setEatenAt(toLocalInputValue(new Date()));
       setFilter("today");
       await loadMeals();
@@ -375,14 +439,54 @@ export function MealsPanel({
             </div>
             <label>
               <span>¿Qué comiste?</span>
-              <input
-                maxLength={160}
-                onChange={(event) => setName(event.target.value)}
-                placeholder="Ej. Pollo con arroz y verduras"
-                required
-                value={name}
-              />
+              <span className="meal-catalog-input">
+                <input
+                  maxLength={160}
+                  onChange={(event) => setName(event.target.value)}
+                  placeholder="Ej. Yogurt griego"
+                  required
+                  value={name}
+                />
+                <button
+                  disabled={name.trim().length < 2 || isSearchingFood}
+                  onClick={() => void searchFood()}
+                  type="button"
+                >
+                  {isSearchingFood ? "Buscando…" : "Buscar alimento"}
+                </button>
+              </span>
             </label>
+            {foodResults ? (
+              <div className="meal-catalog-results">
+                {foodResults.length === 0 ? (
+                  <p>
+                    Sin coincidencias. Puedes conservar el nombre manual.
+                  </p>
+                ) : (
+                  foodResults.map((item) => (
+                    <button
+                      key={item.id}
+                      onClick={() => chooseFood(item)}
+                      type="button"
+                    >
+                      <span>
+                        <strong>{item.name}</strong>
+                        <small>{item.brand ?? "Sin marca"}</small>
+                      </span>
+                      <b>
+                        {item.caloriesPer100g === null
+                          ? "Sin macros"
+                          : `${item.caloriesPer100g} kcal`}
+                      </b>
+                    </button>
+                  ))
+                )}
+                <small>
+                  Valores por 100 g · Open Food Facts / wger · edítalos según tu
+                  porción
+                </small>
+              </div>
+            ) : null}
             <div className="meal-macro-grid">
               <label>
                 <span>Calorías</span>

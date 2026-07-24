@@ -53,6 +53,8 @@ import {
   normalizeGymDate,
   normalizeGymText,
 } from "./gym/gym.validation.js";
+import { searchExerciseCatalog } from "./gym/gym.catalog.js";
+import { searchFoodCatalog } from "./meals/meals.catalog.js";
 
 test("validates capture input", () => {
   assert.equal(isModuleKey("notes"), true);
@@ -265,6 +267,70 @@ test("validates gym input", () => {
     normalizeGymDate("2026-07-24T18:00:00-06:00"),
     "2026-07-25T00:00:00.000Z",
   );
+});
+
+test("normalizes exercise and food catalog responses", async () => {
+  const originalFetch = globalThis.fetch;
+  try {
+    globalThis.fetch = (async () =>
+      new Response(
+        JSON.stringify({
+          results: [
+            {
+              id: 73,
+              category: { name: "Chest" },
+              translations: [
+                { language: 2, name: "Bench Press" },
+                { language: 4, name: "Press de Banca" },
+              ],
+            },
+          ],
+        }),
+        { status: 200 },
+      )) as typeof fetch;
+    assert.deepEqual(await searchExerciseCatalog("press"), [
+      {
+        id: "wger-73",
+        name: "Press de Banca",
+        category: "Chest",
+        source: "wger",
+      },
+    ]);
+
+    globalThis.fetch = (async () =>
+      new Response(
+        JSON.stringify({
+          products: [
+            {
+              code: "123",
+              product_name: "Yogurt griego",
+              brands: "Marca",
+              nutriments: {
+                "energy-kcal_100g": 120,
+                proteins_100g: 10.4,
+                carbohydrates_100g: 8,
+                fat_100g: 4.2,
+              },
+            },
+          ],
+        }),
+        { status: 200 },
+      )) as typeof fetch;
+    assert.deepEqual(await searchFoodCatalog("yogurt"), [
+      {
+        id: "123",
+        name: "Yogurt griego",
+        brand: "Marca",
+        caloriesPer100g: 120,
+        proteinPer100g: 10.4,
+        carbsPer100g: 8,
+        fatPer100g: 4.2,
+        source: "open-food-facts",
+      },
+    ]);
+  } finally {
+    globalThis.fetch = originalFetch;
+  }
 });
 
 test("normalizes identity and hashes session tokens", () => {

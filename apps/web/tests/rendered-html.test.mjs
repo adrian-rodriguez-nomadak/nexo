@@ -114,6 +114,9 @@ test("connects meals to macros and finances", async () => {
   assert.match(panel, /apiFetch\("\/api\/meals", sessionToken\)/);
   assert.match(panel, /`\/api\/meals\/\$\{id\}`/);
   assert.match(panel, /financeAccountId:/);
+  assert.match(panel, /\/api\/meals\/catalog\?q=/);
+  assert.match(panel, /Open Food Facts \/ wger/);
+  assert.match(panel, /chooseFood/);
 });
 
 test("connects gym sessions to exercises and progress", async () => {
@@ -132,4 +135,8 @@ test("connects gym sessions to exercises and progress", async () => {
   assert.match(panel, /`\/api\/gym\/\$\{id\}`/);
   assert.match(panel, /addExercise/);
   assert.match(panel, /workoutVolume/);
+  assert.match(panel, /\/api\/gym\/catalog\?q=/);
+  assert.match(panel, /Catálogo gratuito de wger/);
+  assert.match(panel, /workoutTitleFromDate/);
+  assert.doesNotMatch(panel, /Nombre de la sesión/);
 });

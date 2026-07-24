@@ -54,7 +54,10 @@ Variables requeridas:
 - `/api/bets/extract-image`: extracción estructurada y editable de una captura
   PNG, JPG o WEBP. La imagen no se persiste en Nexo.
 - `/api/meals`: comidas, macros, costos y movimientos opcionales en Finanzas.
+- `/api/meals/catalog`: búsqueda limitada y cacheada en Open Food Facts con
+  respaldo de ingredientes de wger.
 - `/api/gym`: sesiones, ejercicios de fuerza, cardio, movilidad y volumen.
+- `/api/gym/catalog`: búsqueda limitada y cacheada en el catálogo de wger.
 
 Todas las rutas de módulos requieren un token Bearer y filtran los registros
 por el usuario autenticado.

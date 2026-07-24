@@ -1,6 +1,7 @@
 import { Router } from "express";
 
 import { asyncHandler } from "../../shared/http/async-handler.js";
+import { searchFoodCatalog } from "./meals.catalog.js";
 import { createMeal, deleteMeal, getMeals } from "./meals.service.js";
 import {
   isMealType,
@@ -12,6 +13,31 @@ import {
 } from "./meals.validation.js";
 
 export const mealsRouter = Router();
+
+mealsRouter.get(
+  "/catalog",
+  asyncHandler(async (request, response) => {
+    const query =
+      typeof request.query.q === "string"
+        ? normalizeMealText(request.query.q, 80)
+        : null;
+    if (!query) {
+      response.status(400).json({ error: "Escribe al menos dos caracteres." });
+      return;
+    }
+
+    try {
+      response.json({
+        foods: await searchFoodCatalog(query),
+        source: "open-food-facts-or-wger",
+      });
+    } catch {
+      response.status(502).json({
+        error: "El catálogo de alimentos no está disponible por el momento.",
+      });
+    }
+  }),
+);
 
 mealsRouter.get(
   "/",
@@ -128,4 +154,3 @@ mealsRouter.delete(
     response.json({ deleted: true });
   }),
 );
-

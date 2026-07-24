@@ -40,13 +40,16 @@ las devoluciones se sincronizan con la cuenta seleccionada.
 El diario de comidas registra desayuno, comida, cena o snack con fecha,
 calorías, proteína, carbohidratos, grasa y notas. Un costo opcional genera un
 gasto en la cuenta de Finanzas elegida; al eliminar la comida también se elimina
-el movimiento relacionado.
+el movimiento relacionado. La búsqueda opcional usa Open Food Facts con wger
+como respaldo y copia valores por 100 g al formulario para que la persona los
+ajuste a su porción.
 
 ## Gimnasio
 
 Cada sesión de gimnasio guarda fecha, duración, notas y uno o más ejercicios de
 fuerza, cardio o movilidad. El historial calcula sesiones y minutos semanales,
-volumen total de fuerza y la carga máxima registrada.
+volumen total de fuerza y la carga máxima registrada. El nombre de la sesión se
+genera con su fecha y el catálogo opcional de ejercicios proviene de wger.
 
 ## Desarrollo
 

@@ -1,6 +1,7 @@
 import { Router } from "express";
 
 import { asyncHandler } from "../../shared/http/async-handler.js";
+import { searchExerciseCatalog } from "./gym.catalog.js";
 import {
   createWorkout,
   deleteWorkout,
@@ -17,6 +18,31 @@ import {
 export const gymRouter = Router();
 
 gymRouter.get(
+  "/catalog",
+  asyncHandler(async (request, response) => {
+    const query =
+      typeof request.query.q === "string"
+        ? normalizeGymText(request.query.q, 80)
+        : null;
+    if (!query) {
+      response.status(400).json({ error: "Escribe al menos dos caracteres." });
+      return;
+    }
+
+    try {
+      response.json({
+        exercises: await searchExerciseCatalog(query),
+        source: "wger",
+      });
+    } catch {
+      response.status(502).json({
+        error: "El catálogo de ejercicios no está disponible por el momento.",
+      });
+    }
+  }),
+);
+
+gymRouter.get(
   "/",
   asyncHandler(async (request, response) => {
     response.json({ workouts: await listWorkouts(request.authUser!.id) });
@@ -29,7 +55,7 @@ gymRouter.post(
     const { title, notes, durationMinutes, exercises, trainedAt } = (
       request.body ?? {}
     ) as Record<string, unknown>;
-    const normalizedTitle = normalizeGymText(title, 120);
+    const normalizedTitle = normalizeOptionalGymText(title, 120);
     const normalizedNotes = normalizeOptionalGymText(notes, 1000);
     const normalizedDuration = normalizeOptionalGymInteger(
       durationMinutes,
@@ -39,9 +65,11 @@ gymRouter.post(
     const normalizedTrainedAt = normalizeGymDate(trainedAt);
     const hasNotes =
       notes !== null && notes !== undefined && notes !== "";
+    const hasTitle =
+      title !== undefined && title !== null && title !== "";
 
     if (
-      !normalizedTitle ||
+      (hasTitle && !normalizedTitle) ||
       (hasNotes && !normalizedNotes) ||
       !normalizedDuration ||
       !normalizedExercises ||
@@ -56,7 +84,9 @@ gymRouter.post(
 
     const workout = await createWorkout({
       userId: request.authUser!.id,
-      title: normalizedTitle,
+      title:
+        normalizedTitle ??
+        `Sesión · ${normalizedTrainedAt.slice(0, 10)}`,
       notes: normalizedNotes,
       durationMinutes: normalizedDuration,
       exercises: normalizedExercises,
@@ -85,4 +115,3 @@ gymRouter.delete(
     response.json({ deleted: true });
   }),
 );
-

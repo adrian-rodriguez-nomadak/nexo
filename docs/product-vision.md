@@ -22,6 +22,9 @@ la información que vive dentro de ellos.
   capturarse manualmente o importarse desde una imagen para revisión.
 - **Comidas × Finanzas:** el costo opcional de una comida se registra como
   gasto en la cuenta seleccionada y mantiene ambos módulos sincronizados.
+- **Catálogos abiertos:** Comidas consulta Open Food Facts con wger como
+  respaldo y Gimnasio consulta wger bajo demanda; ambos flujos conservan
+  captura manual.
 
 ## Primer recorrido
 
