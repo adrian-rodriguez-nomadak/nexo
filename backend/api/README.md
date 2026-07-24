@@ -41,5 +41,11 @@ Variables requeridas:
 - `GET /api/auth/me` consulta el usuario de la sesión.
 - `POST /api/auth/logout` revoca la sesión.
 
-Las rutas de capturas y finanzas requieren un token Bearer y filtran todos los
-datos por el usuario autenticado.
+## Módulos
+
+- `/api/captures`: captura general para los siete módulos.
+- `/api/finances`: cuentas, ingresos, gastos, balances y movimientos.
+- `/api/events`: agenda personal con fecha, horario, ubicación y detalles.
+
+Todas las rutas de módulos requieren un token Bearer y filtran los registros
+por el usuario autenticado.

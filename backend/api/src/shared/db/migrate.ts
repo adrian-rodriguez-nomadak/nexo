@@ -36,6 +36,21 @@ const statements = [
   "ALTER TABLE captures ADD COLUMN IF NOT EXISTS nexo_user_id TEXT REFERENCES nexo_users(id) ON DELETE CASCADE",
   "CREATE INDEX IF NOT EXISTS captures_nexo_user_created_idx ON captures (nexo_user_id, created_at DESC)",
   `
+    CREATE TABLE IF NOT EXISTS nexo_events (
+      id TEXT PRIMARY KEY,
+      nexo_user_id TEXT NOT NULL REFERENCES nexo_users(id) ON DELETE CASCADE,
+      title TEXT NOT NULL,
+      description TEXT,
+      location TEXT,
+      starts_at TIMESTAMPTZ NOT NULL,
+      ends_at TIMESTAMPTZ,
+      all_day BOOLEAN NOT NULL DEFAULT FALSE,
+      created_at TIMESTAMPTZ NOT NULL,
+      CHECK (ends_at IS NULL OR ends_at > starts_at)
+    )
+  `,
+  "CREATE INDEX IF NOT EXISTS nexo_events_user_start_idx ON nexo_events (nexo_user_id, starts_at)",
+  `
     CREATE TABLE IF NOT EXISTS finance_accounts (
       id TEXT PRIMARY KEY,
       name TEXT NOT NULL,

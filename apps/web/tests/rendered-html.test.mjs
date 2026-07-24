@@ -48,3 +48,16 @@ test("connects the finance module to the independent API", async () => {
   assert.match(panel, /"\/api\/finances\/accounts"/);
   assert.match(panel, /"\/api\/finances\/transactions"/);
 });
+
+test("connects the events module to the independent API", async () => {
+  const panel = await readFile(
+    new URL("app/events-panel.tsx", projectRoot),
+    "utf8",
+  );
+
+  assert.match(panel, /Agregar evento/);
+  assert.match(panel, /Mis eventos/);
+  assert.match(panel, /apiFetch\("\/api\/events", sessionToken\)/);
+  assert.match(panel, /`\/api\/events\/\$\{id\}`/);
+  assert.match(panel, /datetime-local/);
+});

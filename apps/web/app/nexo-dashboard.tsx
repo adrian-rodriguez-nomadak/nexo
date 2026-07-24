@@ -10,6 +10,7 @@ import {
 
 import { apiFetch } from "./api-client";
 import type { ChatGPTUser } from "./chatgpt-auth";
+import { EventsPanel } from "./events-panel";
 import { FinancesPanel } from "./finances-panel";
 
 type ModuleKey =
@@ -136,6 +137,7 @@ export function NexoDashboard({
   user: ChatGPTUser;
 }) {
   const [captures, setCaptures] = useState<CaptureRecord[]>([]);
+  const [eventsCount, setEventsCount] = useState(0);
   const [selectedModule, setSelectedModule] = useState<ModuleKey | "all">("all");
   const [captureModule, setCaptureModule] = useState<ModuleKey>("notes");
   const [content, setContent] = useState("");
@@ -264,6 +266,10 @@ export function NexoDashboard({
   }
 
   const selectedCaptureModule = moduleByKey[captureModule];
+  const moduleCount = (module: ModuleKey) =>
+    module === "events"
+      ? eventsCount
+      : captures.filter((capture) => capture.module === module).length;
 
   return (
     <div className="app-shell">
@@ -312,10 +318,7 @@ export function NexoDashboard({
               />
               {module.name}
               <span className="module-count">
-                {
-                  captures.filter((capture) => capture.module === module.key)
-                    .length
-                }
+                {moduleCount(module.key)}
               </span>
             </button>
           ))}
@@ -337,7 +340,9 @@ export function NexoDashboard({
             <h1>
               {selectedModule === "finances"
                 ? "Tu dinero, claro."
-                : "Tu día, conectado."}
+                : selectedModule === "events"
+                  ? "Tu agenda, en orden."
+                  : "Tu día, conectado."}
             </h1>
           </div>
           <div className="profile">
@@ -359,8 +364,13 @@ export function NexoDashboard({
 
         {selectedModule === "finances" ? (
           <FinancesPanel sessionToken={sessionToken} />
+        ) : selectedModule === "events" ? (
+          <EventsPanel
+            onCountChange={setEventsCount}
+            sessionToken={sessionToken}
+          />
         ) : (
-        <section className="dashboard-grid">
+          <section className="dashboard-grid">
           <div className="primary-column">
             <form className="capture-card" onSubmit={submitCapture}>
               <div className="capture-copy">
@@ -545,7 +555,7 @@ export function NexoDashboard({
               </div>
             </section>
           </aside>
-        </section>
+          </section>
         )}
       </main>
     </div>

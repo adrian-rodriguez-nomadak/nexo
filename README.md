@@ -10,15 +10,17 @@ La primera base incluye:
 - dashboard web separado del backend;
 - API Node independiente desplegable en Render;
 - persistencia PostgreSQL para capturas y finanzas;
+- agenda de eventos persistente;
 - autenticación con ChatGPT y datos aislados por usuario;
 - API para consultar, crear y eliminar capturas;
 - pantalla principal "Hoy";
 - captura rápida persistente en web y temporal en móvil;
-- módulos de finanzas, eventos, notas, apuestas, comidas, salud y gimnasio;
+- módulos dedicados de finanzas y eventos;
+- captura general para notas, apuestas, comidas, salud y gimnasio;
 - espacio de progreso para futuras relaciones entre módulos.
 
-La autenticación y sincronización entre web y móvil todavía no están
-implementadas.
+La autenticación web está implementada. La aplicación móvil todavía funciona
+como prototipo en memoria y no está sincronizada con el backend.
 
 ## Ejecutar
 

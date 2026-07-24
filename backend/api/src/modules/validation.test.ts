@@ -17,6 +17,12 @@ import {
   normalizeLabel,
   normalizeOccurredAt,
 } from "./finances/finances.validation.js";
+import {
+  isValidEventRange,
+  normalizeEventDate,
+  normalizeEventText,
+  normalizeOptionalEventText,
+} from "./events/events.validation.js";
 
 test("validates capture input", () => {
   assert.equal(isModuleKey("notes"), true);
@@ -35,6 +41,30 @@ test("validates finance input", () => {
   assert.equal(
     normalizeOccurredAt("2026-07-23T12:00:00-06:00"),
     "2026-07-23T18:00:00.000Z",
+  );
+});
+
+test("validates event input", () => {
+  assert.equal(normalizeEventText("  Cita   médica ", 100), "Cita médica");
+  assert.equal(normalizeEventText("x", 100), null);
+  assert.equal(normalizeOptionalEventText("", 100), null);
+  assert.equal(
+    normalizeEventDate("2026-07-24T18:30:00-06:00"),
+    "2026-07-25T00:30:00.000Z",
+  );
+  assert.equal(
+    isValidEventRange(
+      "2026-07-25T00:30:00.000Z",
+      "2026-07-25T01:30:00.000Z",
+    ),
+    true,
+  );
+  assert.equal(
+    isValidEventRange(
+      "2026-07-25T01:30:00.000Z",
+      "2026-07-25T00:30:00.000Z",
+    ),
+    false,
   );
 });
 

@@ -12,6 +12,12 @@ permanece en memoria y no se guarda en el navegador.
 El primer módulo funcional permite crear cuentas en MXN, registrar ingresos y
 gastos, consultar balances por cuenta y revisar el flujo neto consolidado.
 
+## Eventos
+
+La agenda permite crear eventos con fecha, horario, opción de día completo,
+ubicación y detalles; también muestra próximos eventos, compromisos del día e
+historial.
+
 ## Desarrollo
 
 Configura la URL de la API:
@@ -27,8 +33,8 @@ npm install
 npm run dev
 ```
 
-Para probar el flujo autenticado fuera de Sites, el entorno debe proporcionar
-los encabezados de identidad de ChatGPT y `NEXO_AUTH_SHARED_SECRET`.
+En desarrollo local se utiliza `NEXO_DEV_USER_EMAIL` como identidad de prueba.
+El intercambio con el backend requiere `NEXO_AUTH_SHARED_SECRET`.
 
 ## Verificación
 
