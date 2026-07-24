@@ -65,6 +65,33 @@ const statements = [
   "CREATE INDEX IF NOT EXISTS nexo_notes_user_updated_idx ON nexo_notes (nexo_user_id, is_pinned DESC, updated_at DESC)",
   "CREATE INDEX IF NOT EXISTS nexo_notes_tags_idx ON nexo_notes USING GIN (tags)",
   `
+    CREATE TABLE IF NOT EXISTS nexo_bet_settings (
+      nexo_user_id TEXT PRIMARY KEY REFERENCES nexo_users(id) ON DELETE CASCADE,
+      bankroll_cents BIGINT NOT NULL DEFAULT 0 CHECK (bankroll_cents >= 0),
+      monthly_limit_cents BIGINT NOT NULL DEFAULT 0 CHECK (monthly_limit_cents >= 0),
+      updated_at TIMESTAMPTZ NOT NULL
+    )
+  `,
+  `
+    CREATE TABLE IF NOT EXISTS nexo_bets (
+      id TEXT PRIMARY KEY,
+      nexo_user_id TEXT NOT NULL REFERENCES nexo_users(id) ON DELETE CASCADE,
+      event TEXT NOT NULL,
+      selection TEXT NOT NULL,
+      market TEXT,
+      sportsbook TEXT,
+      stake_cents BIGINT NOT NULL CHECK (stake_cents > 0),
+      decimal_odds NUMERIC(10, 3) NOT NULL CHECK (decimal_odds >= 1.01),
+      status TEXT NOT NULL DEFAULT 'pending'
+        CHECK (status IN ('pending', 'won', 'lost', 'void')),
+      placed_at TIMESTAMPTZ NOT NULL,
+      settled_at TIMESTAMPTZ,
+      created_at TIMESTAMPTZ NOT NULL
+    )
+  `,
+  "CREATE INDEX IF NOT EXISTS nexo_bets_user_placed_idx ON nexo_bets (nexo_user_id, placed_at DESC)",
+  "CREATE INDEX IF NOT EXISTS nexo_bets_user_status_idx ON nexo_bets (nexo_user_id, status)",
+  `
     CREATE TABLE IF NOT EXISTS finance_accounts (
       id TEXT PRIMARY KEY,
       name TEXT NOT NULL,

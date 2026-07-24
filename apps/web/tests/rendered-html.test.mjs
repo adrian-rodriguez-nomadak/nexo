@@ -75,3 +75,17 @@ test("connects the notes module to the independent API", async () => {
   assert.match(panel, /`\/api\/notes\/\$\{id\}`/);
   assert.match(panel, /togglePinned/);
 });
+
+test("connects the bets module to bankroll and limits", async () => {
+  const panel = await readFile(
+    new URL("app/bets-panel.tsx", projectRoot),
+    "utf8",
+  );
+
+  assert.match(panel, /Registrar apuesta/);
+  assert.match(panel, /Bankroll y límites/);
+  assert.match(panel, /apiFetch\("\/api\/bets", sessionToken\)/);
+  assert.match(panel, /"\/api\/bets\/settings"/);
+  assert.match(panel, /`\/api\/bets\/\$\{id\}\/status`/);
+  assert.match(panel, /Nunca persigas/);
+});

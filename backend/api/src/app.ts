@@ -7,6 +7,7 @@ import express, {
 import { env } from "./config/env.js";
 import { authRouter } from "./modules/auth/auth.routes.js";
 import { requireAuth } from "./modules/auth/auth.middleware.js";
+import { betsRouter } from "./modules/bets/bets.routes.js";
 import { capturesRouter } from "./modules/captures/captures.routes.js";
 import { eventsRouter } from "./modules/events/events.routes.js";
 import { financesRouter } from "./modules/finances/finances.routes.js";
@@ -47,6 +48,7 @@ const healthHandler = asyncHandler(async (_request, response) => {
 app.get("/health", healthHandler);
 app.get("/api/health", healthHandler);
 app.use("/api/auth", authRouter);
+app.use("/api/bets", requireAuth, betsRouter);
 app.use("/api/captures", requireAuth, capturesRouter);
 app.use("/api/events", requireAuth, eventsRouter);
 app.use("/api/finances", requireAuth, financesRouter);

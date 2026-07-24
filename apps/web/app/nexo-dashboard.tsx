@@ -9,6 +9,7 @@ import {
 } from "react";
 
 import { apiFetch } from "./api-client";
+import { BetsPanel } from "./bets-panel";
 import type { ChatGPTUser } from "./chatgpt-auth";
 import { EventsPanel } from "./events-panel";
 import { FinancesPanel } from "./finances-panel";
@@ -138,6 +139,7 @@ export function NexoDashboard({
   user: ChatGPTUser;
 }) {
   const [captures, setCaptures] = useState<CaptureRecord[]>([]);
+  const [betsCount, setBetsCount] = useState(0);
   const [eventsCount, setEventsCount] = useState(0);
   const [notesCount, setNotesCount] = useState(0);
   const [selectedModule, setSelectedModule] = useState<ModuleKey | "all">("all");
@@ -269,11 +271,13 @@ export function NexoDashboard({
 
   const selectedCaptureModule = moduleByKey[captureModule];
   const moduleCount = (module: ModuleKey) =>
-    module === "events"
-      ? eventsCount
-      : module === "notes"
-        ? notesCount
-        : captures.filter((capture) => capture.module === module).length;
+    module === "bets"
+      ? betsCount
+      : module === "events"
+        ? eventsCount
+        : module === "notes"
+          ? notesCount
+          : captures.filter((capture) => capture.module === module).length;
 
   return (
     <div className="app-shell">
@@ -348,7 +352,9 @@ export function NexoDashboard({
                   ? "Tu agenda, en orden."
                   : selectedModule === "notes"
                     ? "Tus ideas, encontrables."
-                  : "Tu día, conectado."}
+                    : selectedModule === "bets"
+                      ? "Tus límites, primero."
+                      : "Tu día, conectado."}
             </h1>
           </div>
           <div className="profile">
@@ -378,6 +384,11 @@ export function NexoDashboard({
         ) : selectedModule === "notes" ? (
           <NotesPanel
             onCountChange={setNotesCount}
+            sessionToken={sessionToken}
+          />
+        ) : selectedModule === "bets" ? (
+          <BetsPanel
+            onCountChange={setBetsCount}
             sessionToken={sessionToken}
           />
         ) : (

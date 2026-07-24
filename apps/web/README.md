@@ -24,6 +24,12 @@ La biblioteca de notas permite crear, editar, fijar y eliminar contenido.
 Incluye búsqueda inmediata y organización mediante hasta ocho etiquetas por
 nota.
 
+## Apuestas
+
+El registro de apuestas controla bankroll, monto en juego, cuotas y resultados.
+Incluye un límite mensual obligatorio cuando se configura, cálculo de
+ganancias o pérdidas y mensajes de juego responsable.
+
 ## Desarrollo
 
 Configura la URL de la API:

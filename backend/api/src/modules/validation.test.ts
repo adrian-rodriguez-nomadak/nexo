@@ -7,6 +7,13 @@ import {
   normalizeEmail,
 } from "./auth/auth.utils.js";
 import {
+  isBetStatus,
+  isValidBetCents,
+  normalizeBetDate,
+  normalizeBetOdds,
+  normalizeBetText,
+} from "./bets/bets.validation.js";
+import {
   isModuleKey,
   normalizeCaptureContent,
 } from "./captures/captures.validation.js";
@@ -34,6 +41,21 @@ test("validates capture input", () => {
   assert.equal(isModuleKey("unknown"), false);
   assert.equal(normalizeCaptureContent("  Una   idea nueva  "), "Una idea nueva");
   assert.equal(normalizeCaptureContent("x"), null);
+});
+
+test("validates bet input", () => {
+  assert.equal(normalizeBetText("  Tigres   vs Rayados ", 160), "Tigres vs Rayados");
+  assert.equal(normalizeBetOdds(1.8764), 1.876);
+  assert.equal(normalizeBetOdds(1), null);
+  assert.equal(isValidBetCents(25_000), true);
+  assert.equal(isValidBetCents(0), false);
+  assert.equal(isValidBetCents(0, { allowZero: true }), true);
+  assert.equal(isBetStatus("won"), true);
+  assert.equal(isBetStatus("cancelled"), false);
+  assert.equal(
+    normalizeBetDate("2026-07-24T18:00:00-06:00"),
+    "2026-07-25T00:00:00.000Z",
+  );
 });
 
 test("validates finance input", () => {
