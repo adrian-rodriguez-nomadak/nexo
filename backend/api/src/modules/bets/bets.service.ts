@@ -95,33 +95,6 @@ type SelectionRow = {
   decimal_odds: string | null;
 };
 
-let betSelectionsSchemaPromise: Promise<void> | null = null;
-
-function ensureBetSelectionsSchema(): Promise<void> {
-  if (!betSelectionsSchemaPromise) {
-    betSelectionsSchemaPromise = (async () => {
-      const result = await pool.query<{ is_nullable: "YES" | "NO" }>(
-        `SELECT is_nullable
-         FROM information_schema.columns
-         WHERE table_schema = current_schema()
-           AND table_name = 'nexo_bet_selections'
-           AND column_name = 'decimal_odds'`,
-      );
-
-      if (result.rows[0]?.is_nullable === "NO") {
-        await pool.query(
-          "ALTER TABLE nexo_bet_selections ALTER COLUMN decimal_odds DROP NOT NULL",
-        );
-      }
-    })().catch((error: unknown) => {
-      betSelectionsSchemaPromise = null;
-      throw error;
-    });
-  }
-
-  return betSelectionsSchemaPromise;
-}
-
 function mapBet(
   row: BetRow,
   selections: BetSelection[] = [],
@@ -332,8 +305,6 @@ export async function createBet(input: {
   | { bet: NexoBet; error: null }
   | { bet: null; error: "account_not_found" | "limit_exceeded" }
 > {
-  await ensureBetSelectionsSchema();
-
   const client = await pool.connect();
   const betId = randomUUID();
   const stakeTransactionId = randomUUID();
@@ -403,10 +374,10 @@ export async function createBet(input: {
          $7,
          $8,
          NULL,
-         $9,
-         $10,
+         $9::BIGINT,
+         $10::NUMERIC,
          'pending',
-         $11,
+         $11::TIMESTAMPTZ,
          NULL,
          NOW()
        WHERE
@@ -430,7 +401,7 @@ export async function createBet(input: {
                    DATE_TRUNC('month', NOW()) + INTERVAL '1 month'
              ),
              0
-           ) + $9
+           ) + $9::BIGINT
          ) <= (
            SELECT monthly_limit_cents
            FROM nexo_bet_settings
