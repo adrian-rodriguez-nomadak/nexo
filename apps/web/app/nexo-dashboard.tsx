@@ -10,13 +10,18 @@ import {
 
 import { apiFetch } from "./api-client";
 import { BetsPanel } from "./bets-panel";
-import type { ChatGPTUser } from "./chatgpt-auth";
 import { EventsPanel } from "./events-panel";
 import { FinancesPanel } from "./finances-panel";
 import { GymPanel } from "./gym-panel";
 import { HealthPanel } from "./health-panel";
 import { MealsPanel } from "./meals-panel";
 import { NotesPanel } from "./notes-panel";
+
+type DashboardUser = {
+  displayName: string;
+  email: string;
+  fullName: string | null;
+};
 
 type ModuleKey =
   | "finances"
@@ -123,7 +128,7 @@ function formatTime(value: string): string {
   }).format(new Date(value));
 }
 
-function userInitials(user: ChatGPTUser): string {
+function userInitials(user: DashboardUser): string {
   const source = user.fullName ?? user.email.split("@")[0] ?? "N";
   return source
     .split(/\s+/)
@@ -133,13 +138,15 @@ function userInitials(user: ChatGPTUser): string {
 }
 
 export function NexoDashboard({
+  onSignOut,
   sessionToken,
   signOutPath,
   user,
 }: {
+  onSignOut?: () => void;
   sessionToken: string;
   signOutPath: string;
-  user: ChatGPTUser;
+  user: DashboardUser;
 }) {
   const [captures, setCaptures] = useState<CaptureRecord[]>([]);
   const [betsCount, setBetsCount] = useState(0);
@@ -271,6 +278,7 @@ export function NexoDashboard({
     try {
       await apiFetch("/api/auth/logout", sessionToken, { method: "POST" });
     } finally {
+      onSignOut?.();
       window.location.assign(signOutPath);
     }
   }

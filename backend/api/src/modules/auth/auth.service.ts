@@ -1,14 +1,19 @@
 import {
   randomBytes,
   randomUUID,
+  scrypt as scryptCallback,
   timingSafeEqual,
 } from "node:crypto";
+import { promisify } from "node:util";
 
 import { env } from "../../config/env.js";
 import { query } from "../../shared/db/database.js";
 import { hashSessionToken } from "./auth.utils.js";
 
 const SESSION_DURATION_MS = 24 * 60 * 60 * 1000;
+const PASSWORD_KEY_LENGTH = 64;
+const scrypt = promisify(scryptCallback);
+const dummyPasswordSalt = randomBytes(16).toString("hex");
 
 export type AuthUser = {
   id: string;
@@ -21,6 +26,13 @@ type UserRow = {
   email: string;
   display_name: string;
 };
+
+type CredentialUserRow = UserRow & {
+  password_hash: string | null;
+  password_salt: string | null;
+};
+
+export class EmailAlreadyRegisteredError extends Error {}
 
 export function isValidExchangeSecret(value: unknown): boolean {
   if (
@@ -49,7 +61,21 @@ export async function createSessionForIdentity(input: {
      RETURNING id, email, display_name`,
     [randomUUID(), input.email, input.displayName],
   );
-  const userRow = userResult.rows[0]!;
+  return createSessionForUser(userResult.rows[0]!);
+}
+
+async function passwordHash(password: string, salt: string): Promise<string> {
+  const derivedKey = (await scrypt(
+    password,
+    salt,
+    PASSWORD_KEY_LENGTH,
+  )) as Buffer;
+  return derivedKey.toString("hex");
+}
+
+async function createSessionForUser(
+  userRow: UserRow,
+): Promise<{ token: string; user: AuthUser; expiresAt: string }> {
   const token = randomBytes(32).toString("base64url");
   const expiresAt = new Date(Date.now() + SESSION_DURATION_MS);
 
@@ -70,6 +96,70 @@ export async function createSessionForIdentity(input: {
     },
     expiresAt: expiresAt.toISOString(),
   };
+}
+
+export async function registerWithCredentials(input: {
+  email: string;
+  displayName: string;
+  password: string;
+}): Promise<{ token: string; user: AuthUser; expiresAt: string }> {
+  const existing = await query<{ id: string }>(
+    "SELECT id FROM nexo_users WHERE email = $1 LIMIT 1",
+    [input.email],
+  );
+  if (existing.rows[0]) throw new EmailAlreadyRegisteredError();
+
+  const salt = randomBytes(16).toString("hex");
+  const hash = await passwordHash(input.password, salt);
+
+  try {
+    const result = await query<UserRow>(
+      `INSERT INTO nexo_users (
+         id, email, display_name, password_hash, password_salt, created_at, updated_at
+       ) VALUES ($1, $2, $3, $4, $5, NOW(), NOW())
+       RETURNING id, email, display_name`,
+      [randomUUID(), input.email, input.displayName, hash, salt],
+    );
+    return createSessionForUser(result.rows[0]!);
+  } catch (error) {
+    if (
+      error &&
+      typeof error === "object" &&
+      "code" in error &&
+      error.code === "23505"
+    ) {
+      throw new EmailAlreadyRegisteredError();
+    }
+    throw error;
+  }
+}
+
+export async function loginWithCredentials(input: {
+  email: string;
+  password: string;
+}): Promise<{ token: string; user: AuthUser; expiresAt: string } | null> {
+  const result = await query<CredentialUserRow>(
+    `SELECT id, email, display_name, password_hash, password_salt
+     FROM nexo_users
+     WHERE email = $1
+     LIMIT 1`,
+    [input.email],
+  );
+  const row = result.rows[0];
+  const salt = row?.password_salt ?? dummyPasswordSalt;
+  const candidateHash = await passwordHash(input.password, salt);
+
+  if (!row?.password_hash || !row.password_salt) return null;
+  const expected = Buffer.from(row.password_hash, "hex");
+  const candidate = Buffer.from(candidateHash, "hex");
+  if (
+    expected.length !== candidate.length ||
+    !timingSafeEqual(expected, candidate)
+  ) {
+    return null;
+  }
+
+  return createSessionForUser(row);
 }
 
 export async function findUserBySessionToken(

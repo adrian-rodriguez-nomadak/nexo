@@ -21,7 +21,8 @@ La primera base incluye:
   medicamentos, contacto de emergencia y peso meta;
 - historial de peso, sueño, agua, presión, pulso, glucosa, oxígeno,
   temperatura, estado de ánimo y síntomas;
-- autenticación con ChatGPT y datos aislados por usuario;
+- inicio público, registro e inicio de sesión por correo con datos aislados por
+  usuario;
 - API para consultar, crear y eliminar capturas;
 - pantalla principal "Hoy";
 - captura rápida persistente en web y temporal en móvil;
@@ -29,7 +30,7 @@ La primera base incluye:
   gimnasio;
 - espacio de progreso para futuras relaciones entre módulos.
 
-La autenticación web está implementada. La aplicación móvil todavía funciona
+La autenticación web con credenciales está implementada. La aplicación móvil todavía funciona
 como prototipo en memoria y no está sincronizada con el backend.
 
 ## Ejecutar

@@ -31,11 +31,12 @@ la información que vive dentro de ellos.
 
 ## Primer recorrido
 
-1. La persona abre "Hoy".
-2. Escribe algo en lenguaje natural.
-3. Selecciona el módulo al que pertenece.
-4. La captura aparece inmediatamente en su día.
-5. Con suficientes registros, Nexo presenta relaciones y tendencias.
+1. La persona conoce la propuesta desde el inicio público.
+2. Crea su cuenta o inicia sesión con correo y contraseña.
+3. Abre "Hoy" y escribe algo en lenguaje natural.
+4. Selecciona el módulo al que pertenece.
+5. La captura aparece inmediatamente en su día.
+6. Con suficientes registros, Nexo presenta relaciones y tendencias.
 
 ## Orden de construcción
 

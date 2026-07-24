@@ -45,6 +45,9 @@ Variables requeridas:
 
 ## Módulos
 
+- `/api/auth/register`: crea una cuenta con nombre, correo y contraseña.
+- `/api/auth/login`: valida credenciales y crea una sesión de 24 horas.
+- `/api/auth/me` y `/api/auth/logout`: restauran o cierran la sesión.
 - `/api/captures`: captura general para los siete módulos.
 - `/api/finances`: cuentas, ingresos, gastos, balances y movimientos.
 - `/api/events`: agenda personal con fecha, horario, ubicación y detalles.

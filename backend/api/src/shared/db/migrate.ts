@@ -19,6 +19,8 @@ const statements = [
       created_at TIMESTAMPTZ NOT NULL
     )
   `,
+  "ALTER TABLE nexo_users ADD COLUMN IF NOT EXISTS password_hash TEXT",
+  "ALTER TABLE nexo_users ADD COLUMN IF NOT EXISTS password_salt TEXT",
   "CREATE INDEX IF NOT EXISTS nexo_auth_sessions_user_idx ON nexo_auth_sessions (user_id)",
   "CREATE INDEX IF NOT EXISTS nexo_auth_sessions_expiry_idx ON nexo_auth_sessions (expires_at)",
   `

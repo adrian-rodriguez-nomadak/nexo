@@ -23,3 +23,12 @@ export function normalizeDisplayName(
 export function hashSessionToken(token: string): string {
   return createHash("sha256").update(token).digest("hex");
 }
+
+export function normalizePassword(value: unknown): string | null {
+  if (typeof value !== "string") return null;
+  if (value.length < 8 || value.length > 128) return null;
+  if (/\s/.test(value) || !/[A-Za-z]/.test(value) || !/\d/.test(value)) {
+    return null;
+  }
+  return value;
+}

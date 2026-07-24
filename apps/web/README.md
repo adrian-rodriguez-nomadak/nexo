@@ -3,9 +3,9 @@
 Dashboard web de Nexo construido sobre Vinext. La API vive de forma
 independiente en `backend/api`.
 
-La web usa el inicio de sesión administrado por ChatGPT. En el servidor,
-intercambia la identidad autenticada por una sesión corta de Nexo; el token
-permanece en memoria y no se guarda en el navegador.
+La web incluye inicio público, registro e inicio de sesión propios. Las
+contraseñas se derivan con `scrypt` en el backend y la sesión de Nexo se
+restaura en el navegador mientras siga vigente.
 
 ## Finanzas
 
@@ -73,8 +73,8 @@ npm install
 npm run dev
 ```
 
-En desarrollo local se utiliza `NEXO_DEV_USER_EMAIL` como identidad de prueba.
-El intercambio con el backend requiere `NEXO_AUTH_SHARED_SECRET`.
+El registro y el inicio de sesión solo requieren que `NEXT_PUBLIC_API_URL`
+apunte al backend y que su origen esté permitido en `CORS_ORIGIN`.
 
 ## Verificación
 

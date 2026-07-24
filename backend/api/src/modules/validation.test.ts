@@ -5,6 +5,7 @@ import {
   hashSessionToken,
   normalizeDisplayName,
   normalizeEmail,
+  normalizePassword,
 } from "./auth/auth.utils.js";
 import {
   betPayoutCents,
@@ -371,4 +372,8 @@ test("normalizes identity and hashes session tokens", () => {
   );
   assert.equal(hashSessionToken("token"), hashSessionToken("token"));
   assert.notEqual(hashSessionToken("token"), hashSessionToken("other-token"));
+  assert.equal(normalizePassword("Nexo2026"), "Nexo2026");
+  assert.equal(normalizePassword("sin-numeros"), null);
+  assert.equal(normalizePassword("12345678"), null);
+  assert.equal(normalizePassword("Con espacios 2026"), null);
 });
