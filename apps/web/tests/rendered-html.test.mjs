@@ -115,3 +115,21 @@ test("connects meals to macros and finances", async () => {
   assert.match(panel, /`\/api\/meals\/\$\{id\}`/);
   assert.match(panel, /financeAccountId:/);
 });
+
+test("connects gym sessions to exercises and progress", async () => {
+  const [dashboard, panel] = await Promise.all([
+    readFile(new URL("app/nexo-dashboard.tsx", projectRoot), "utf8"),
+    readFile(new URL("app/gym-panel.tsx", projectRoot), "utf8"),
+  ]);
+
+  assert.match(dashboard, /GymPanel/);
+  assert.match(dashboard, /Tu progreso, medible\./);
+  assert.match(panel, /Registrar entrenamiento/);
+  assert.match(panel, /Guardar entrenamiento/);
+  assert.match(panel, /Volumen/);
+  assert.match(panel, /Peso máximo/);
+  assert.match(panel, /apiFetch\("\/api\/gym", sessionToken\)/);
+  assert.match(panel, /`\/api\/gym\/\$\{id\}`/);
+  assert.match(panel, /addExercise/);
+  assert.match(panel, /workoutVolume/);
+});

@@ -48,6 +48,11 @@ import {
   normalizeOptionalMealDecimal,
   normalizeOptionalMealInteger,
 } from "./meals/meals.validation.js";
+import {
+  normalizeExercises,
+  normalizeGymDate,
+  normalizeGymText,
+} from "./gym/gym.validation.js";
 
 test("validates capture input", () => {
   assert.equal(isModuleKey("notes"), true);
@@ -216,6 +221,49 @@ test("validates meal input", () => {
   assert.equal(
     normalizeMealDate("2026-07-24T14:30:00-06:00"),
     "2026-07-24T20:30:00.000Z",
+  );
+});
+
+test("validates gym input", () => {
+  assert.equal(normalizeGymText("  Día   de pierna ", 120), "Día de pierna");
+  const exercises = normalizeExercises([
+    {
+      name: "Sentadilla",
+      kind: "strength",
+      sets: 4,
+      reps: 8,
+      weightKg: 80,
+      distanceKm: null,
+      durationMinutes: null,
+      notes: "",
+    },
+    {
+      name: "Caminadora",
+      kind: "cardio",
+      sets: null,
+      reps: null,
+      weightKg: null,
+      distanceKm: 3.25,
+      durationMinutes: 20,
+      notes: null,
+    },
+  ]);
+  assert.equal(exercises?.length, 2);
+  assert.equal(exercises?.[1]?.distanceKm, 3.25);
+  assert.equal(
+    normalizeExercises([
+      {
+        name: "Press",
+        kind: "strength",
+        sets: null,
+        reps: 8,
+      },
+    ]),
+    null,
+  );
+  assert.equal(
+    normalizeGymDate("2026-07-24T18:00:00-06:00"),
+    "2026-07-25T00:00:00.000Z",
   );
 });
 

@@ -13,6 +13,7 @@ import { BetsPanel } from "./bets-panel";
 import type { ChatGPTUser } from "./chatgpt-auth";
 import { EventsPanel } from "./events-panel";
 import { FinancesPanel } from "./finances-panel";
+import { GymPanel } from "./gym-panel";
 import { MealsPanel } from "./meals-panel";
 import { NotesPanel } from "./notes-panel";
 
@@ -142,6 +143,7 @@ export function NexoDashboard({
   const [captures, setCaptures] = useState<CaptureRecord[]>([]);
   const [betsCount, setBetsCount] = useState(0);
   const [eventsCount, setEventsCount] = useState(0);
+  const [gymCount, setGymCount] = useState(0);
   const [mealsCount, setMealsCount] = useState(0);
   const [notesCount, setNotesCount] = useState(0);
   const [selectedModule, setSelectedModule] = useState<ModuleKey | "all">("all");
@@ -277,6 +279,8 @@ export function NexoDashboard({
       ? betsCount
       : module === "events"
         ? eventsCount
+        : module === "gym"
+          ? gymCount
         : module === "meals"
           ? mealsCount
         : module === "notes"
@@ -360,6 +364,8 @@ export function NexoDashboard({
                       ? "Tus límites, primero."
                       : selectedModule === "meals"
                         ? "Tu alimentación, visible."
+                        : selectedModule === "gym"
+                          ? "Tu progreso, medible."
                       : "Tu día, conectado."}
             </h1>
           </div>
@@ -400,6 +406,11 @@ export function NexoDashboard({
         ) : selectedModule === "meals" ? (
           <MealsPanel
             onCountChange={setMealsCount}
+            sessionToken={sessionToken}
+          />
+        ) : selectedModule === "gym" ? (
+          <GymPanel
+            onCountChange={setGymCount}
             sessionToken={sessionToken}
           />
         ) : (

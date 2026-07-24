@@ -11,6 +11,7 @@ import { betsRouter } from "./modules/bets/bets.routes.js";
 import { capturesRouter } from "./modules/captures/captures.routes.js";
 import { eventsRouter } from "./modules/events/events.routes.js";
 import { financesRouter } from "./modules/finances/finances.routes.js";
+import { gymRouter } from "./modules/gym/gym.routes.js";
 import { mealsRouter } from "./modules/meals/meals.routes.js";
 import { notesRouter } from "./modules/notes/notes.routes.js";
 import { query } from "./shared/db/database.js";
@@ -53,6 +54,7 @@ app.use("/api/bets", requireAuth, betsRouter);
 app.use("/api/captures", requireAuth, capturesRouter);
 app.use("/api/events", requireAuth, eventsRouter);
 app.use("/api/finances", requireAuth, financesRouter);
+app.use("/api/gym", requireAuth, gymRouter);
 app.use("/api/meals", requireAuth, mealsRouter);
 app.use("/api/notes", requireAuth, notesRouter);
 

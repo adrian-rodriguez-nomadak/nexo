@@ -187,6 +187,41 @@ const statements = [
   `,
   "CREATE INDEX IF NOT EXISTS nexo_meals_user_eaten_idx ON nexo_meals (nexo_user_id, eaten_at DESC)",
   "CREATE INDEX IF NOT EXISTS nexo_meals_finance_account_idx ON nexo_meals (finance_account_id)",
+  `
+    CREATE TABLE IF NOT EXISTS nexo_workouts (
+      id TEXT PRIMARY KEY,
+      nexo_user_id TEXT NOT NULL REFERENCES nexo_users(id) ON DELETE CASCADE,
+      title TEXT NOT NULL,
+      notes TEXT,
+      duration_minutes INTEGER NOT NULL
+        CHECK (duration_minutes BETWEEN 1 AND 1440),
+      trained_at TIMESTAMPTZ NOT NULL,
+      created_at TIMESTAMPTZ NOT NULL
+    )
+  `,
+  "CREATE INDEX IF NOT EXISTS nexo_workouts_user_trained_idx ON nexo_workouts (nexo_user_id, trained_at DESC)",
+  `
+    CREATE TABLE IF NOT EXISTS nexo_workout_exercises (
+      id TEXT PRIMARY KEY,
+      workout_id TEXT NOT NULL
+        REFERENCES nexo_workouts(id) ON DELETE CASCADE,
+      name TEXT NOT NULL,
+      exercise_kind TEXT NOT NULL
+        CHECK (exercise_kind IN ('strength', 'cardio', 'mobility')),
+      sets INTEGER CHECK (sets IS NULL OR sets BETWEEN 1 AND 100),
+      reps INTEGER CHECK (reps IS NULL OR reps BETWEEN 1 AND 1000),
+      weight_kg NUMERIC(8, 2)
+        CHECK (weight_kg IS NULL OR weight_kg >= 0),
+      distance_km NUMERIC(9, 2)
+        CHECK (distance_km IS NULL OR distance_km >= 0),
+      duration_minutes INTEGER
+        CHECK (duration_minutes IS NULL OR duration_minutes BETWEEN 1 AND 1440),
+      notes TEXT,
+      position INTEGER NOT NULL CHECK (position >= 0),
+      created_at TIMESTAMPTZ NOT NULL
+    )
+  `,
+  "CREATE INDEX IF NOT EXISTS nexo_workout_exercises_workout_position_idx ON nexo_workout_exercises (workout_id, position)",
 ];
 
 export async function migrate(): Promise<void> {

@@ -36,7 +36,7 @@ la información que vive dentro de ellos.
 1. Shell, captura y navegación.
 2. Persistencia local.
 3. Finanzas, eventos y notas. **Base web funcional.**
-4. Comidas, salud y gimnasio. **Comidas web funcional.**
+4. Comidas, salud y gimnasio. **Comidas y gimnasio web funcionales.**
 5. Apuestas dependientes de Finanzas, con boletos y límites. **Base web funcional.**
 6. Backend, cuenta y sincronización.
 7. Clasificación asistida y conexiones inteligentes.

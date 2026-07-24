@@ -42,6 +42,12 @@ calorías, proteína, carbohidratos, grasa y notas. Un costo opcional genera un
 gasto en la cuenta de Finanzas elegida; al eliminar la comida también se elimina
 el movimiento relacionado.
 
+## Gimnasio
+
+Cada sesión de gimnasio guarda fecha, duración, notas y uno o más ejercicios de
+fuerza, cardio o movilidad. El historial calcula sesiones y minutos semanales,
+volumen total de fuerza y la carga máxima registrada.
+
 ## Desarrollo
 
 Configura la URL de la API:
