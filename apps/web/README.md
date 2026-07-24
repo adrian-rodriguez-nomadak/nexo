@@ -1,6 +1,6 @@
 # Nexo Web
 
-Dashboard web de Nexo construido sobre Vinext. La API vive de forma
+Dashboard web de Nexo construido con Next.js. La API vive de forma
 independiente en `backend/api`.
 
 La web incluye inicio público, registro e inicio de sesión propios. Las
@@ -82,6 +82,19 @@ npm run dev
 
 El registro y el inicio de sesión solo requieren que `NEXT_PUBLIC_API_URL`
 apunte al backend y que su origen esté permitido en `CORS_ORIGIN`.
+
+## Despliegue en Vercel
+
+Importa el repositorio de GitHub y configura:
+
+- Root Directory: `apps/web`
+- Framework Preset: `Next.js`
+- Build Command y Output Directory: valores predeterminados
+- Variable de entorno:
+  `NEXT_PUBLIC_API_URL=https://nexo-api-2gbp.onrender.com`
+
+Después de obtener el dominio de Vercel, agrégalo al `CORS_ORIGIN` del backend
+en Render y vuelve a desplegar la API.
 
 ## Verificación
 

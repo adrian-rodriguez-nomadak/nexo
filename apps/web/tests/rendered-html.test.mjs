@@ -14,7 +14,7 @@ test("builds the authenticated Nexo dashboard", async () => {
       readFile(new URL("app/page.tsx", projectRoot), "utf8"),
       readFile(new URL("app/login/page.tsx", projectRoot), "utf8"),
       readFile(new URL("app/register/page.tsx", projectRoot), "utf8"),
-      access(new URL("dist/server/index.js", projectRoot)),
+      access(new URL(".next/BUILD_ID", projectRoot)),
     ]);
 
   assert.match(layout, /Nexo — Tu vida, conectada/);
