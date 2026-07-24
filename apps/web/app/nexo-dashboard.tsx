@@ -12,6 +12,7 @@ import { apiFetch } from "./api-client";
 import type { ChatGPTUser } from "./chatgpt-auth";
 import { EventsPanel } from "./events-panel";
 import { FinancesPanel } from "./finances-panel";
+import { NotesPanel } from "./notes-panel";
 
 type ModuleKey =
   | "finances"
@@ -138,6 +139,7 @@ export function NexoDashboard({
 }) {
   const [captures, setCaptures] = useState<CaptureRecord[]>([]);
   const [eventsCount, setEventsCount] = useState(0);
+  const [notesCount, setNotesCount] = useState(0);
   const [selectedModule, setSelectedModule] = useState<ModuleKey | "all">("all");
   const [captureModule, setCaptureModule] = useState<ModuleKey>("notes");
   const [content, setContent] = useState("");
@@ -269,7 +271,9 @@ export function NexoDashboard({
   const moduleCount = (module: ModuleKey) =>
     module === "events"
       ? eventsCount
-      : captures.filter((capture) => capture.module === module).length;
+      : module === "notes"
+        ? notesCount
+        : captures.filter((capture) => capture.module === module).length;
 
   return (
     <div className="app-shell">
@@ -342,6 +346,8 @@ export function NexoDashboard({
                 ? "Tu dinero, claro."
                 : selectedModule === "events"
                   ? "Tu agenda, en orden."
+                  : selectedModule === "notes"
+                    ? "Tus ideas, encontrables."
                   : "Tu día, conectado."}
             </h1>
           </div>
@@ -367,6 +373,11 @@ export function NexoDashboard({
         ) : selectedModule === "events" ? (
           <EventsPanel
             onCountChange={setEventsCount}
+            sessionToken={sessionToken}
+          />
+        ) : selectedModule === "notes" ? (
+          <NotesPanel
+            onCountChange={setNotesCount}
             sessionToken={sessionToken}
           />
         ) : (

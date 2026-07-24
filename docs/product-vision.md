@@ -26,7 +26,7 @@ la información que vive dentro de ellos.
 
 1. Shell, captura y navegación.
 2. Persistencia local.
-3. Finanzas, eventos y notas. **Finanzas web en progreso.**
+3. Finanzas, eventos y notas. **Base web funcional.**
 4. Comidas, salud y gimnasio.
 5. Apuestas con bankroll y límites.
 6. Backend, cuenta y sincronización.

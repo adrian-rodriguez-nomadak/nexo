@@ -10,6 +10,7 @@ import { requireAuth } from "./modules/auth/auth.middleware.js";
 import { capturesRouter } from "./modules/captures/captures.routes.js";
 import { eventsRouter } from "./modules/events/events.routes.js";
 import { financesRouter } from "./modules/finances/finances.routes.js";
+import { notesRouter } from "./modules/notes/notes.routes.js";
 import { query } from "./shared/db/database.js";
 import { asyncHandler } from "./shared/http/async-handler.js";
 
@@ -49,6 +50,7 @@ app.use("/api/auth", authRouter);
 app.use("/api/captures", requireAuth, capturesRouter);
 app.use("/api/events", requireAuth, eventsRouter);
 app.use("/api/finances", requireAuth, financesRouter);
+app.use("/api/notes", requireAuth, notesRouter);
 
 const notFoundHandler: RequestHandler = (_request, response) => {
   response.status(404).json({ error: "Ruta no encontrada." });

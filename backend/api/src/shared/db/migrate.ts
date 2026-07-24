@@ -51,6 +51,20 @@ const statements = [
   `,
   "CREATE INDEX IF NOT EXISTS nexo_events_user_start_idx ON nexo_events (nexo_user_id, starts_at)",
   `
+    CREATE TABLE IF NOT EXISTS nexo_notes (
+      id TEXT PRIMARY KEY,
+      nexo_user_id TEXT NOT NULL REFERENCES nexo_users(id) ON DELETE CASCADE,
+      title TEXT NOT NULL,
+      content TEXT NOT NULL,
+      tags TEXT[] NOT NULL DEFAULT '{}',
+      is_pinned BOOLEAN NOT NULL DEFAULT FALSE,
+      created_at TIMESTAMPTZ NOT NULL,
+      updated_at TIMESTAMPTZ NOT NULL
+    )
+  `,
+  "CREATE INDEX IF NOT EXISTS nexo_notes_user_updated_idx ON nexo_notes (nexo_user_id, is_pinned DESC, updated_at DESC)",
+  "CREATE INDEX IF NOT EXISTS nexo_notes_tags_idx ON nexo_notes USING GIN (tags)",
+  `
     CREATE TABLE IF NOT EXISTS finance_accounts (
       id TEXT PRIMARY KEY,
       name TEXT NOT NULL,

@@ -46,6 +46,7 @@ Variables requeridas:
 - `/api/captures`: captura general para los siete módulos.
 - `/api/finances`: cuentas, ingresos, gastos, balances y movimientos.
 - `/api/events`: agenda personal con fecha, horario, ubicación y detalles.
+- `/api/notes`: notas editables, etiquetas, búsqueda local y marcadores.
 
 Todas las rutas de módulos requieren un token Bearer y filtran los registros
 por el usuario autenticado.

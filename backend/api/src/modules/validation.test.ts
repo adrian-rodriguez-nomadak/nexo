@@ -23,6 +23,11 @@ import {
   normalizeEventText,
   normalizeOptionalEventText,
 } from "./events/events.validation.js";
+import {
+  normalizeNoteContent,
+  normalizeNoteTags,
+  normalizeNoteTitle,
+} from "./notes/notes.validation.js";
 
 test("validates capture input", () => {
   assert.equal(isModuleKey("notes"), true);
@@ -65,6 +70,30 @@ test("validates event input", () => {
       "2026-07-25T00:30:00.000Z",
     ),
     false,
+  );
+});
+
+test("validates note input", () => {
+  assert.equal(normalizeNoteTitle("  Idea   principal "), "Idea principal");
+  assert.equal(normalizeNoteTitle("x"), null);
+  assert.equal(normalizeNoteContent("  Primera línea\nSegunda línea  "), "Primera línea\nSegunda línea");
+  assert.deepEqual(
+    normalizeNoteTags(["Trabajo", " Personal ", "trabajo"]),
+    ["Trabajo", "Personal"],
+  );
+  assert.equal(
+    normalizeNoteTags([
+      "uno",
+      "dos",
+      "tres",
+      "cuatro",
+      "cinco",
+      "seis",
+      "siete",
+      "ocho",
+      "nueve",
+    ]),
+    null,
   );
 });
 

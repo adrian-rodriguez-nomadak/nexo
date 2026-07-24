@@ -61,3 +61,17 @@ test("connects the events module to the independent API", async () => {
   assert.match(panel, /`\/api\/events\/\$\{id\}`/);
   assert.match(panel, /datetime-local/);
 });
+
+test("connects the notes module to the independent API", async () => {
+  const panel = await readFile(
+    new URL("app/notes-panel.tsx", projectRoot),
+    "utf8",
+  );
+
+  assert.match(panel, /Crear nota/);
+  assert.match(panel, /Buscar notas/);
+  assert.match(panel, /apiFetch\("\/api\/notes", sessionToken\)/);
+  assert.match(panel, /method: editingId \? "PATCH" : "POST"/);
+  assert.match(panel, /`\/api\/notes\/\$\{id\}`/);
+  assert.match(panel, /togglePinned/);
+});

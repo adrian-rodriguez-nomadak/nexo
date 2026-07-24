@@ -11,12 +11,13 @@ La primera base incluye:
 - API Node independiente desplegable en Render;
 - persistencia PostgreSQL para capturas y finanzas;
 - agenda de eventos persistente;
+- biblioteca de notas con búsqueda, etiquetas y notas fijadas;
 - autenticación con ChatGPT y datos aislados por usuario;
 - API para consultar, crear y eliminar capturas;
 - pantalla principal "Hoy";
 - captura rápida persistente en web y temporal en móvil;
-- módulos dedicados de finanzas y eventos;
-- captura general para notas, apuestas, comidas, salud y gimnasio;
+- módulos dedicados de finanzas, eventos y notas;
+- captura general para apuestas, comidas, salud y gimnasio;
 - espacio de progreso para futuras relaciones entre módulos.
 
 La autenticación web está implementada. La aplicación móvil todavía funciona

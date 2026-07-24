@@ -18,6 +18,12 @@ La agenda permite crear eventos con fecha, horario, opción de día completo,
 ubicación y detalles; también muestra próximos eventos, compromisos del día e
 historial.
 
+## Notas
+
+La biblioteca de notas permite crear, editar, fijar y eliminar contenido.
+Incluye búsqueda inmediata y organización mediante hasta ocho etiquetas por
+nota.
+
 ## Desarrollo
 
 Configura la URL de la API:
