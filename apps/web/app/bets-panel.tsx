@@ -12,6 +12,22 @@ import { apiFetch } from "./api-client";
 
 type BetStatus = "pending" | "won" | "lost" | "void";
 type BetFilter = "all" | "pending" | "settled";
+type Sportsbook = "Caliente" | "Draftea" | "Otro";
+
+type BetSelection = {
+  id: string;
+  event: string;
+  selection: string;
+  market: string | null;
+  decimalOdds: number;
+};
+
+type BetSelectionDraft = {
+  event: string;
+  selection: string;
+  market: string;
+  decimalOdds: string;
+};
 
 type NexoBet = {
   id: string;
@@ -19,6 +35,7 @@ type NexoBet = {
   selection: string;
   market: string | null;
   sportsbook: string | null;
+  selections: BetSelection[];
   financeAccountId: string | null;
   financeAccountName: string | null;
   financeSynced: boolean;
@@ -31,7 +48,6 @@ type NexoBet = {
 };
 
 type BetSettings = {
-  bankrollCents: number;
   monthlyLimitCents: number;
 };
 
@@ -42,8 +58,7 @@ type BetFinanceAccount = {
 };
 
 type BetSummary = {
-  bankrollCents: number;
-  currentBankrollCents: number;
+  financeBalanceCents: number;
   monthlyLimitCents: number;
   monthlyStakedCents: number;
   remainingLimitCents: number;
@@ -60,13 +75,11 @@ type BetsData = {
 };
 
 const emptySettings: BetSettings = {
-  bankrollCents: 0,
   monthlyLimitCents: 0,
 };
 
 const emptySummary: BetSummary = {
-  bankrollCents: 0,
-  currentBankrollCents: 0,
+  financeBalanceCents: 0,
   monthlyLimitCents: 0,
   monthlyStakedCents: 0,
   remainingLimitCents: 0,
@@ -81,6 +94,21 @@ const statusLabels: Record<BetStatus, string> = {
   lost: "Perdida",
   void: "Nula",
 };
+
+const sportsbookOptions: Sportsbook[] = ["Caliente", "Draftea", "Otro"];
+
+function emptySelectionDraft(): BetSelectionDraft {
+  return {
+    event: "",
+    selection: "",
+    market: "",
+    decimalOdds: "",
+  };
+}
+
+function initialSelectionDrafts(): BetSelectionDraft[] {
+  return [emptySelectionDraft(), emptySelectionDraft()];
+}
 
 const moneyFormatter = new Intl.NumberFormat("es-MX", {
   style: "currency",
@@ -156,25 +184,27 @@ export function BetsPanel({
   const [isSavingSettings, setIsSavingSettings] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
-  const [eventName, setEventName] = useState("");
-  const [selection, setSelection] = useState("");
-  const [market, setMarket] = useState("");
-  const [sportsbook, setSportsbook] = useState("");
+  const [selections, setSelections] = useState<BetSelectionDraft[]>(
+    initialSelectionDrafts,
+  );
+  const [sportsbook, setSportsbook] = useState<Sportsbook>("Caliente");
   const [financeAccountId, setFinanceAccountId] = useState("");
   const [stake, setStake] = useState("");
-  const [decimalOdds, setDecimalOdds] = useState("");
   const [placedAt, setPlacedAt] = useState(() =>
     toLocalInputValue(new Date()),
   );
-  const [bankroll, setBankroll] = useState("");
   const [monthlyLimit, setMonthlyLimit] = useState("");
 
   const applyData = useCallback(
     (data: BetsData) => {
       setBets(data.bets);
       setFinanceAccounts(data.financeAccounts);
+      setFinanceAccountId((current) =>
+        data.financeAccounts.some((account) => account.id === current)
+          ? current
+          : (data.financeAccounts[0]?.id ?? ""),
+      );
       setSummary(data.summary);
-      setBankroll(String(data.settings.bankrollCents / 100 || ""));
       setMonthlyLimit(String(data.settings.monthlyLimitCents / 100 || ""));
       onCountChange(data.bets.length);
     },
@@ -221,6 +251,51 @@ export function BetsPanel({
     [bets, filter],
   );
 
+  const combinedOdds = useMemo(() => {
+    const odds = selections.map((selection) =>
+      Number(selection.decimalOdds),
+    );
+    if (
+      odds.some(
+        (value) => !Number.isFinite(value) || value < 1.01,
+      )
+    ) {
+      return null;
+    }
+    const combined = odds.reduce((total, value) => total * value, 1);
+    return combined <= 1_000
+      ? Math.round(combined * 1_000) / 1_000
+      : null;
+  }, [selections]);
+
+  function updateSelection(
+    index: number,
+    field: keyof BetSelectionDraft,
+    value: string,
+  ) {
+    setSelections((current) =>
+      current.map((selection, selectionIndex) =>
+        selectionIndex === index
+          ? { ...selection, [field]: value }
+          : selection,
+      ),
+    );
+  }
+
+  function addSelection() {
+    setSelections((current) =>
+      current.length < 20 ? [...current, emptySelectionDraft()] : current,
+    );
+  }
+
+  function removeSelection(index: number) {
+    setSelections((current) =>
+      current.length > 2
+        ? current.filter((_, selectionIndex) => selectionIndex !== index)
+        : current,
+    );
+  }
+
   const limitUsage =
     summary.monthlyLimitCents > 0
       ? Math.min(
@@ -234,17 +309,21 @@ export function BetsPanel({
     if (isSaving) return;
 
     const stakeCents = parseMoneyToCents(stake);
-    const odds = Number(decimalOdds);
     const placedDate = new Date(placedAt);
     if (
-      eventName.trim().length < 2 ||
-      selection.trim().length < 2 ||
+      !financeAccountId ||
+      !combinedOdds ||
+      selections.some(
+        (selection) =>
+          selection.event.trim().length < 2 ||
+          selection.selection.trim().length < 2,
+      ) ||
       !stakeCents ||
-      !Number.isFinite(odds) ||
-      odds < 1.01 ||
       !Number.isFinite(placedDate.getTime())
     ) {
-      setError("Completa el evento, selección, monto, cuota y fecha.");
+      setError(
+        "Elige una cuenta y completa al menos dos selecciones con cuotas válidas.",
+      );
       return;
     }
 
@@ -255,13 +334,13 @@ export function BetsPanel({
         method: "POST",
         headers: { "content-type": "application/json" },
         body: JSON.stringify({
-          event: eventName,
-          selection,
-          market,
+          selections: selections.map((selection) => ({
+            ...selection,
+            decimalOdds: Number(selection.decimalOdds),
+          })),
           sportsbook,
-          financeAccountId: financeAccountId || null,
+          financeAccountId,
           stakeCents,
-          decimalOdds: odds,
           placedAt: placedDate.toISOString(),
         }),
       });
@@ -273,11 +352,8 @@ export function BetsPanel({
         throw new Error(data.error ?? "No fue posible guardar la apuesta.");
       }
 
-      setEventName("");
-      setSelection("");
-      setMarket("");
+      setSelections(initialSelectionDrafts());
       setStake("");
-      setDecimalOdds("");
       setPlacedAt(toLocalInputValue(new Date()));
       await loadBets();
     } catch (caught) {
@@ -295,10 +371,9 @@ export function BetsPanel({
     event.preventDefault();
     if (isSavingSettings) return;
 
-    const bankrollCents = parseMoneyToCents(bankroll);
     const monthlyLimitCents = parseMoneyToCents(monthlyLimit);
-    if (bankrollCents === null || monthlyLimitCents === null) {
-      setError("El bankroll y el límite deben ser montos válidos.");
+    if (monthlyLimitCents === null) {
+      setError("El límite debe ser un monto válido.");
       return;
     }
 
@@ -308,7 +383,7 @@ export function BetsPanel({
       const response = await apiFetch("/api/bets/settings", sessionToken, {
         method: "PUT",
         headers: { "content-type": "application/json" },
-        body: JSON.stringify({ bankrollCents, monthlyLimitCents }),
+        body: JSON.stringify({ monthlyLimitCents }),
       });
       const data = (await response.json()) as {
         settings?: BetSettings;
@@ -396,10 +471,10 @@ export function BetsPanel({
 
       <div className="bets-summary-grid">
         <article className="bets-summary-card bets-bankroll-card">
-          <span>Bankroll actual</span>
-          <strong>{formatMoney(summary.currentBankrollCents)}</strong>
+          <span>Saldo total en Finanzas</span>
+          <strong>{formatMoney(summary.financeBalanceCents)}</strong>
           <small>
-            Inicial {formatMoney(summary.bankrollCents)} · Resultado{" "}
+            Resultado liquidado de apuestas{" "}
             <b
               className={
                 summary.settledProfitCents >= 0
@@ -455,52 +530,113 @@ export function BetsPanel({
             <div className="bets-card-heading">
               <div>
                 <span className="eyebrow">Nueva</span>
-                <h2>Registrar apuesta</h2>
+                <h2>Registrar boleto combinado</h2>
               </div>
-              <span className="bets-odds-mark">1.8</span>
+              <span className="bets-odds-mark">
+                {combinedOdds ? combinedOdds.toFixed(3) : "—"}
+              </span>
             </div>
 
             <div className="bet-fields">
-              <label>
-                <span>Evento</span>
-                <input
-                  maxLength={160}
-                  onChange={(event) => setEventName(event.target.value)}
-                  placeholder="Ej. Tigres vs Rayados"
-                  required
-                  value={eventName}
-                />
-              </label>
-              <div className="bet-field-row">
-                <label>
-                  <span>Selección</span>
-                  <input
-                    maxLength={120}
-                    onChange={(event) => setSelection(event.target.value)}
-                    placeholder="Ej. Tigres gana"
-                    required
-                    value={selection}
-                  />
-                </label>
-                <label>
-                  <span>Mercado</span>
-                  <input
-                    maxLength={100}
-                    onChange={(event) => setMarket(event.target.value)}
-                    placeholder="Resultado final"
-                    value={market}
-                  />
-                </label>
+              <div className="bet-ticket-heading">
+                <span>Selecciones</span>
+                <button
+                  disabled={selections.length >= 20}
+                  onClick={addSelection}
+                  type="button"
+                >
+                  + Agregar
+                </button>
+              </div>
+              <div className="bet-selection-list">
+                {selections.map((selection, index) => (
+                  <fieldset className="bet-selection-card" key={index}>
+                    <legend>Selección {index + 1}</legend>
+                    {selections.length > 2 ? (
+                      <button
+                        aria-label={`Eliminar selección ${index + 1}`}
+                        className="bet-selection-remove"
+                        onClick={() => removeSelection(index)}
+                        type="button"
+                      >
+                        ×
+                      </button>
+                    ) : null}
+                    <label>
+                      <span>Evento</span>
+                      <input
+                        maxLength={160}
+                        onChange={(event) =>
+                          updateSelection(index, "event", event.target.value)
+                        }
+                        placeholder="Ej. Tigres vs Rayados"
+                        required
+                        value={selection.event}
+                      />
+                    </label>
+                    <div className="bet-selection-row">
+                      <label>
+                        <span>Pronóstico</span>
+                        <input
+                          maxLength={120}
+                          onChange={(event) =>
+                            updateSelection(
+                              index,
+                              "selection",
+                              event.target.value,
+                            )
+                          }
+                          placeholder="Ej. Tigres gana"
+                          required
+                          value={selection.selection}
+                        />
+                      </label>
+                      <label>
+                        <span>Cuota</span>
+                        <input
+                          inputMode="decimal"
+                          min="1.01"
+                          onChange={(event) =>
+                            updateSelection(
+                              index,
+                              "decimalOdds",
+                              event.target.value,
+                            )
+                          }
+                          placeholder="1.80"
+                          required
+                          step="0.001"
+                          type="number"
+                          value={selection.decimalOdds}
+                        />
+                      </label>
+                    </div>
+                    <label>
+                      <span>Mercado</span>
+                      <input
+                        maxLength={100}
+                        onChange={(event) =>
+                          updateSelection(index, "market", event.target.value)
+                        }
+                        placeholder="Ej. Resultado final"
+                        value={selection.market}
+                      />
+                    </label>
+                  </fieldset>
+                ))}
               </div>
               <label className="bet-finance-field">
-                <span>Conectar con Finanzas</span>
+                <span>Cuenta de Finanzas obligatoria</span>
                 <select
                   onChange={(event) =>
                     setFinanceAccountId(event.target.value)
                   }
+                  required
                   value={financeAccountId}
                 >
-                  <option value="">No sincronizar movimientos</option>
+                  {financeAccounts.length === 0 ? (
+                    <option value="">Crea una cuenta en Finanzas</option>
+                  ) : null}
                   {financeAccounts.map((account) => (
                     <option key={account.id} value={account.id}>
                       {account.name} · {formatMoney(account.balanceCents)}
@@ -509,8 +645,8 @@ export function BetsPanel({
                 </select>
                 <small>
                   {financeAccounts.length > 0
-                    ? "El monto saldrá como gasto; cobros y devoluciones volverán a esta cuenta."
-                    : "Primero crea una cuenta en el módulo Finanzas para activar la conexión."}
+                    ? "El monto saldrá de esta cuenta; cobros y devoluciones regresarán a ella."
+                    : "No puedes apostar todavía. Primero crea una cuenta en Finanzas."}
                 </small>
               </label>
               <div className="bet-field-row">
@@ -528,45 +664,42 @@ export function BetsPanel({
                   />
                 </label>
                 <label>
-                  <span>Cuota decimal</span>
-                  <input
-                    inputMode="decimal"
-                    min="1.01"
-                    onChange={(event) => setDecimalOdds(event.target.value)}
-                    placeholder="1.80"
-                    required
-                    step="0.001"
-                    type="number"
-                    value={decimalOdds}
-                  />
-                </label>
-              </div>
-              <div className="bet-field-row">
-                <label>
                   <span>Casa</span>
-                  <input
-                    maxLength={80}
-                    onChange={(event) => setSportsbook(event.target.value)}
-                    placeholder="Opcional"
-                    value={sportsbook}
-                  />
-                </label>
-                <label>
-                  <span>Fecha</span>
-                  <input
-                    onChange={(event) => setPlacedAt(event.target.value)}
+                  <select
+                    onChange={(event) =>
+                      setSportsbook(event.target.value as Sportsbook)
+                    }
                     required
-                    type="datetime-local"
-                    value={placedAt}
-                  />
+                    value={sportsbook}
+                  >
+                    {sportsbookOptions.map((option) => (
+                      <option key={option} value={option}>
+                        {option}
+                      </option>
+                    ))}
+                  </select>
                 </label>
               </div>
+              <label>
+                <span>Fecha</span>
+                <input
+                  onChange={(event) => setPlacedAt(event.target.value)}
+                  required
+                  type="datetime-local"
+                  value={placedAt}
+                />
+              </label>
               <button
                 className="bet-primary-button"
-                disabled={isSaving}
+                disabled={
+                  isSaving ||
+                  financeAccounts.length === 0 ||
+                  !financeAccountId ||
+                  !combinedOdds
+                }
                 type="submit"
               >
-                {isSaving ? "Guardando…" : "Registrar apuesta"}
+                {isSaving ? "Guardando…" : "Registrar boleto"}
               </button>
             </div>
           </form>
@@ -574,35 +707,23 @@ export function BetsPanel({
           <form className="bet-settings-card" onSubmit={submitSettings}>
             <div>
               <span className="eyebrow">Control</span>
-              <h2>Bankroll y límites</h2>
+              <h2>Límite mensual</h2>
               <p>
-                Define cuánto apartaste y el máximo que puedes apostar al mes.
+                El saldo viene de Finanzas. Aquí solo defines el máximo que
+                puedes apostar al mes.
               </p>
             </div>
-            <div className="bet-field-row">
-              <label>
-                <span>Bankroll inicial</span>
-                <input
-                  min="0"
-                  onChange={(event) => setBankroll(event.target.value)}
-                  placeholder="0.00"
-                  step="0.01"
-                  type="number"
-                  value={bankroll}
-                />
-              </label>
-              <label>
-                <span>Límite mensual</span>
-                <input
-                  min="0"
-                  onChange={(event) => setMonthlyLimit(event.target.value)}
-                  placeholder="0.00"
-                  step="0.01"
-                  type="number"
-                  value={monthlyLimit}
-                />
-              </label>
-            </div>
+            <label>
+              <span>Límite mensual</span>
+              <input
+                min="0"
+                onChange={(event) => setMonthlyLimit(event.target.value)}
+                placeholder="0.00"
+                step="0.01"
+                type="number"
+                value={monthlyLimit}
+              />
+            </label>
             <button disabled={isSavingSettings} type="submit">
               {isSavingSettings ? "Guardando…" : "Guardar límites"}
             </button>
@@ -657,14 +778,26 @@ export function BetsPanel({
                         {statusLabels[bet.status]}
                       </span>
                       <div>
-                        <h3>{bet.event}</h3>
-                        <p>
-                          {bet.selection}
-                          {bet.market ? ` · ${bet.market}` : ""}
-                        </p>
+                        <h3>
+                          {bet.sportsbook ?? "Otro"} ·{" "}
+                          {bet.selections.length} selecciones
+                        </h3>
+                        <div className="bet-selection-summary">
+                          {bet.selections.map((selection) => (
+                            <p key={selection.id}>
+                              <span>{selection.event}</span>
+                              <strong>
+                                {selection.selection}
+                                {selection.market
+                                  ? ` · ${selection.market}`
+                                  : ""}
+                              </strong>
+                              <b>{selection.decimalOdds.toFixed(3)}</b>
+                            </p>
+                          ))}
+                        </div>
                         <small>
                           {dateFormatter.format(new Date(bet.placedAt))}
-                          {bet.sportsbook ? ` · ${bet.sportsbook}` : ""}
                         </small>
                         <span
                           className={
@@ -675,7 +808,7 @@ export function BetsPanel({
                         >
                           {bet.financeSynced
                             ? `Finanzas · ${bet.financeAccountName}`
-                            : "Sin movimiento financiero"}
+                            : "Cuenta financiera no disponible"}
                         </span>
                       </div>
                       <div className="bet-item-money">

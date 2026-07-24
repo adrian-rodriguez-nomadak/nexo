@@ -70,7 +70,7 @@ const modules: ModuleDefinition[] = [
   {
     key: "bets",
     name: "Apuestas",
-    description: "Bankroll, límites y resultados",
+    description: "Boletos, cuentas y límites",
     mark: "1.8",
     color: "#d39bff",
     prompt: "Ej. Aposté $100 con cuota 1.8",

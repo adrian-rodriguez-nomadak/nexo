@@ -26,11 +26,12 @@ nota.
 
 ## Apuestas
 
-El registro de apuestas controla bankroll, monto en juego, cuotas y resultados.
-Incluye un límite mensual obligatorio cuando se configura, cálculo de
-ganancias o pérdidas y mensajes de juego responsable. Cada apuesta puede
-conectarse con una cuenta de Finanzas: registra el gasto inicial y sincroniza
-automáticamente cobros o devoluciones según el resultado.
+El registro de apuestas controla monto en juego, cuotas y resultados usando el
+saldo real de las cuentas de Finanzas.
+Cada boleto requiere una cuenta de Finanzas y al menos dos selecciones; la cuota
+combinada se calcula con las cuotas individuales. Las casas disponibles
+inicialmente son Caliente, Draftea y Otro. El gasto inicial, los cobros y las
+devoluciones se sincronizan automáticamente con la cuenta seleccionada.
 
 ## Desarrollo
 

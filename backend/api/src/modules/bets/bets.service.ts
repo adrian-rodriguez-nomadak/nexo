@@ -3,8 +3,15 @@ import { randomUUID } from "node:crypto";
 import { pool, query } from "../../shared/db/database.js";
 import {
   betPayoutCents,
+  combinedBetOdds,
+  type NormalizedBetSelection,
   type BetStatus,
+  type Sportsbook,
 } from "./bets.validation.js";
+
+export type BetSelection = NormalizedBetSelection & {
+  id: string;
+};
 
 export type NexoBet = {
   id: string;
@@ -12,6 +19,7 @@ export type NexoBet = {
   selection: string;
   market: string | null;
   sportsbook: string | null;
+  selections: BetSelection[];
   financeAccountId: string | null;
   financeAccountName: string | null;
   financeSynced: boolean;
@@ -24,7 +32,6 @@ export type NexoBet = {
 };
 
 export type BetSettings = {
-  bankrollCents: number;
   monthlyLimitCents: number;
 };
 
@@ -35,8 +42,7 @@ export type BetFinanceAccount = {
 };
 
 export type BetSummary = {
-  bankrollCents: number;
-  currentBankrollCents: number;
+  financeBalanceCents: number;
   monthlyLimitCents: number;
   monthlyStakedCents: number;
   remainingLimitCents: number;
@@ -64,7 +70,6 @@ type BetRow = {
 };
 
 type SettingsRow = {
-  bankroll_cents: string;
   monthly_limit_cents: string;
 };
 
@@ -82,13 +87,37 @@ type FinanceAccountRow = {
   movement_balance_cents: string;
 };
 
-function mapBet(row: BetRow): NexoBet {
+type SelectionRow = {
+  id: string;
+  bet_id: string;
+  event: string;
+  selection: string;
+  market: string | null;
+  decimal_odds: string;
+};
+
+function mapBet(
+  row: BetRow,
+  selections: BetSelection[] = [],
+): NexoBet {
   return {
     id: row.id,
     event: row.event,
     selection: row.selection,
     market: row.market,
     sportsbook: row.sportsbook,
+    selections:
+      selections.length > 0
+        ? selections
+        : [
+            {
+              id: `legacy-${row.id}`,
+              event: row.event,
+              selection: row.selection,
+              market: row.market,
+              decimalOdds: Number(row.decimal_odds),
+            },
+          ],
     financeAccountId: row.finance_account_id,
     financeAccountName: row.finance_account_name,
     financeSynced:
@@ -161,7 +190,7 @@ export async function getBets(userId: string): Promise<{
         [userId],
       ),
       query<SettingsRow>(
-        `SELECT bankroll_cents, monthly_limit_cents
+        `SELECT monthly_limit_cents
          FROM nexo_bet_settings
          WHERE nexo_user_id = $1`,
         [userId],
@@ -200,30 +229,60 @@ export async function getBets(userId: string): Promise<{
         [userId],
       ),
     ]);
+  const selectionsResult = await query<SelectionRow>(
+    `SELECT
+       s.id,
+       s.bet_id,
+       s.event,
+       s.selection,
+       s.market,
+       s.decimal_odds
+     FROM nexo_bet_selections s
+     INNER JOIN nexo_bets b ON b.id = s.bet_id
+     WHERE b.nexo_user_id = $1
+     ORDER BY s.bet_id, s.position`,
+    [userId],
+  );
+  const selectionsByBet = new Map<string, BetSelection[]>();
+  for (const row of selectionsResult.rows) {
+    const selection: BetSelection = {
+      id: row.id,
+      event: row.event,
+      selection: row.selection,
+      market: row.market,
+      decimalOdds: Number(row.decimal_odds),
+    };
+    const current = selectionsByBet.get(row.bet_id) ?? [];
+    current.push(selection);
+    selectionsByBet.set(row.bet_id, current);
+  }
 
   const settingsRow = settingsResult.rows[0];
   const summaryRow = summaryResult.rows[0]!;
-  const bankrollCents = Number(settingsRow?.bankroll_cents ?? 0);
   const monthlyLimitCents = Number(settingsRow?.monthly_limit_cents ?? 0);
   const monthlyStakedCents = Number(summaryRow.monthly_staked_cents);
   const settledProfitCents = Number(summaryRow.settled_profit_cents);
+  const financeAccounts = accountsResult.rows.map((row) => ({
+    id: row.id,
+    name: row.name,
+    balanceCents:
+      Number(row.initial_balance_cents) +
+      Number(row.movement_balance_cents),
+  }));
 
   return {
-    bets: betsResult.rows.map(mapBet),
-    financeAccounts: accountsResult.rows.map((row) => ({
-      id: row.id,
-      name: row.name,
-      balanceCents:
-        Number(row.initial_balance_cents) +
-        Number(row.movement_balance_cents),
-    })),
+    bets: betsResult.rows.map((row) =>
+      mapBet(row, selectionsByBet.get(row.id)),
+    ),
+    financeAccounts,
     settings: {
-      bankrollCents,
       monthlyLimitCents,
     },
     summary: {
-      bankrollCents,
-      currentBankrollCents: bankrollCents + settledProfitCents,
+      financeBalanceCents: financeAccounts.reduce(
+        (total, account) => total + account.balanceCents,
+        0,
+      ),
       monthlyLimitCents,
       monthlyStakedCents,
       remainingLimitCents: Math.max(monthlyLimitCents - monthlyStakedCents, 0),
@@ -236,13 +295,10 @@ export async function getBets(userId: string): Promise<{
 
 export async function createBet(input: {
   userId: string;
-  event: string;
-  selection: string;
-  market: string | null;
-  sportsbook: string | null;
-  financeAccountId: string | null;
+  selections: NormalizedBetSelection[];
+  sportsbook: Sportsbook;
+  financeAccountId: string;
   stakeCents: number;
-  decimalOdds: number;
   placedAt: string;
 }): Promise<
   | { bet: NexoBet; error: null }
@@ -250,48 +306,45 @@ export async function createBet(input: {
 > {
   const client = await pool.connect();
   const betId = randomUUID();
-  const stakeTransactionId = input.financeAccountId ? randomUUID() : null;
+  const stakeTransactionId = randomUUID();
+  const firstSelection = input.selections[0]!;
+  const decimalOdds = combinedBetOdds(input.selections)!;
 
   try {
     await client.query("BEGIN");
 
-    let financeAccountName: string | null = null;
-    if (input.financeAccountId) {
-      const accountResult = await client.query<{ name: string }>(
-        `SELECT name
-         FROM finance_accounts
-         WHERE id = $1 AND nexo_user_id = $2
-         FOR UPDATE`,
-        [input.financeAccountId, input.userId],
-      );
-      financeAccountName = accountResult.rows[0]?.name ?? null;
-      if (!financeAccountName) {
-        await client.query("ROLLBACK");
-        return { bet: null, error: "account_not_found" };
-      }
+    const accountResult = await client.query<{ name: string }>(
+      `SELECT name
+       FROM finance_accounts
+       WHERE id = $1 AND nexo_user_id = $2
+       FOR UPDATE`,
+      [input.financeAccountId, input.userId],
+    );
+    const financeAccountName = accountResult.rows[0]?.name ?? null;
+    if (!financeAccountName) {
+      await client.query("ROLLBACK");
+      return { bet: null, error: "account_not_found" };
     }
 
-    if (input.financeAccountId && stakeTransactionId) {
-      await client.query(
-        `INSERT INTO finance_transactions (
-           id,
-           account_id,
-           kind,
-           category,
-           description,
-           amount_cents,
-           occurred_at,
-           created_at
-         ) VALUES ($1, $2, 'expense', 'Apuestas', $3, $4, $5, NOW())`,
-        [
-          stakeTransactionId,
-          input.financeAccountId,
-          `Apuesta: ${input.event} — ${input.selection}`,
-          input.stakeCents,
-          input.placedAt,
-        ],
-      );
-    }
+    await client.query(
+      `INSERT INTO finance_transactions (
+         id,
+         account_id,
+         kind,
+         category,
+         description,
+         amount_cents,
+         occurred_at,
+         created_at
+       ) VALUES ($1, $2, 'expense', 'Apuestas', $3, $4, $5, NOW())`,
+      [
+        stakeTransactionId,
+        input.financeAccountId,
+        `Apuesta combinada: ${input.selections.length} selecciones · ${input.sportsbook}`,
+        input.stakeCents,
+        input.placedAt,
+      ],
+    );
 
     const result = await client.query<BetRow>(
       `INSERT INTO nexo_bets (
@@ -373,14 +426,14 @@ export async function createBet(input: {
       [
         betId,
         input.userId,
-        input.event,
-        input.selection,
-        input.market,
+        firstSelection.event,
+        firstSelection.selection,
+        firstSelection.market,
         input.sportsbook,
         input.financeAccountId,
         stakeTransactionId,
         input.stakeCents,
-        input.decimalOdds,
+        decimalOdds,
         input.placedAt,
         financeAccountName,
       ],
@@ -390,8 +443,38 @@ export async function createBet(input: {
       return { bet: null, error: "limit_exceeded" };
     }
 
+    const savedSelections: BetSelection[] = [];
+    for (const [position, selection] of input.selections.entries()) {
+      const selectionId = randomUUID();
+      await client.query(
+        `INSERT INTO nexo_bet_selections (
+           id,
+           bet_id,
+           event,
+           selection,
+           market,
+           decimal_odds,
+           position,
+           created_at
+         ) VALUES ($1, $2, $3, $4, $5, $6, $7, NOW())`,
+        [
+          selectionId,
+          betId,
+          selection.event,
+          selection.selection,
+          selection.market,
+          selection.decimalOdds,
+          position,
+        ],
+      );
+      savedSelections.push({ id: selectionId, ...selection });
+    }
+
     await client.query("COMMIT");
-    return { bet: mapBet(result.rows[0]), error: null };
+    return {
+      bet: mapBet(result.rows[0], savedSelections),
+      error: null,
+    };
   } catch (error) {
     await client.query("ROLLBACK");
     throw error;
@@ -461,8 +544,8 @@ export async function updateBetStatus(input: {
       )!;
       const description =
         input.status === "won"
-          ? `Cobro de apuesta: ${currentBet.event} — ${currentBet.selection}`
-          : `Devolución de apuesta: ${currentBet.event} — ${currentBet.selection}`;
+          ? `Cobro de apuesta combinada · ${currentBet.sportsbook ?? "Otro"}`
+          : `Devolución de apuesta combinada · ${currentBet.sportsbook ?? "Otro"}`;
 
       await client.query(
         `INSERT INTO finance_transactions (
@@ -528,7 +611,6 @@ export async function updateBetStatus(input: {
 
 export async function updateBetSettings(input: {
   userId: string;
-  bankrollCents: number;
   monthlyLimitCents: number;
 }): Promise<BetSettings> {
   const result = await query<SettingsRow>(
@@ -540,15 +622,13 @@ export async function updateBetSettings(input: {
      ) VALUES ($1, $2, $3, NOW())
      ON CONFLICT (nexo_user_id)
      DO UPDATE SET
-       bankroll_cents = EXCLUDED.bankroll_cents,
        monthly_limit_cents = EXCLUDED.monthly_limit_cents,
        updated_at = NOW()
-     RETURNING bankroll_cents, monthly_limit_cents`,
-    [input.userId, input.bankrollCents, input.monthlyLimitCents],
+     RETURNING monthly_limit_cents`,
+    [input.userId, 0, input.monthlyLimitCents],
   );
 
   return {
-    bankrollCents: Number(result.rows[0]!.bankroll_cents),
     monthlyLimitCents: Number(result.rows[0]!.monthly_limit_cents),
   };
 }

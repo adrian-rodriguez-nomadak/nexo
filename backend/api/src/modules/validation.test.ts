@@ -8,10 +8,13 @@ import {
 } from "./auth/auth.utils.js";
 import {
   betPayoutCents,
+  combinedBetOdds,
   isBetStatus,
+  isSportsbook,
   isValidBetCents,
   normalizeBetDate,
   normalizeBetOdds,
+  normalizeBetSelections,
   normalizeBetText,
 } from "./bets/bets.validation.js";
 import {
@@ -53,6 +56,26 @@ test("validates bet input", () => {
   assert.equal(isValidBetCents(0, { allowZero: true }), true);
   assert.equal(isBetStatus("won"), true);
   assert.equal(isBetStatus("cancelled"), false);
+  assert.equal(isSportsbook("Caliente"), true);
+  assert.equal(isSportsbook("Draftea"), true);
+  assert.equal(isSportsbook("Otra casa"), false);
+  const selections = normalizeBetSelections([
+    {
+      event: "Tigres vs Rayados",
+      selection: "Tigres gana",
+      market: "Resultado",
+      decimalOdds: 1.8,
+    },
+    {
+      event: "América vs Pumas",
+      selection: "Más de 2.5 goles",
+      market: "",
+      decimalOdds: 1.5,
+    },
+  ]);
+  assert.equal(selections?.length, 2);
+  assert.equal(combinedBetOdds(selections ?? []), 2.7);
+  assert.equal(normalizeBetSelections([selections?.[0]]), null);
   assert.equal(betPayoutCents(10_000, 1.8, "won"), 18_000);
   assert.equal(betPayoutCents(10_000, 1.8, "void"), 10_000);
   assert.equal(betPayoutCents(10_000, 1.8, "lost"), null);

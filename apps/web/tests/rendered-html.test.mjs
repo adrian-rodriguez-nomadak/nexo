@@ -76,19 +76,23 @@ test("connects the notes module to the independent API", async () => {
   assert.match(panel, /togglePinned/);
 });
 
-test("connects the bets module to bankroll and limits", async () => {
+test("connects combined bets to finances and limits", async () => {
   const panel = await readFile(
     new URL("app/bets-panel.tsx", projectRoot),
     "utf8",
   );
 
-  assert.match(panel, /Registrar apuesta/);
-  assert.match(panel, /Bankroll y límites/);
+  assert.match(panel, /Registrar boleto combinado/);
+  assert.match(panel, /Saldo total en Finanzas/);
+  assert.match(panel, /Límite mensual/);
   assert.match(panel, /apiFetch\("\/api\/bets", sessionToken\)/);
   assert.match(panel, /"\/api\/bets\/settings"/);
   assert.match(panel, /`\/api\/bets\/\$\{id\}\/status`/);
   assert.match(panel, /Nunca persigas/);
-  assert.match(panel, /Conectar con Finanzas/);
-  assert.match(panel, /financeAccountId: financeAccountId \|\| null/);
+  assert.match(panel, /Cuenta de Finanzas obligatoria/);
+  assert.match(panel, /financeAccountId,/);
   assert.match(panel, /Finanzas · \$\{bet\.financeAccountName\}/);
+  assert.match(panel, /\["Caliente", "Draftea", "Otro"\]/);
+  assert.match(panel, /combinedOdds/);
+  assert.match(panel, /selections\.length > 2/);
 });

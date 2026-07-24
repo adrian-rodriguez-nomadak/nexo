@@ -92,6 +92,44 @@ const statements = [
   "CREATE INDEX IF NOT EXISTS nexo_bets_user_placed_idx ON nexo_bets (nexo_user_id, placed_at DESC)",
   "CREATE INDEX IF NOT EXISTS nexo_bets_user_status_idx ON nexo_bets (nexo_user_id, status)",
   `
+    CREATE TABLE IF NOT EXISTS nexo_bet_selections (
+      id TEXT PRIMARY KEY,
+      bet_id TEXT NOT NULL REFERENCES nexo_bets(id) ON DELETE CASCADE,
+      event TEXT NOT NULL,
+      selection TEXT NOT NULL,
+      market TEXT,
+      decimal_odds NUMERIC(10, 3) NOT NULL CHECK (decimal_odds >= 1.01),
+      position INTEGER NOT NULL CHECK (position >= 0),
+      created_at TIMESTAMPTZ NOT NULL
+    )
+  `,
+  "CREATE INDEX IF NOT EXISTS nexo_bet_selections_bet_position_idx ON nexo_bet_selections (bet_id, position)",
+  `
+    INSERT INTO nexo_bet_selections (
+      id,
+      bet_id,
+      event,
+      selection,
+      market,
+      decimal_odds,
+      position,
+      created_at
+    )
+    SELECT
+      'legacy-' || b.id,
+      b.id,
+      b.event,
+      b.selection,
+      b.market,
+      b.decimal_odds,
+      0,
+      b.created_at
+    FROM nexo_bets b
+    WHERE NOT EXISTS (
+      SELECT 1 FROM nexo_bet_selections s WHERE s.bet_id = b.id
+    )
+  `,
+  `
     CREATE TABLE IF NOT EXISTS finance_accounts (
       id TEXT PRIMARY KEY,
       name TEXT NOT NULL,

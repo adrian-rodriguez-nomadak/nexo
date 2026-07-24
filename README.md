@@ -12,7 +12,7 @@ La primera base incluye:
 - persistencia PostgreSQL para capturas y finanzas;
 - agenda de eventos persistente;
 - biblioteca de notas con búsqueda, etiquetas y notas fijadas;
-- apuestas con bankroll, límite mensual y seguimiento de resultados;
+- boletos combinados de apuestas con saldo financiero, límite y resultados;
 - conexión contable entre apuestas y cuentas de Finanzas;
 - autenticación con ChatGPT y datos aislados por usuario;
 - API para consultar, crear y eliminar capturas;

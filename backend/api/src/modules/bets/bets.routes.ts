@@ -10,11 +10,10 @@ import {
 } from "./bets.service.js";
 import {
   isBetStatus,
+  isSportsbook,
   isValidBetCents,
   normalizeBetDate,
-  normalizeBetOdds,
-  normalizeBetText,
-  normalizeOptionalBetText,
+  normalizeBetSelections,
 } from "./bets.validation.js";
 
 export const betsRouter = Router();
@@ -30,60 +29,41 @@ betsRouter.post(
   "/",
   asyncHandler(async (request, response) => {
     const {
-      event,
-      selection,
-      market,
+      selections,
       sportsbook,
       financeAccountId,
       stakeCents,
-      decimalOdds,
       placedAt,
     } = (request.body ?? {}) as Record<string, unknown>;
-    const normalizedEvent = normalizeBetText(event, 160);
-    const normalizedSelection = normalizeBetText(selection, 120);
-    const normalizedMarket = normalizeOptionalBetText(market, 100);
-    const normalizedSportsbook = normalizeOptionalBetText(sportsbook, 80);
+    const normalizedSelections = normalizeBetSelections(selections);
     const normalizedFinanceAccountId =
       typeof financeAccountId === "string" &&
       financeAccountId.length > 0 &&
       financeAccountId.length <= 100
         ? financeAccountId
         : null;
-    const normalizedOdds = normalizeBetOdds(decimalOdds);
     const normalizedPlacedAt = normalizeBetDate(placedAt);
-    const hasMarket = market !== null && market !== undefined && market !== "";
-    const hasSportsbook =
-      sportsbook !== null && sportsbook !== undefined && sportsbook !== "";
-    const hasFinanceAccount =
-      financeAccountId !== null &&
-      financeAccountId !== undefined &&
-      financeAccountId !== "";
 
     if (
-      !normalizedEvent ||
-      !normalizedSelection ||
-      (hasMarket && !normalizedMarket) ||
-      (hasSportsbook && !normalizedSportsbook) ||
-      (hasFinanceAccount && !normalizedFinanceAccountId) ||
+      !normalizedSelections ||
+      !isSportsbook(sportsbook) ||
+      !normalizedFinanceAccountId ||
       !isValidBetCents(stakeCents) ||
-      !normalizedOdds ||
       !normalizedPlacedAt
     ) {
       response.status(400).json({
-        error: "Revisa el evento, selección, monto, cuota y fecha.",
+        error:
+          "Elige una cuenta y completa al menos dos selecciones válidas.",
       });
       return;
     }
 
     const result = await createBet({
       userId: request.authUser!.id,
-      event: normalizedEvent,
-      selection: normalizedSelection,
-      market: normalizedMarket,
-      sportsbook: normalizedSportsbook,
+      selections: normalizedSelections,
+      sportsbook,
       financeAccountId: normalizedFinanceAccountId,
       stakeCents,
-      decimalOdds: normalizedOdds,
       placedAt: normalizedPlacedAt,
     });
     if (result.error === "account_not_found") {
@@ -132,23 +112,16 @@ betsRouter.patch(
 betsRouter.put(
   "/settings",
   asyncHandler(async (request, response) => {
-    const { bankrollCents, monthlyLimitCents } = (request.body ?? {}) as Record<
-      string,
-      unknown
-    >;
-    if (
-      !isValidBetCents(bankrollCents, { allowZero: true }) ||
-      !isValidBetCents(monthlyLimitCents, { allowZero: true })
-    ) {
+    const { monthlyLimitCents } = (request.body ?? {}) as Record<string, unknown>;
+    if (!isValidBetCents(monthlyLimitCents, { allowZero: true })) {
       response.status(400).json({
-        error: "El bankroll y el límite mensual deben ser montos válidos.",
+        error: "El límite mensual debe ser un monto válido.",
       });
       return;
     }
 
     const settings = await updateBetSettings({
       userId: request.authUser!.id,
-      bankrollCents,
       monthlyLimitCents,
     });
     response.json({ settings });

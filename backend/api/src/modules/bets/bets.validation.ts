@@ -1,11 +1,27 @@
 export const betStatuses = ["pending", "won", "lost", "void"] as const;
+export const sportsbooks = ["Caliente", "Draftea", "Otro"] as const;
 
 export type BetStatus = (typeof betStatuses)[number];
+export type Sportsbook = (typeof sportsbooks)[number];
+
+export type NormalizedBetSelection = {
+  event: string;
+  selection: string;
+  market: string | null;
+  decimalOdds: number;
+};
 
 export function isBetStatus(value: unknown): value is BetStatus {
   return (
     typeof value === "string" &&
     betStatuses.includes(value as BetStatus)
+  );
+}
+
+export function isSportsbook(value: unknown): value is Sportsbook {
+  return (
+    typeof value === "string" &&
+    sportsbooks.includes(value as Sportsbook)
   );
 }
 
@@ -31,6 +47,46 @@ export function normalizeBetOdds(value: unknown): number | null {
   if (typeof value !== "number" || !Number.isFinite(value)) return null;
   if (value < 1.01 || value > 1_000) return null;
   return Math.round(value * 1_000) / 1_000;
+}
+
+export function normalizeBetSelections(
+  value: unknown,
+): NormalizedBetSelection[] | null {
+  if (!Array.isArray(value) || value.length < 2 || value.length > 20) {
+    return null;
+  }
+
+  const selections: NormalizedBetSelection[] = [];
+  for (const item of value) {
+    if (!item || typeof item !== "object" || Array.isArray(item)) return null;
+    const record = item as Record<string, unknown>;
+    const event = normalizeBetText(record.event, 160);
+    const selection = normalizeBetText(record.selection, 120);
+    const market = normalizeOptionalBetText(record.market, 100);
+    const hasMarket =
+      record.market !== null &&
+      record.market !== undefined &&
+      record.market !== "";
+    const decimalOdds = normalizeBetOdds(record.decimalOdds);
+    if (!event || !selection || (hasMarket && !market) || !decimalOdds) {
+      return null;
+    }
+    selections.push({ event, selection, market, decimalOdds });
+  }
+
+  return combinedBetOdds(selections) ? selections : null;
+}
+
+export function combinedBetOdds(
+  selections: readonly Pick<NormalizedBetSelection, "decimalOdds">[],
+): number | null {
+  if (selections.length < 2) return null;
+  const combined = selections.reduce(
+    (total, selection) => total * selection.decimalOdds,
+    1,
+  );
+  if (!Number.isFinite(combined) || combined > 1_000) return null;
+  return Math.round(combined * 1_000) / 1_000;
 }
 
 export function isValidBetCents(
