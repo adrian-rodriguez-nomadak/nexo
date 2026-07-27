@@ -159,6 +159,8 @@ const statements = [
   "CREATE INDEX IF NOT EXISTS finance_accounts_nexo_user_idx ON finance_accounts (nexo_user_id)",
   "CREATE INDEX IF NOT EXISTS finance_transactions_account_idx ON finance_transactions (account_id)",
   "CREATE INDEX IF NOT EXISTS finance_transactions_occurred_at_idx ON finance_transactions (occurred_at DESC)",
+  "ALTER TABLE finance_transactions ADD COLUMN IF NOT EXISTS transfer_id TEXT",
+  "CREATE INDEX IF NOT EXISTS finance_transactions_transfer_idx ON finance_transactions (transfer_id)",
   "ALTER TABLE nexo_bets ADD COLUMN IF NOT EXISTS finance_account_id TEXT REFERENCES finance_accounts(id) ON DELETE SET NULL",
   "ALTER TABLE nexo_bets ADD COLUMN IF NOT EXISTS stake_transaction_id TEXT REFERENCES finance_transactions(id) ON DELETE SET NULL",
   "ALTER TABLE nexo_bets ADD COLUMN IF NOT EXISTS settlement_transaction_id TEXT REFERENCES finance_transactions(id) ON DELETE SET NULL",

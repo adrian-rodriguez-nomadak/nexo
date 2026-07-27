@@ -54,11 +54,14 @@ test("connects the finance module to the independent API", async () => {
   assert.match(panel, /apiFetch\("\/api\/finances", sessionToken\)/);
   assert.match(panel, /"\/api\/finances\/accounts"/);
   assert.match(panel, /"\/api\/finances\/transactions"/);
+  assert.match(panel, /"\/api\/finances\/transfers"/);
+  assert.match(panel, /Guardar transferencia/);
   assert.match(simulator, /Agregar a la simulación/);
+  assert.match(simulator, /Simular transferencia/);
   assert.match(simulator, /Balance proyectado/);
   assert.match(simulator, /Ver diagnóstico/);
   assert.match(simulator, /Plan sugerido/);
-  assert.match(simulator, /Nada de esta simulación se/);
+  assert.match(simulator, /Nada de esta\s+simulación se/);
 });
 
 test("connects the events module to the independent API", async () => {

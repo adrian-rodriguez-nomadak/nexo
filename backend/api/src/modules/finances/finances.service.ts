@@ -18,6 +18,7 @@ export type FinanceAccount = {
 
 export type FinanceTransaction = {
   id: string;
+  transferId: string | null;
   accountId: string;
   accountName: string;
   kind: TransactionKind;
@@ -47,6 +48,7 @@ type AccountRow = {
 
 type TransactionRow = {
   id: string;
+  transfer_id: string | null;
   account_id: string;
   account_name: string;
   kind: TransactionKind;
@@ -78,6 +80,7 @@ function mapAccount(row: AccountRow): FinanceAccount {
 function mapTransaction(row: TransactionRow): FinanceTransaction {
   return {
     id: row.id,
+    transferId: row.transfer_id,
     accountId: row.account_id,
     accountName: row.account_name,
     kind: row.kind,
@@ -119,6 +122,7 @@ export async function getFinances(userId: string): Promise<{
     query<TransactionRow>(`
       SELECT
         t.id,
+        t.transfer_id,
         t.account_id,
         a.name AS account_name,
         t.kind,
@@ -213,6 +217,7 @@ export async function createFinanceTransaction(input: {
     )
     SELECT
       i.id,
+      i.transfer_id,
       i.account_id,
       a.name AS account_name,
       i.kind,
@@ -238,14 +243,103 @@ export async function createFinanceTransaction(input: {
   return result.rows[0] ? mapTransaction(result.rows[0]) : null;
 }
 
+export async function createFinanceTransfer(input: {
+  userId: string;
+  sourceAccountId: string;
+  destinationAccountId: string;
+  description: string;
+  amountCents: number;
+  occurredAt: string;
+}): Promise<FinanceTransaction[] | null> {
+  const transferId = randomUUID();
+  const expenseId = randomUUID();
+  const incomeId = randomUUID();
+  const result = await query<TransactionRow>(
+    `WITH source_account AS (
+      SELECT id
+      FROM finance_accounts
+      WHERE id = $2 AND nexo_user_id = $1
+    ),
+    destination_account AS (
+      SELECT id
+      FROM finance_accounts
+      WHERE id = $3 AND nexo_user_id = $1
+    ),
+    inserted AS (
+      INSERT INTO finance_transactions (
+        id, transfer_id, account_id, kind, category, description,
+        amount_cents, occurred_at, created_at
+      )
+      SELECT
+        movement.id,
+        $7,
+        movement.account_id,
+        movement.kind,
+        'Transferencia',
+        $6,
+        $4,
+        $5,
+        NOW()
+      FROM source_account source
+      CROSS JOIN destination_account destination
+      CROSS JOIN LATERAL (
+        VALUES
+          ($8, source.id, 'expense'),
+          ($9, destination.id, 'income')
+      ) AS movement(id, account_id, kind)
+      RETURNING *
+    )
+    SELECT
+      i.id,
+      i.transfer_id,
+      i.account_id,
+      a.name AS account_name,
+      i.kind,
+      i.category,
+      i.description,
+      i.amount_cents,
+      i.occurred_at,
+      i.created_at
+    FROM inserted i
+    INNER JOIN finance_accounts a ON a.id = i.account_id
+    ORDER BY CASE WHEN i.kind = 'expense' THEN 0 ELSE 1 END`,
+    [
+      input.userId,
+      input.sourceAccountId,
+      input.destinationAccountId,
+      input.amountCents,
+      input.occurredAt,
+      input.description,
+      transferId,
+      expenseId,
+      incomeId,
+    ],
+  );
+
+  return result.rows.length === 2
+    ? result.rows.map(mapTransaction)
+    : null;
+}
+
 export async function deleteFinanceTransaction(
   userId: string,
   id: string,
 ): Promise<boolean> {
   const result = await query(
-    `DELETE FROM finance_transactions t
-     USING finance_accounts a
-     WHERE t.id = $1 AND a.id = t.account_id AND a.nexo_user_id = $2`,
+    `WITH target AS (
+      SELECT t.transfer_id
+      FROM finance_transactions t
+      INNER JOIN finance_accounts a ON a.id = t.account_id
+      WHERE t.id = $1 AND a.nexo_user_id = $2
+    )
+    DELETE FROM finance_transactions t
+    USING finance_accounts a, target
+    WHERE a.id = t.account_id
+      AND a.nexo_user_id = $2
+      AND (
+        t.id = $1
+        OR (target.transfer_id IS NOT NULL AND t.transfer_id = target.transfer_id)
+      )`,
     [id, userId],
   );
   return (result.rowCount ?? 0) > 0;

@@ -7,6 +7,7 @@ import { FinanceSimulator } from "./finance-simulator";
 
 type AccountType = "cash" | "bank" | "savings" | "credit";
 type TransactionKind = "income" | "expense";
+type MovementKind = TransactionKind | "transfer";
 
 type FinanceAccount = {
   id: string;
@@ -20,6 +21,7 @@ type FinanceAccount = {
 
 type FinanceTransaction = {
   id: string;
+  transferId: string | null;
   accountId: string;
   accountName: string;
   kind: TransactionKind;
@@ -133,8 +135,9 @@ export function FinancesPanel({ sessionToken }: { sessionToken: string }) {
   const [accountType, setAccountType] = useState<AccountType>("bank");
   const [initialBalance, setInitialBalance] = useState("");
 
-  const [kind, setKind] = useState<TransactionKind>("expense");
+  const [kind, setKind] = useState<MovementKind>("expense");
   const [accountId, setAccountId] = useState("");
+  const [destinationAccountId, setDestinationAccountId] = useState("");
   const [description, setDescription] = useState("");
   const [category, setCategory] = useState(categories.expense[0]);
   const [amount, setAmount] = useState("");
@@ -185,6 +188,15 @@ export function FinancesPanel({ sessionToken }: { sessionToken: string }) {
     () => accounts.find((account) => account.id === accountId),
     [accountId, accounts],
   );
+  const effectiveDestinationAccountId = useMemo(() => {
+    if (
+      destinationAccountId !== accountId &&
+      accounts.some((account) => account.id === destinationAccountId)
+    ) {
+      return destinationAccountId;
+    }
+    return accounts.find((account) => account.id !== accountId)?.id ?? "";
+  }, [accountId, accounts, destinationAccountId]);
 
   async function submitAccount(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
@@ -244,9 +256,16 @@ export function FinancesPanel({ sessionToken }: { sessionToken: string }) {
       !accountId ||
       !amountCents ||
       amountCents < 1 ||
-      description.trim().length < 2
+      description.trim().length < 2 ||
+      (kind === "transfer" &&
+        (!effectiveDestinationAccountId ||
+          effectiveDestinationAccountId === accountId))
     ) {
-      setError("Completa la cuenta, concepto y monto del movimiento.");
+      setError(
+        kind === "transfer"
+          ? "Selecciona dos cuentas distintas y completa concepto y monto."
+          : "Completa la cuenta, concepto y monto del movimiento.",
+      );
       return;
     }
 
@@ -254,28 +273,45 @@ export function FinancesPanel({ sessionToken }: { sessionToken: string }) {
     setError(null);
 
     try {
+      const isTransfer = kind === "transfer";
       const response = await apiFetch(
-        "/api/finances/transactions",
+        isTransfer
+          ? "/api/finances/transfers"
+          : "/api/finances/transactions",
         sessionToken,
         {
         method: "POST",
         headers: { "content-type": "application/json" },
-        body: JSON.stringify({
-          accountId,
-          kind,
-          category,
-          description,
-          amountCents,
-          occurredAt: new Date(`${occurredAt}T12:00:00`).toISOString(),
-        }),
+        body: JSON.stringify(
+          isTransfer
+            ? {
+                sourceAccountId: accountId,
+                destinationAccountId: effectiveDestinationAccountId,
+                description,
+                amountCents,
+                occurredAt: new Date(`${occurredAt}T12:00:00`).toISOString(),
+              }
+            : {
+                accountId,
+                kind,
+                category,
+                description,
+                amountCents,
+                occurredAt: new Date(`${occurredAt}T12:00:00`).toISOString(),
+              },
+        ),
         },
       );
       const data = (await response.json()) as {
         transaction?: FinanceTransaction;
+        transactions?: FinanceTransaction[];
         error?: string;
       };
 
-      if (!response.ok || !data.transaction) {
+      if (
+        !response.ok ||
+        (isTransfer ? data.transactions?.length !== 2 : !data.transaction)
+      ) {
         throw new Error(data.error ?? "No fue posible guardar el movimiento.");
       }
 
@@ -316,9 +352,11 @@ export function FinancesPanel({ sessionToken }: { sessionToken: string }) {
     }
   }
 
-  function selectKind(nextKind: TransactionKind) {
+  function selectKind(nextKind: MovementKind) {
     setKind(nextKind);
-    setCategory(categories[nextKind][0]);
+    if (nextKind !== "transfer") {
+      setCategory(categories[nextKind][0]);
+    }
   }
 
   return (
@@ -411,6 +449,19 @@ export function FinancesPanel({ sessionToken }: { sessionToken: string }) {
               >
                 Ingreso
               </button>
+              <button
+                className={kind === "transfer" ? "kind-active" : ""}
+                disabled={accounts.length < 2}
+                onClick={() => selectKind("transfer")}
+                title={
+                  accounts.length < 2
+                    ? "Necesitas al menos dos cuentas"
+                    : undefined
+                }
+                type="button"
+              >
+                Transferir
+              </button>
             </div>
           </div>
 
@@ -448,14 +499,18 @@ export function FinancesPanel({ sessionToken }: { sessionToken: string }) {
                   maxLength={120}
                   onChange={(event) => setDescription(event.target.value)}
                   placeholder={
-                    kind === "expense" ? "Cena con amigos" : "Pago de nómina"
+                    kind === "expense"
+                      ? "Cena con amigos"
+                      : kind === "income"
+                        ? "Pago de nómina"
+                        : "Mover dinero entre cuentas"
                   }
                   value={description}
                 />
               </label>
               <div className="finance-field-row">
                 <label>
-                  <span>Cuenta</span>
+                  <span>{kind === "transfer" ? "Desde" : "Cuenta"}</span>
                   <select
                     aria-label="Cuenta"
                     onChange={(event) => setAccountId(event.target.value)}
@@ -468,20 +523,41 @@ export function FinancesPanel({ sessionToken }: { sessionToken: string }) {
                     ))}
                   </select>
                 </label>
-                <label>
-                  <span>Categoría</span>
-                  <select
-                    aria-label="Categoría"
-                    onChange={(event) => setCategory(event.target.value)}
-                    value={category}
-                  >
-                    {categories[kind].map((option) => (
-                      <option key={option} value={option}>
-                        {option}
-                      </option>
-                    ))}
-                  </select>
-                </label>
+                {kind === "transfer" ? (
+                  <label>
+                    <span>Hacia</span>
+                    <select
+                      aria-label="Cuenta destino"
+                      onChange={(event) =>
+                        setDestinationAccountId(event.target.value)
+                      }
+                      value={effectiveDestinationAccountId}
+                    >
+                      {accounts
+                        .filter((account) => account.id !== accountId)
+                        .map((account) => (
+                          <option key={account.id} value={account.id}>
+                            {account.name}
+                          </option>
+                        ))}
+                    </select>
+                  </label>
+                ) : (
+                  <label>
+                    <span>Categoría</span>
+                    <select
+                      aria-label="Categoría"
+                      onChange={(event) => setCategory(event.target.value)}
+                      value={category}
+                    >
+                      {categories[kind].map((option) => (
+                        <option key={option} value={option}>
+                          {option}
+                        </option>
+                      ))}
+                    </select>
+                  </label>
+                )}
                 <label>
                   <span>Fecha</span>
                   <input
@@ -498,7 +574,11 @@ export function FinancesPanel({ sessionToken }: { sessionToken: string }) {
                 disabled={isSaving}
                 type="submit"
               >
-                {isSaving ? "Guardando…" : `Guardar ${kind === "expense" ? "gasto" : "ingreso"}`}
+                {isSaving
+                  ? "Guardando…"
+                  : kind === "transfer"
+                    ? "Guardar transferencia"
+                    : `Guardar ${kind === "expense" ? "gasto" : "ingreso"}`}
               </button>
             </div>
           )}

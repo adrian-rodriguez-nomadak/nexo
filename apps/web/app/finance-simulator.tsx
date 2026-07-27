@@ -7,6 +7,7 @@ import {
 } from "react";
 
 type TransactionKind = "income" | "expense";
+type MovementKind = TransactionKind | "transfer";
 
 type SimulatorAccount = {
   id: string;
@@ -23,6 +24,7 @@ type SimulatorSummary = {
 
 type SimulatedMovement = {
   id: string;
+  transferId: string | null;
   accountId: string;
   kind: TransactionKind;
   category: string;
@@ -108,7 +110,10 @@ function buildDiagnosis(input: {
   }
 
   const largestExpense = input.movements
-    .filter((movement) => movement.kind === "expense")
+    .filter(
+      (movement) =>
+        movement.kind === "expense" && movement.transferId === null,
+    )
     .sort((left, right) => right.amountCents - left.amountCents)[0];
   if (largestExpense) {
     plan.push(
@@ -122,7 +127,7 @@ function buildDiagnosis(input: {
     );
   } else {
     plan.push(
-      "Si decides aplicar el escenario, registra cada movimiento real por separado para comparar el resultado con esta proyección.",
+      "Si decides aplicar el escenario, registra los movimientos reales para comparar el resultado con esta proyección.",
     );
   }
 
@@ -163,8 +168,9 @@ export function FinanceSimulator({
   summary: SimulatorSummary;
 }) {
   const [movements, setMovements] = useState<SimulatedMovement[]>([]);
-  const [kind, setKind] = useState<TransactionKind>("expense");
+  const [kind, setKind] = useState<MovementKind>("expense");
   const [accountId, setAccountId] = useState("");
+  const [destinationAccountId, setDestinationAccountId] = useState("");
   const [description, setDescription] = useState("");
   const [amount, setAmount] = useState("");
   const [category, setCategory] = useState(simulatedCategories.expense[0]);
@@ -176,6 +182,12 @@ export function FinanceSimulator({
   )
     ? accountId
     : (accounts[0]?.id ?? "");
+  const effectiveDestinationAccountId =
+    destinationAccountId !== effectiveAccountId &&
+    accounts.some((account) => account.id === destinationAccountId)
+      ? destinationAccountId
+      : (accounts.find((account) => account.id !== effectiveAccountId)?.id ??
+        "");
 
   const simulation = useMemo(() => {
     const simulatedIncomeCents = movements
@@ -227,9 +239,11 @@ export function FinanceSimulator({
     };
   }, [accounts, movements, summary]);
 
-  function selectKind(nextKind: TransactionKind) {
+  function selectKind(nextKind: MovementKind) {
     setKind(nextKind);
-    setCategory(simulatedCategories[nextKind][0]);
+    if (nextKind !== "transfer") {
+      setCategory(simulatedCategories[nextKind][0]);
+    }
   }
 
   function addMovement(event: FormEvent<HTMLFormElement>) {
@@ -239,23 +253,54 @@ export function FinanceSimulator({
     if (
       !effectiveAccountId ||
       !amountCents ||
-      description.trim().length < 2
+      description.trim().length < 2 ||
+      (kind === "transfer" && !effectiveDestinationAccountId)
     ) {
-      setFormError("Completa la cuenta, el concepto y un monto mayor a cero.");
+      setFormError(
+        kind === "transfer"
+          ? "Selecciona dos cuentas distintas y completa concepto y monto."
+          : "Completa la cuenta, el concepto y un monto mayor a cero.",
+      );
       return;
     }
 
-    setMovements((current) => [
-      ...current,
-      {
-        id: movementId(),
-        accountId: effectiveAccountId,
-        kind,
-        category,
-        description: description.trim(),
-        amountCents,
-      },
-    ]);
+    if (kind === "transfer") {
+      const transferId = movementId();
+      setMovements((current) => [
+        ...current,
+        {
+          id: movementId(),
+          transferId,
+          accountId: effectiveAccountId,
+          kind: "expense",
+          category: "Transferencia",
+          description: description.trim(),
+          amountCents,
+        },
+        {
+          id: movementId(),
+          transferId,
+          accountId: effectiveDestinationAccountId,
+          kind: "income",
+          category: "Transferencia",
+          description: description.trim(),
+          amountCents,
+        },
+      ]);
+    } else {
+      setMovements((current) => [
+        ...current,
+        {
+          id: movementId(),
+          transferId: null,
+          accountId: effectiveAccountId,
+          kind,
+          category,
+          description: description.trim(),
+          amountCents,
+        },
+      ]);
+    }
     setDescription("");
     setAmount("");
     setFormError(null);
@@ -263,9 +308,15 @@ export function FinanceSimulator({
   }
 
   function removeMovement(id: string) {
-    setMovements((current) =>
-      current.filter((movement) => movement.id !== id),
-    );
+    setMovements((current) => {
+      const selected = current.find((movement) => movement.id === id);
+      if (selected?.transferId) {
+        return current.filter(
+          (movement) => movement.transferId !== selected.transferId,
+        );
+      }
+      return current.filter((movement) => movement.id !== id);
+    });
     setShowDiagnosis(false);
   }
 
@@ -295,8 +346,8 @@ export function FinanceSimulator({
           <span className="eyebrow">Escenario hipotético</span>
           <h2>Prueba decisiones sin mover tu dinero</h2>
           <p>
-            Agrega ingresos y gastos temporales. Nada de esta simulación se
-            guarda en tus movimientos reales.
+            Agrega ingresos, gastos y transferencias temporales. Nada de esta
+            simulación se guarda en tus movimientos reales.
           </p>
         </div>
         <div className="simulation-hero-actions">
@@ -384,6 +435,19 @@ export function FinanceSimulator({
               >
                 Ingreso
               </button>
+              <button
+                className={kind === "transfer" ? "kind-active" : ""}
+                disabled={accounts.length < 2}
+                onClick={() => selectKind("transfer")}
+                title={
+                  accounts.length < 2
+                    ? "Necesitas al menos dos cuentas"
+                    : undefined
+                }
+                type="button"
+              >
+                Transferir
+              </button>
             </div>
           </div>
 
@@ -414,14 +478,16 @@ export function FinanceSimulator({
                 placeholder={
                   kind === "expense"
                     ? "Compra o pago futuro"
-                    : "Ingreso esperado"
+                    : kind === "income"
+                      ? "Ingreso esperado"
+                      : "Mover dinero entre cuentas"
                 }
                 value={description}
               />
             </label>
             <div className="simulation-field-row">
               <label>
-                <span>Cuenta</span>
+                <span>{kind === "transfer" ? "Desde" : "Cuenta"}</span>
                 <select
                   aria-label="Cuenta para simulación"
                   onChange={(event) => setAccountId(event.target.value)}
@@ -434,20 +500,43 @@ export function FinanceSimulator({
                   ))}
                 </select>
               </label>
-              <label>
-                <span>Categoría</span>
-                <select
-                  aria-label="Categoría simulada"
-                  onChange={(event) => setCategory(event.target.value)}
-                  value={category}
-                >
-                  {simulatedCategories[kind].map((option) => (
-                    <option key={option} value={option}>
-                      {option}
-                    </option>
-                  ))}
-                </select>
-              </label>
+              {kind === "transfer" ? (
+                <label>
+                  <span>Hacia</span>
+                  <select
+                    aria-label="Cuenta destino de la simulación"
+                    onChange={(event) =>
+                      setDestinationAccountId(event.target.value)
+                    }
+                    value={effectiveDestinationAccountId}
+                  >
+                    {accounts
+                      .filter(
+                        (account) => account.id !== effectiveAccountId,
+                      )
+                      .map((account) => (
+                        <option key={account.id} value={account.id}>
+                          {account.name}
+                        </option>
+                      ))}
+                  </select>
+                </label>
+              ) : (
+                <label>
+                  <span>Categoría</span>
+                  <select
+                    aria-label="Categoría simulada"
+                    onChange={(event) => setCategory(event.target.value)}
+                    value={category}
+                  >
+                    {simulatedCategories[kind].map((option) => (
+                      <option key={option} value={option}>
+                        {option}
+                      </option>
+                    ))}
+                  </select>
+                </label>
+              )}
             </div>
             {formError ? (
               <p className="simulation-form-error" role="alert">
@@ -459,7 +548,9 @@ export function FinanceSimulator({
               data-testid="add-simulated-movement"
               type="submit"
             >
-              Agregar a la simulación
+              {kind === "transfer"
+                ? "Simular transferencia"
+                : "Agregar a la simulación"}
             </button>
           </div>
         </form>

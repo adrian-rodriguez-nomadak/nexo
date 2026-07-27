@@ -3,6 +3,7 @@ import { Router } from "express";
 import { asyncHandler } from "../../shared/http/async-handler.js";
 import {
   createFinanceAccount,
+  createFinanceTransfer,
   createFinanceTransaction,
   deleteFinanceTransaction,
   getFinances,
@@ -51,6 +52,63 @@ financesRouter.post(
       initialBalanceCents,
     });
     response.status(201).json({ account });
+  }),
+);
+
+financesRouter.post(
+  "/transfers",
+  asyncHandler(async (request, response) => {
+    const {
+      sourceAccountId,
+      destinationAccountId,
+      description,
+      amountCents,
+      occurredAt,
+    } = (request.body ?? {}) as Record<string, unknown>;
+    const normalizedSourceAccountId =
+      typeof sourceAccountId === "string" && sourceAccountId.length <= 100
+        ? sourceAccountId
+        : null;
+    const normalizedDestinationAccountId =
+      typeof destinationAccountId === "string" &&
+      destinationAccountId.length <= 100
+        ? destinationAccountId
+        : null;
+    const normalizedDescription = normalizeLabel(description, 120);
+    const normalizedOccurredAt = normalizeOccurredAt(occurredAt);
+
+    if (
+      !normalizedSourceAccountId ||
+      !normalizedDestinationAccountId ||
+      normalizedSourceAccountId === normalizedDestinationAccountId ||
+      !normalizedDescription ||
+      !isValidCents(amountCents) ||
+      !normalizedOccurredAt
+    ) {
+      response.status(400).json({
+        error:
+          "Revisa las cuentas, el concepto y el monto de la transferencia.",
+      });
+      return;
+    }
+
+    const transactions = await createFinanceTransfer({
+      userId: request.authUser!.id,
+      sourceAccountId: normalizedSourceAccountId,
+      destinationAccountId: normalizedDestinationAccountId,
+      description: normalizedDescription,
+      amountCents,
+      occurredAt: normalizedOccurredAt,
+    });
+
+    if (!transactions) {
+      response.status(404).json({
+        error: "Una de las cuentas seleccionadas no existe.",
+      });
+      return;
+    }
+
+    response.status(201).json({ transactions });
   }),
 );
 
