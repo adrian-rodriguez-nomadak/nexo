@@ -43,15 +43,22 @@ test("builds the authenticated Nexo dashboard", async () => {
 });
 
 test("connects the finance module to the independent API", async () => {
-  const panel = await readFile(
-    new URL("app/finances-panel.tsx", projectRoot),
-    "utf8",
-  );
+  const [panel, simulator] = await Promise.all([
+    readFile(new URL("app/finances-panel.tsx", projectRoot), "utf8"),
+    readFile(new URL("app/finance-simulator.tsx", projectRoot), "utf8"),
+  ]);
 
   assert.match(panel, /Registrar dinero/);
+  assert.match(panel, /FinanceSimulator/);
+  assert.match(panel, /Simulador/);
   assert.match(panel, /apiFetch\("\/api\/finances", sessionToken\)/);
   assert.match(panel, /"\/api\/finances\/accounts"/);
   assert.match(panel, /"\/api\/finances\/transactions"/);
+  assert.match(simulator, /Agregar a la simulación/);
+  assert.match(simulator, /Balance proyectado/);
+  assert.match(simulator, /Ver diagnóstico/);
+  assert.match(simulator, /Plan sugerido/);
+  assert.match(simulator, /Nada de esta simulación se/);
 });
 
 test("connects the events module to the independent API", async () => {

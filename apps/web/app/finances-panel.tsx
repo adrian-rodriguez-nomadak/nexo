@@ -3,6 +3,7 @@
 import { type FormEvent, useCallback, useEffect, useMemo, useState } from "react";
 
 import { apiFetch } from "./api-client";
+import { FinanceSimulator } from "./finance-simulator";
 
 type AccountType = "cash" | "bank" | "savings" | "credit";
 type TransactionKind = "income" | "expense";
@@ -118,6 +119,9 @@ async function fetchFinances(sessionToken: string): Promise<FinanceData> {
 }
 
 export function FinancesPanel({ sessionToken }: { sessionToken: string }) {
+  const [activeView, setActiveView] = useState<"overview" | "simulation">(
+    "overview",
+  );
   const [accounts, setAccounts] = useState<FinanceAccount[]>([]);
   const [transactions, setTransactions] = useState<FinanceTransaction[]>([]);
   const [summary, setSummary] = useState<FinanceSummary>(emptySummary);
@@ -319,6 +323,32 @@ export function FinancesPanel({ sessionToken }: { sessionToken: string }) {
 
   return (
     <section className="finance-workspace">
+      <div className="finance-subnav" aria-label="Vistas de Finanzas">
+        <button
+          aria-pressed={activeView === "overview"}
+          className={activeView === "overview" ? "finance-subnav-active" : ""}
+          onClick={() => setActiveView("overview")}
+          type="button"
+        >
+          <span>▦</span>
+          Resumen
+        </button>
+        <button
+          aria-pressed={activeView === "simulation"}
+          className={activeView === "simulation" ? "finance-subnav-active" : ""}
+          data-testid="open-finance-simulator"
+          onClick={() => setActiveView("simulation")}
+          type="button"
+        >
+          <span>◇</span>
+          Simulador
+        </button>
+      </div>
+
+      {activeView === "simulation" ? (
+        <FinanceSimulator accounts={accounts} summary={summary} />
+      ) : (
+        <>
       <div className="finance-summary-grid">
         <article className="finance-balance-card">
           <span className="finance-kicker">Balance total</span>
@@ -626,6 +656,8 @@ export function FinancesPanel({ sessionToken }: { sessionToken: string }) {
           )}
         </div>
       </section>
+        </>
+      )}
     </section>
   );
 }
