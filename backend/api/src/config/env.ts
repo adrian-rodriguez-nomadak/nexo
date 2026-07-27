@@ -13,6 +13,22 @@ function parsePort(value: string | undefined): number {
   return port;
 }
 
+const BUILT_IN_CORS_ORIGINS = [
+  "http://localhost:3000",
+  "https://nexo-personal.ample-gleam-3843.chatgpt.site",
+  "https://nexo-chi-nine.vercel.app",
+];
+
+export function parseCorsOrigins(value: string | undefined): string[] {
+  const configuredOrigins = value?.split(",") ?? [];
+  const normalizedOrigins = [...BUILT_IN_CORS_ORIGINS, ...configuredOrigins]
+    .map((origin) => origin.trim())
+    .filter(Boolean)
+    .map((origin) => (origin === "*" ? origin : origin.replace(/\/+$/, "")));
+
+  return [...new Set(normalizedOrigins)];
+}
+
 const nodeEnv = process.env.NODE_ENV ?? "development";
 
 export const env = {
@@ -20,13 +36,7 @@ export const env = {
   PORT: parsePort(process.env.PORT),
   DATABASE_URL: process.env.DATABASE_URL ?? "",
   DATABASE_SSL: parseBoolean(process.env.DATABASE_SSL, false),
-  CORS_ORIGINS: (
-    process.env.CORS_ORIGIN ??
-    "http://localhost:3000,https://nexo-personal.ample-gleam-3843.chatgpt.site"
-  )
-    .split(",")
-    .map((origin) => origin.trim())
-    .filter(Boolean),
+  CORS_ORIGINS: parseCorsOrigins(process.env.CORS_ORIGIN),
   AUTH_EXCHANGE_SECRET:
     process.env.AUTH_EXCHANGE_SECRET ?? process.env.JWT_SECRET ?? "",
   OPENAI_API_KEY: process.env.OPENAI_API_KEY ?? "",

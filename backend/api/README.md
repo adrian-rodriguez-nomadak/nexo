@@ -27,7 +27,8 @@ La API queda disponible en `http://localhost:3001`.
 Variables requeridas:
 
 - `DATABASE_URL`: URL interna de Render PostgreSQL.
-- `CORS_ORIGIN`: origen público del frontend; acepta varios separados por coma.
+- `CORS_ORIGIN`: orígenes adicionales permitidos; acepta varios separados por
+  coma. La web oficial en Vercel y el desarrollo local ya están incluidos.
 - `DATABASE_SSL`: `false` para la URL interna de Render; usa `true` únicamente
   con una conexión externa que no incluya `sslmode=require`.
 - `AUTH_EXCHANGE_SECRET`: secreto compartido con el servidor web para convertir
