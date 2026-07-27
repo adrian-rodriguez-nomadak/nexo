@@ -58,6 +58,14 @@ test("connects the finance module to the independent API", async () => {
   assert.match(panel, /Guardar transferencia/);
   assert.match(simulator, /Agregar a la simulación/);
   assert.match(simulator, /Simular transferencia/);
+  assert.match(simulator, /Optimista/);
+  assert.match(simulator, /Realista/);
+  assert.match(simulator, /Pesimista/);
+  assert.match(simulator, /scenarioMovements/);
+  assert.match(simulator, /Tres escenarios, tres decisiones/);
+  assert.match(simulator, /Exportar escenarios/);
+  assert.match(simulator, /text\/csv/);
+  assert.match(simulator, /nexo-simulacion-/);
   assert.match(simulator, /Balance proyectado/);
   assert.match(simulator, /Ver diagnóstico/);
   assert.match(simulator, /Plan sugerido/);

@@ -2238,6 +2238,168 @@ a:focus-visible {
   opacity: 0.4;
 }
 
+.simulation-scenario-panel {
+  display: grid;
+  gap: 16px;
+  padding: 22px;
+  border: 1px solid var(--border);
+  border-radius: 24px;
+  background: var(--surface);
+}
+
+.simulation-scenario-heading {
+  display: flex;
+  align-items: end;
+  justify-content: space-between;
+  gap: 18px;
+}
+
+.simulation-scenario-heading h2 {
+  margin: 4px 0 0;
+  font-size: 18px;
+  letter-spacing: -0.45px;
+}
+
+.simulation-scenario-actions {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+}
+
+.simulation-scenario-actions > p {
+  max-width: 310px;
+  margin: 0;
+  color: var(--muted);
+  font-size: 9px;
+  line-height: 1.5;
+  text-align: right;
+}
+
+.simulation-scenario-actions > button {
+  display: flex;
+  min-height: 38px;
+  flex: 0 0 auto;
+  align-items: center;
+  gap: 7px;
+  padding: 0 13px;
+  border: 1px solid rgba(140, 180, 255, 0.28);
+  border-radius: 11px;
+  background: rgba(140, 180, 255, 0.09);
+  color: #8cb4ff;
+  cursor: pointer;
+  font-size: 9px;
+  font-weight: 850;
+}
+
+.simulation-scenario-actions > button:hover {
+  background: rgba(140, 180, 255, 0.15);
+}
+
+.simulation-scenario-actions > button span {
+  font-size: 13px;
+}
+
+.simulation-scenario-switcher {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 10px;
+}
+
+.simulation-scenario-option {
+  position: relative;
+  display: grid;
+  min-width: 0;
+  grid-template-columns: auto minmax(0, 1fr) auto;
+  align-items: center;
+  gap: 10px;
+  padding: 13px;
+  border: 1px solid var(--border);
+  border-radius: 15px;
+  background: var(--background);
+  color: var(--text);
+  cursor: pointer;
+  text-align: left;
+}
+
+.simulation-scenario-option::after {
+  position: absolute;
+  right: 12px;
+  bottom: -1px;
+  left: 12px;
+  height: 2px;
+  border-radius: 2px 2px 0 0;
+  background: var(--scenario-color);
+  content: "";
+  opacity: 0;
+}
+
+.simulation-scenario-option:hover {
+  border-color: color-mix(in srgb, var(--scenario-color) 35%, var(--border));
+}
+
+.simulation-scenario-option.simulation-scenario-active {
+  border-color: color-mix(in srgb, var(--scenario-color) 48%, var(--border));
+  background: color-mix(in srgb, var(--scenario-color) 8%, var(--background));
+}
+
+.simulation-scenario-active::after {
+  opacity: 1;
+}
+
+.scenario-optimistic {
+  --scenario-color: #78d6a3;
+}
+
+.scenario-realistic {
+  --scenario-color: #8cb4ff;
+}
+
+.scenario-pessimistic {
+  --scenario-color: #ff9b78;
+}
+
+.scenario-symbol {
+  display: grid;
+  width: 31px;
+  height: 31px;
+  place-items: center;
+  border-radius: 10px;
+  background: color-mix(in srgb, var(--scenario-color) 12%, transparent);
+  color: var(--scenario-color);
+  font-size: 14px;
+  font-weight: 850;
+}
+
+.scenario-copy,
+.scenario-result {
+  display: grid;
+  min-width: 0;
+  gap: 3px;
+}
+
+.scenario-copy > strong {
+  font-size: 11px;
+}
+
+.scenario-copy > small,
+.scenario-result > small {
+  overflow: hidden;
+  color: var(--muted);
+  font-size: 8px;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.scenario-result {
+  justify-items: end;
+}
+
+.scenario-result > strong {
+  font-family: var(--font-geist-mono), monospace;
+  font-size: 9px;
+  white-space: nowrap;
+}
+
 .simulation-summary-grid {
   display: grid;
   grid-template-columns: 1.35fr repeat(3, 1fr);
@@ -6616,6 +6778,10 @@ a:focus-visible {
     grid-template-columns: 1fr 1fr;
   }
 
+  .simulation-scenario-switcher {
+    grid-template-columns: 1fr;
+  }
+
   .simulation-work-grid {
     grid-template-columns: 1fr;
   }
@@ -6695,6 +6861,31 @@ a:focus-visible {
 
   .simulation-summary-grid {
     grid-template-columns: 1fr;
+  }
+
+  .simulation-scenario-panel {
+    padding: 18px;
+  }
+
+  .simulation-scenario-heading {
+    align-items: flex-start;
+    flex-direction: column;
+    gap: 7px;
+  }
+
+  .simulation-scenario-actions {
+    width: 100%;
+    align-items: stretch;
+    flex-direction: column;
+  }
+
+  .simulation-scenario-actions > p {
+    max-width: none;
+    text-align: left;
+  }
+
+  .simulation-scenario-actions > button {
+    justify-content: center;
   }
 
   .simulation-summary-grid article {

@@ -8,6 +8,7 @@ import {
 
 type TransactionKind = "income" | "expense";
 type MovementKind = TransactionKind | "transfer";
+type ScenarioKind = "optimistic" | "realistic" | "pessimistic";
 
 type SimulatorAccount = {
   id: string;
@@ -52,6 +53,33 @@ const simulatedCategories: Record<TransactionKind, string[]> = {
   ],
 };
 
+const scenarioOrder: ScenarioKind[] = [
+  "optimistic",
+  "realistic",
+  "pessimistic",
+];
+
+const scenarioDefinitions: Record<
+  ScenarioKind,
+  { label: string; description: string; symbol: string }
+> = {
+  optimistic: {
+    label: "Optimista",
+    description: "Mejor resultado razonable",
+    symbol: "↗",
+  },
+  realistic: {
+    label: "Realista",
+    description: "Lo más probable",
+    symbol: "→",
+  },
+  pessimistic: {
+    label: "Pesimista",
+    description: "Prueba de presión",
+    symbol: "↘",
+  },
+};
+
 const moneyFormatter = new Intl.NumberFormat("es-MX", {
   style: "currency",
   currency: "MXN",
@@ -60,6 +88,10 @@ const moneyFormatter = new Intl.NumberFormat("es-MX", {
 
 function formatMoney(cents: number): string {
   return moneyFormatter.format(cents / 100);
+}
+
+function csvCell(value: string | number): string {
+  return `"${String(value).replaceAll('"', '""')}"`;
 }
 
 function parseMoneyToCents(value: string): number | null {
@@ -160,6 +192,60 @@ function buildDiagnosis(input: {
   };
 }
 
+function calculateSimulation(
+  accounts: SimulatorAccount[],
+  summary: SimulatorSummary,
+  movements: SimulatedMovement[],
+) {
+  const simulatedIncomeCents = movements
+    .filter((movement) => movement.kind === "income")
+    .reduce((total, movement) => total + movement.amountCents, 0);
+  const simulatedExpenseCents = movements
+    .filter((movement) => movement.kind === "expense")
+    .reduce((total, movement) => total + movement.amountCents, 0);
+  const projectedAccounts = accounts.map((account) => {
+    const impactCents = movements
+      .filter((movement) => movement.accountId === account.id)
+      .reduce(
+        (total, movement) =>
+          total +
+          (movement.kind === "income"
+            ? movement.amountCents
+            : -movement.amountCents),
+        0,
+      );
+    return {
+      ...account,
+      impactCents,
+      projectedBalanceCents: account.balanceCents + impactCents,
+    };
+  });
+  const projected: SimulatorSummary = {
+    balanceCents:
+      summary.balanceCents +
+      simulatedIncomeCents -
+      simulatedExpenseCents,
+    incomeCents: summary.incomeCents + simulatedIncomeCents,
+    expenseCents: summary.expenseCents + simulatedExpenseCents,
+    netCents:
+      summary.netCents + simulatedIncomeCents - simulatedExpenseCents,
+  };
+
+  return {
+    diagnosis: buildDiagnosis({
+      accounts: projectedAccounts,
+      movements,
+      projected,
+      simulatedIncomeCents,
+      simulatedExpenseCents,
+    }),
+    projected,
+    projectedAccounts,
+    simulatedExpenseCents,
+    simulatedIncomeCents,
+  };
+}
+
 export function FinanceSimulator({
   accounts,
   summary,
@@ -167,7 +253,15 @@ export function FinanceSimulator({
   accounts: SimulatorAccount[];
   summary: SimulatorSummary;
 }) {
-  const [movements, setMovements] = useState<SimulatedMovement[]>([]);
+  const [activeScenario, setActiveScenario] =
+    useState<ScenarioKind>("realistic");
+  const [scenarioMovements, setScenarioMovements] = useState<
+    Record<ScenarioKind, SimulatedMovement[]>
+  >({
+    optimistic: [],
+    realistic: [],
+    pessimistic: [],
+  });
   const [kind, setKind] = useState<MovementKind>("expense");
   const [accountId, setAccountId] = useState("");
   const [destinationAccountId, setDestinationAccountId] = useState("");
@@ -176,6 +270,8 @@ export function FinanceSimulator({
   const [category, setCategory] = useState(simulatedCategories.expense[0]);
   const [formError, setFormError] = useState<string | null>(null);
   const [showDiagnosis, setShowDiagnosis] = useState(false);
+  const movements = scenarioMovements[activeScenario];
+  const activeScenarioDefinition = scenarioDefinitions[activeScenario];
 
   const effectiveAccountId = accounts.some(
     (account) => account.id === accountId,
@@ -189,55 +285,112 @@ export function FinanceSimulator({
       : (accounts.find((account) => account.id !== effectiveAccountId)?.id ??
         "");
 
-  const simulation = useMemo(() => {
-    const simulatedIncomeCents = movements
-      .filter((movement) => movement.kind === "income")
-      .reduce((total, movement) => total + movement.amountCents, 0);
-    const simulatedExpenseCents = movements
-      .filter((movement) => movement.kind === "expense")
-      .reduce((total, movement) => total + movement.amountCents, 0);
-    const projectedAccounts = accounts.map((account) => {
-      const impactCents = movements
-        .filter((movement) => movement.accountId === account.id)
-        .reduce(
-          (total, movement) =>
-            total +
-            (movement.kind === "income"
-              ? movement.amountCents
-              : -movement.amountCents),
-          0,
-        );
-      return {
-        ...account,
-        impactCents,
-        projectedBalanceCents: account.balanceCents + impactCents,
-      };
-    });
-    const projected: SimulatorSummary = {
-      balanceCents:
-        summary.balanceCents +
-        simulatedIncomeCents -
-        simulatedExpenseCents,
-      incomeCents: summary.incomeCents + simulatedIncomeCents,
-      expenseCents: summary.expenseCents + simulatedExpenseCents,
-      netCents:
-        summary.netCents + simulatedIncomeCents - simulatedExpenseCents,
-    };
+  const simulations = useMemo(
+    () => ({
+      optimistic: calculateSimulation(
+        accounts,
+        summary,
+        scenarioMovements.optimistic,
+      ),
+      realistic: calculateSimulation(
+        accounts,
+        summary,
+        scenarioMovements.realistic,
+      ),
+      pessimistic: calculateSimulation(
+        accounts,
+        summary,
+        scenarioMovements.pessimistic,
+      ),
+    }),
+    [accounts, scenarioMovements, summary],
+  );
+  const simulation = simulations[activeScenario];
 
-    return {
-      diagnosis: buildDiagnosis({
-        accounts: projectedAccounts,
-        movements,
-        projected,
-        simulatedIncomeCents,
-        simulatedExpenseCents,
-      }),
-      projected,
-      projectedAccounts,
-      simulatedExpenseCents,
-      simulatedIncomeCents,
-    };
-  }, [accounts, movements, summary]);
+  function updateActiveMovements(
+    update: (current: SimulatedMovement[]) => SimulatedMovement[],
+  ) {
+    setScenarioMovements((current) => ({
+      ...current,
+      [activeScenario]: update(current[activeScenario]),
+    }));
+  }
+
+  function selectScenario(nextScenario: ScenarioKind) {
+    setActiveScenario(nextScenario);
+    setShowDiagnosis(false);
+    setFormError(null);
+  }
+
+  function exportScenarios() {
+    const rows: Array<Array<string | number>> = [
+      [
+        "Escenario",
+        "Registro",
+        "Tipo",
+        "Categoría",
+        "Descripción",
+        "Cuenta",
+        "Monto MXN",
+        "Balance proyectado MXN",
+        "Flujo neto proyectado MXN",
+      ],
+    ];
+
+    for (const scenario of scenarioOrder) {
+      const definition = scenarioDefinitions[scenario];
+      const scenarioSimulation = simulations[scenario];
+      rows.push([
+        definition.label,
+        "Resumen",
+        "",
+        "",
+        definition.description,
+        "",
+        "",
+        (scenarioSimulation.projected.balanceCents / 100).toFixed(2),
+        (scenarioSimulation.projected.netCents / 100).toFixed(2),
+      ]);
+
+      for (const movement of scenarioMovements[scenario]) {
+        const account = accounts.find(
+          (candidate) => candidate.id === movement.accountId,
+        );
+        rows.push([
+          definition.label,
+          "Movimiento",
+          movement.kind === "income" ? "Ingreso" : "Gasto",
+          movement.category,
+          movement.description,
+          account?.name ?? "Cuenta",
+          (movement.amountCents / 100).toFixed(2),
+          "",
+          "",
+        ]);
+      }
+    }
+
+    const csv = rows
+      .map((row) => row.map((value) => csvCell(value)).join(","))
+      .join("\r\n");
+    const blob = new Blob([`\ufeff${csv}`], {
+      type: "text/csv;charset=utf-8",
+    });
+    const url = URL.createObjectURL(blob);
+    const link = document.createElement("a");
+    const now = new Date();
+    const localDate = new Date(
+      now.getTime() - now.getTimezoneOffset() * 60_000,
+    )
+      .toISOString()
+      .slice(0, 10);
+    link.href = url;
+    link.download = `nexo-simulacion-${localDate}.csv`;
+    document.body.append(link);
+    link.click();
+    link.remove();
+    window.setTimeout(() => URL.revokeObjectURL(url), 0);
+  }
 
   function selectKind(nextKind: MovementKind) {
     setKind(nextKind);
@@ -266,7 +419,7 @@ export function FinanceSimulator({
 
     if (kind === "transfer") {
       const transferId = movementId();
-      setMovements((current) => [
+      updateActiveMovements((current) => [
         ...current,
         {
           id: movementId(),
@@ -288,7 +441,7 @@ export function FinanceSimulator({
         },
       ]);
     } else {
-      setMovements((current) => [
+      updateActiveMovements((current) => [
         ...current,
         {
           id: movementId(),
@@ -308,7 +461,7 @@ export function FinanceSimulator({
   }
 
   function removeMovement(id: string) {
-    setMovements((current) => {
+    updateActiveMovements((current) => {
       const selected = current.find((movement) => movement.id === id);
       if (selected?.transferId) {
         return current.filter(
@@ -321,7 +474,10 @@ export function FinanceSimulator({
   }
 
   function resetSimulation() {
-    setMovements([]);
+    setScenarioMovements((current) => ({
+      ...current,
+      [activeScenario]: [],
+    }));
     setShowDiagnosis(false);
     setFormError(null);
   }
@@ -343,7 +499,9 @@ export function FinanceSimulator({
     <section className="finance-simulator" data-testid="finance-simulator">
       <div className="simulation-hero">
         <div>
-          <span className="eyebrow">Escenario hipotético</span>
+          <span className="eyebrow">
+            Escenario {activeScenarioDefinition.label}
+          </span>
           <h2>Prueba decisiones sin mover tu dinero</h2>
           <p>
             Agrega ingresos, gastos y transferencias temporales. Nada de esta
@@ -351,16 +509,84 @@ export function FinanceSimulator({
           </p>
         </div>
         <div className="simulation-hero-actions">
-          <span>{movements.length} en el escenario</span>
+          <span>
+            {movements.length}{" "}
+            {movements.length === 1 ? "efecto" : "efectos"} en{" "}
+            {activeScenarioDefinition.label}
+          </span>
           <button
             disabled={movements.length === 0}
             onClick={resetSimulation}
             type="button"
           >
-            Reiniciar
+            Reiniciar {activeScenarioDefinition.label.toLowerCase()}
           </button>
         </div>
       </div>
+
+      <section className="simulation-scenario-panel">
+        <div className="simulation-scenario-heading">
+          <div>
+            <span className="eyebrow">Comparador</span>
+            <h2>Tres escenarios, tres decisiones</h2>
+          </div>
+          <div className="simulation-scenario-actions">
+            <p>
+              Cada escenario conserva sus propios movimientos y diagnóstico.
+            </p>
+            <button
+              data-testid="export-finance-scenarios"
+              onClick={exportScenarios}
+              type="button"
+            >
+              <span>↓</span>
+              Exportar escenarios
+            </button>
+          </div>
+        </div>
+        <div
+          className="simulation-scenario-switcher"
+          role="tablist"
+          aria-label="Escenarios de simulación"
+        >
+          {scenarioOrder.map((scenario) => {
+            const definition = scenarioDefinitions[scenario];
+            const scenarioSimulation = simulations[scenario];
+            const scenarioCount = scenarioMovements[scenario].length;
+            return (
+              <button
+                aria-selected={activeScenario === scenario}
+                className={`simulation-scenario-option scenario-${scenario} ${
+                  activeScenario === scenario
+                    ? "simulation-scenario-active"
+                    : ""
+                }`}
+                key={scenario}
+                onClick={() => selectScenario(scenario)}
+                role="tab"
+                type="button"
+              >
+                <span className="scenario-symbol">{definition.symbol}</span>
+                <span className="scenario-copy">
+                  <strong>{definition.label}</strong>
+                  <small>{definition.description}</small>
+                </span>
+                <span className="scenario-result">
+                  <strong>
+                    {formatMoney(
+                      scenarioSimulation.projected.balanceCents,
+                    )}
+                  </strong>
+                  <small>
+                    {scenarioCount}{" "}
+                    {scenarioCount === 1 ? "efecto" : "efectos"}
+                  </small>
+                </span>
+              </button>
+            );
+          })}
+        </div>
+      </section>
 
       <div className="simulation-summary-grid">
         <article className="simulation-balance-card">
