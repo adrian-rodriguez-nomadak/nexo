@@ -62,6 +62,26 @@ export function extractAssistantText(payload: unknown): string | null {
   return chunks.join("\n").trim() || null;
 }
 
+export function hasExplicitConfirmation(
+  message: string,
+  history: AssistantHistoryMessage[],
+): boolean {
+  const normalized = message.trim().toLocaleLowerCase("es-MX");
+  const confirms =
+    /^(confirmo|confirmado|sí,? (confirmo|regístralo|registralo)|regístralo|registralo|adelante|hazlo)[.! ]*$/.test(
+      normalized,
+    );
+  const previousAssistant = [...history]
+    .reverse()
+    .find((item) => item.role === "assistant");
+  return confirms && Boolean(
+    previousAssistant &&
+      /(confirmas|confirma|quieres que lo registre|puedo registrarlo)/i.test(
+        previousAssistant.content,
+      ),
+  );
+}
+
 function fileExtension(name: string): string {
   return name.split(".").pop()?.toLowerCase() ?? "";
 }

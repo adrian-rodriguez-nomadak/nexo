@@ -15,14 +15,16 @@ npm run db:migrate
 npm run dev
 ```
 
-Para vaciar todos los registros de producto y conservar las cuentas y sesiones:
+Para ejecutar el seeder que vacía conversaciones, memorias y registros de
+producto, pero conserva usuarios, credenciales, sesiones y migraciones:
 
 ```bash
 npm run build
-npm run db:reset-data -- --yes
+npm run db:seed:clean -- --yes
 ```
 
-El comando requiere `--yes` para evitar borrados accidentales.
+El comando requiere `--yes` para evitar borrados accidentales. El comando
+anterior `db:reset-data` se mantiene como alias compatible.
 
 La API queda disponible en `http://localhost:3001`.
 
@@ -45,7 +47,31 @@ Variables requeridas:
   definido, se reutiliza `JWT_SECRET` para facilitar la migración del servicio
   anterior.
 - `OPENAI_API_KEY`: habilita la lectura de capturas de boletos mediante visión.
+- `OPENAI_ASSISTANT_MODEL`: modelo reservado para analizar archivos, PDF e
+  imágenes complejas.
 - `OPENAI_VISION_MODEL`: modelo multimodal; por defecto `gpt-5.6-sol`.
+- `NEXO_TEXT_API_URL`, `NEXO_TEXT_API_KEY` y `NEXO_TEXT_MODEL`: proveedor
+  económico de conversación y herramientas. La configuración predeterminada
+  usa la API compatible con OpenAI de Groq y `llama-3.1-8b-instant`.
+- `NEXO_TEXT_PROVIDER`: usa `groq` u `openrouter`. Para OpenRouter, Nexo exige
+  Zero Data Retention y rechaza proveedores que recolecten datos.
+
+En Groq debe activarse **Zero Data Retention** en Data Controls antes de usar
+Nexo con información personal.
+
+## Asistente
+
+`POST /api/assistant/messages` usa dos capas:
+
+1. Si hay archivos o imágenes, OpenAI extrae evidencia factual y elimina
+   identificadores sensibles antes de continuar.
+2. El proveedor de texto conversa, selecciona herramientas y propone acciones.
+   La API de Nexo valida y ejecuta las herramientas; el modelo nunca accede
+   directamente a PostgreSQL.
+
+Las memorias explícitas se guardan como confirmadas. Las inferencias conservan
+su confianza y quedan diferenciadas. Las escrituras financieras requieren
+confirmación explícita y los estados de cuenta se deduplican.
 
 ## Autenticación
 

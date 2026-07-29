@@ -1,6 +1,10 @@
 import { Router } from "express";
 
 import { asyncHandler } from "../../shared/http/async-handler.js";
+import {
+  listAssistantMessages,
+  saveAssistantMessage,
+} from "./assistant.history.js";
 import { answerWithNexo } from "./assistant.service.js";
 import {
   normalizeAssistantFiles,
@@ -9,6 +13,15 @@ import {
 } from "./assistant.validation.js";
 
 export const assistantRouter = Router();
+
+assistantRouter.get(
+  "/messages",
+  asyncHandler(async (request, response) => {
+    response.json({
+      messages: await listAssistantMessages(request.authUser!.id),
+    });
+  }),
+);
 
 assistantRouter.post(
   "/messages",
@@ -25,18 +38,47 @@ assistantRouter.post(
     }
 
     try {
+      const storedHistory = await listAssistantMessages(
+        request.authUser!.id,
+        12,
+      );
       const answer = await answerWithNexo({
         userId: request.authUser!.id,
         displayName: request.authUser!.displayName,
         message,
-        history: normalizeAssistantHistory(body.history),
+        history:
+          storedHistory.length > 0
+            ? storedHistory.map(({ role, content }) => ({ role, content }))
+            : normalizeAssistantHistory(body.history),
         files,
       });
-      response.json({ answer });
+      const userMessage = await saveAssistantMessage({
+        userId: request.authUser!.id,
+        role: "user",
+        content: message,
+        attachments: files.map((file) => file.name),
+      });
+      const assistantMessage = await saveAssistantMessage({
+        userId: request.authUser!.id,
+        role: "assistant",
+        content: answer,
+      });
+      response.json({ answer, userMessage, assistantMessage });
     } catch (error) {
       if (error instanceof Error && error.message === "OPENAI_API_KEY_NOT_CONFIGURED") {
         response.status(503).json({
-          error: "El asistente todavía no tiene configurada su conexión de IA.",
+          error:
+            "El análisis de archivos todavía no tiene configurada su conexión de IA.",
+        });
+        return;
+      }
+      if (
+        error instanceof Error &&
+        error.message === "NEXO_TEXT_API_KEY_NOT_CONFIGURED"
+      ) {
+        response.status(503).json({
+          error:
+            "El asistente conversacional todavía no tiene configurado su proveedor de texto.",
         });
         return;
       }

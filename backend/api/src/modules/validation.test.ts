@@ -82,6 +82,7 @@ import { normalizeProgressDays } from "./progress/progress.validation.js";
 import {
   buildAssistantHistory,
   extractAssistantText,
+  hasExplicitConfirmation,
 } from "./assistant/assistant.validation.js";
 
 test("maps assistant history to valid Responses API content types", () => {
@@ -120,6 +121,17 @@ test("extracts visible assistant text from Responses API payloads", () => {
     extractAssistantText({ output_text: "Respuesta directa" }),
     "Respuesta directa",
   );
+});
+
+test("requires an explicit confirmation after a concrete proposal", () => {
+  const proposal = [{
+    role: "assistant" as const,
+    content: "Registraré un gasto de $500 en BBVA. ¿Confirmas?",
+  }];
+  assert.equal(hasExplicitConfirmation("confirmo", proposal), true);
+  assert.equal(hasExplicitConfirmation("regístralo", proposal), true);
+  assert.equal(hasExplicitConfirmation("quizá después", proposal), false);
+  assert.equal(hasExplicitConfirmation("confirmo", []), false);
 });
 
 test("validates capture input", () => {

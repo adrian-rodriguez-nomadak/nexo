@@ -3,6 +3,7 @@
 import {
   type ChangeEvent,
   type FormEvent,
+  useEffect,
   useRef,
   useState,
 } from "react";
@@ -24,9 +25,9 @@ type EncodedFile = {
 };
 
 const starterQuestions = [
-  "Ayúdame a priorizar mi día",
-  "Resume estos archivos",
-  "Encuentra patrones en mis registros",
+  "¿Qué recuerdas de mí?",
+  "Guarda que quiero correr un maratón",
+  "Conecta mis hábitos con mis objetivos",
 ];
 
 const acceptedFiles = [
@@ -85,6 +86,37 @@ export function AssistantPanel({
   const [isSending, setIsSending] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const fileInput = useRef<HTMLInputElement>(null);
+
+  useEffect(() => {
+    let active = true;
+    void apiFetch("/api/assistant/messages", sessionToken)
+      .then(async (response) => {
+        const data = (await response.json()) as {
+          messages?: Array<{
+            id: string;
+            role: "user" | "assistant";
+            content: string;
+            attachments?: string[];
+          }>;
+        };
+        if (active && response.ok && Array.isArray(data.messages)) {
+          setMessages(
+            data.messages.map((message) => ({
+              id: message.id,
+              role: message.role,
+              content: message.content,
+              files: message.attachments,
+            })),
+          );
+        }
+      })
+      .catch(() => {
+        // El chat sigue disponible aunque falle la restauración del historial.
+      });
+    return () => {
+      active = false;
+    };
+  }, [sessionToken]);
 
   async function chooseFiles(event: ChangeEvent<HTMLInputElement>) {
     const selected = Array.from(event.target.files ?? []);
@@ -158,6 +190,9 @@ export function AssistantPanel({
         },
       ]);
     } catch (caught) {
+      setMessages(priorMessages);
+      setDraft(message);
+      setFiles(attachedFiles);
       setError(caught instanceof Error ? caught.message : "Nexo no pudo responder.");
     } finally {
       setIsSending(false);
@@ -165,15 +200,14 @@ export function AssistantPanel({
   }
 
   return (
-    <section className="assistant-workspace assistant-workspace-live">
+    <section className="assistant-workspace assistant-workspace-live chat-only-workspace">
       <header className="assistant-live-header">
         <span className="assistant-presence" aria-hidden="true">N</span>
         <div>
-          <span className="eyebrow">Tu asistente personal</span>
-          <h2>Hola, {displayName.split(/\s+/)[0]}. ¿Qué hacemos?</h2>
-          <p>Pregunta, comparte una imagen o trabaja con documentos y hojas de cálculo.</p>
+          <span className="eyebrow">Una conversación para todo</span>
+          <h2>Hola, {displayName.split(/\s+/)[0]}. ¿Qué tienes en mente?</h2>
+          <p>Habla con Nexo para recordar, consultar, organizar o cambiar cualquier cosa.</p>
         </div>
-        <span className="assistant-private-badge">⌁ Privado</span>
       </header>
 
       <section className="assistant-conversation assistant-conversation-live">
@@ -181,16 +215,15 @@ export function AssistantPanel({
           {messages.length === 0 ? (
             <div className="assistant-empty-live">
               <span>✦</span>
-              <h3>Todo empieza con una petición.</h3>
+              <h3>Háblame. Yo conecto los puntos.</h3>
               <p>
-                Nexo puede leer tu contexto y analizar PDF, documentos, presentaciones,
-                hojas de cálculo, código e imágenes.
+                Cuéntame decisiones, metas, ideas o momentos. Nexo convierte lo
+                importante en memoria y lo recupera cuando vuelve a ser útil.
               </p>
               <div className="assistant-capabilities">
-                <span>PDF y documentos</span>
-                <span>Excel y CSV</span>
-                <span>Imágenes</span>
-                <span>Texto y código</span>
+                <span>Recuerda hechos</span>
+                <span>Conecta patrones</span>
+                <span>Respeta límites</span>
               </div>
             </div>
           ) : (
@@ -285,7 +318,7 @@ export function AssistantPanel({
           >↑</button>
         </form>
         <small className="assistant-file-help">
-          Hasta 5 archivos · 8 MB cada uno · Los originales no se guardan en Nexo
+          La conversación usa sólo recuerdos relevantes · Tú controlas la memoria
         </small>
       </section>
     </section>

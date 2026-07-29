@@ -57,3 +57,17 @@ Cada memoria conserva su fuente, registros de origen, confianza, sensibilidad,
 vigencia y confirmación. Las detecciones repetidas actualizan la memoria
 existente en vez de multiplicar recuerdos equivalentes. El asistente futuro
 podrá usar este contexto sin presentar una inferencia como si fuera un hecho.
+
+## Asistente como entrada principal
+
+El chat es la entrada principal de Nexo. Texto, fotos y archivos se convierten
+primero en evidencia normalizada; después una capa de políticas decide qué es
+un registro de módulo, qué merece memoria y qué necesita confirmación.
+
+- La IA propone intención, estructura y herramientas.
+- El backend valida permisos, importes, fechas, sensibilidad y duplicados.
+- Las lecturas y memorias explícitas pueden resolverse directamente.
+- Las escrituras sensibles o financieras requieren confirmación.
+- OpenAI se reserva para visión, PDF y análisis complejo.
+- La conversación cotidiana y el uso de herramientas pueden usar un modelo
+  económico o abierto intercambiable.

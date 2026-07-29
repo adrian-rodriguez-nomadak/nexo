@@ -2,6 +2,12 @@ import { pool } from "./database.js";
 
 const statements = [
   `
+    CREATE TABLE IF NOT EXISTS nexo_migrations (
+      id TEXT PRIMARY KEY,
+      applied_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+    )
+  `,
+  `
     CREATE TABLE IF NOT EXISTS nexo_users (
       id TEXT PRIMARY KEY,
       email TEXT NOT NULL UNIQUE,
@@ -19,6 +25,28 @@ const statements = [
       created_at TIMESTAMPTZ NOT NULL
     )
   `,
+  `
+    CREATE TABLE IF NOT EXISTS nexo_assistant_actions (
+      id TEXT PRIMARY KEY,
+      nexo_user_id TEXT NOT NULL REFERENCES nexo_users(id) ON DELETE CASCADE,
+      action_type TEXT NOT NULL,
+      fingerprint TEXT NOT NULL,
+      payload JSONB NOT NULL,
+      created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+      UNIQUE (nexo_user_id, fingerprint)
+    )
+  `,
+  `
+    CREATE TABLE IF NOT EXISTS nexo_assistant_messages (
+      id TEXT PRIMARY KEY,
+      nexo_user_id TEXT NOT NULL REFERENCES nexo_users(id) ON DELETE CASCADE,
+      role TEXT NOT NULL CHECK (role IN ('user', 'assistant')),
+      content TEXT NOT NULL,
+      attachments TEXT[] NOT NULL DEFAULT '{}',
+      created_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+    )
+  `,
+  "CREATE INDEX IF NOT EXISTS nexo_assistant_messages_user_created_idx ON nexo_assistant_messages (nexo_user_id, created_at DESC)",
   "ALTER TABLE nexo_users ADD COLUMN IF NOT EXISTS password_hash TEXT",
   "ALTER TABLE nexo_users ADD COLUMN IF NOT EXISTS password_salt TEXT",
   "CREATE INDEX IF NOT EXISTS nexo_auth_sessions_user_idx ON nexo_auth_sessions (user_id)",
@@ -329,6 +357,26 @@ const statements = [
   "CREATE INDEX IF NOT EXISTS nexo_memories_source_records_idx ON nexo_memories USING GIN (source_record_ids)",
 ];
 
+const assistantFirstResetId = "20260729_assistant_first_reset";
+const resetTables = [
+  "nexo_assistant_actions",
+  "nexo_assistant_messages",
+  "nexo_bet_selections",
+  "nexo_bets",
+  "nexo_bet_settings",
+  "nexo_meals",
+  "nexo_workout_exercises",
+  "nexo_workouts",
+  "nexo_health_entries",
+  "nexo_health_profiles",
+  "nexo_events",
+  "nexo_notes",
+  "nexo_memories",
+  "finance_transactions",
+  "finance_accounts",
+  "captures",
+] as const;
+
 export async function migrate(): Promise<void> {
   const client = await pool.connect();
 
@@ -336,6 +384,20 @@ export async function migrate(): Promise<void> {
     await client.query("BEGIN");
     for (const statement of statements) {
       await client.query(statement);
+    }
+    const resetApplied = await client.query(
+      "SELECT 1 FROM nexo_migrations WHERE id = $1",
+      [assistantFirstResetId],
+    );
+    if (resetApplied.rowCount === 0) {
+      await client.query(`TRUNCATE TABLE ${resetTables.join(", ")} CASCADE`);
+      await client.query(
+        "INSERT INTO nexo_migrations (id) VALUES ($1)",
+        [assistantFirstResetId],
+      );
+      console.log(
+        "Assistant-first data reset completed. Users and sessions were preserved.",
+      );
     }
     await client.query("COMMIT");
   } catch (error) {

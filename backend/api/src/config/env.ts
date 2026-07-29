@@ -43,6 +43,11 @@ export const env = {
   OPENAI_ASSISTANT_MODEL:
     process.env.OPENAI_ASSISTANT_MODEL ?? process.env.OPENAI_VISION_MODEL ?? "gpt-5.6-sol",
   OPENAI_VISION_MODEL: process.env.OPENAI_VISION_MODEL ?? "gpt-5.6-sol",
+  NEXO_TEXT_API_URL:
+    process.env.NEXO_TEXT_API_URL ?? "https://api.groq.com/openai/v1",
+  NEXO_TEXT_API_KEY: process.env.NEXO_TEXT_API_KEY ?? "",
+  NEXO_TEXT_MODEL: process.env.NEXO_TEXT_MODEL ?? "llama-3.1-8b-instant",
+  NEXO_TEXT_PROVIDER: process.env.NEXO_TEXT_PROVIDER ?? "groq",
   OMI_API_KEY: process.env.OMI_API_KEY ?? "",
 };
 

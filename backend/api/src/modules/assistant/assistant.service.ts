@@ -1,39 +1,124 @@
-import { env } from "../../config/env.js";
 import { query } from "../../shared/db/database.js";
+import { analyzeAssistantFiles } from "./assistant.ingestion.js";
 import {
-  buildAssistantHistory,
-  extractAssistantText,
+  callTextModel,
+  type TextMessage,
+} from "./assistant.text-provider.js";
+import {
+  executeAssistantTool,
+} from "./assistant.tools.js";
+import {
+  hasExplicitConfirmation,
   type AssistantFile,
   type AssistantHistoryMessage,
 } from "./assistant.validation.js";
 
-type ContextRow = { content: string };
-async function loadPersonalContext(userId: string): Promise<string> {
+type ContextRow = {
+  content: string;
+  module: string | null;
+  kind: string;
+  confirmed: boolean;
+  updated_at: Date;
+};
+
+const stopWords = new Set([
+  "para", "como", "pero", "porque", "esto", "esta", "este", "estos", "estas",
+  "sobre", "desde", "hasta", "tengo", "quiero", "puedes", "podrias", "dime",
+  "hola", "gracias", "algo", "todo", "cuando", "donde", "cual", "con", "sin",
+  "una", "uno", "unos", "unas", "que", "por", "del", "las", "los", "mis",
+  "me", "mi", "tu", "yo", "es", "un", "en", "y", "o", "a",
+]);
+
+function tokens(value: string): Set<string> {
+  return new Set(
+    value
+      .normalize("NFD")
+      .replace(/\p{Diacritic}/gu, "")
+      .toLocaleLowerCase("es-MX")
+      .match(/[\p{L}\p{N}]{2,}/gu)
+      ?.filter((token) => !stopWords.has(token)) ?? [],
+  );
+}
+
+export function rankContext<T extends ContextRow>(
+  rows: T[],
+  message: string,
+  limit = 18,
+): T[] {
+  const queryTokens = tokens(message);
+  const now = Date.now();
+  return rows
+    .map((row, index) => {
+      const rowTokens = tokens(`${row.content} ${row.module ?? ""} ${row.kind}`);
+      const overlap = [...queryTokens].filter((token) => rowTokens.has(token)).length;
+      const ageDays = Math.max(
+        0,
+        (now - row.updated_at.getTime()) / (1000 * 60 * 60 * 24),
+      );
+      const score =
+        overlap * 12 +
+        (row.confirmed ? 4 : 0) +
+        Math.max(0, 3 - ageDays / 30) -
+        index / 1000;
+      return { row, score };
+    })
+    .sort((left, right) => right.score - left.score)
+    .slice(0, limit)
+    .map(({ row }) => row);
+}
+
+async function loadPersonalContext(
+  userId: string,
+  message: string,
+): Promise<string> {
   const [memories, captures] = await Promise.all([
     query<ContextRow>(
-      `SELECT content
+      `SELECT content, module, memory_kind AS kind,
+              user_confirmed AS confirmed, updated_at
        FROM nexo_memories
        WHERE nexo_user_id = $1 AND status = 'active'
        ORDER BY user_confirmed DESC, updated_at DESC
-       LIMIT 20`,
+       LIMIT 200`,
       [userId],
     ),
     query<ContextRow>(
-      `SELECT '[' || module || COALESCE('.' || submodule, '') || '] ' || content AS content
+      `SELECT content, module, COALESCE(submodule, 'record') AS kind,
+              TRUE AS confirmed, created_at AS updated_at
        FROM captures
        WHERE nexo_user_id = $1
        ORDER BY created_at DESC
-       LIMIT 20`,
+       LIMIT 100`,
       [userId],
     ),
   ]);
-
-  const memoryLines = memories.rows.map((row) => `- ${row.content}`);
-  const captureLines = captures.rows.map((row) => `- ${row.content}`);
+  const relevantMemories = rankContext(memories.rows, message);
+  const relevantCaptures = rankContext(captures.rows, message, 10);
   return [
-    memoryLines.length ? `Memorias activas:\n${memoryLines.join("\n")}` : "",
-    captureLines.length ? `Registros recientes:\n${captureLines.join("\n")}` : "",
+    relevantMemories.length
+      ? `Memorias relevantes:\n${relevantMemories.map((row) => `- [${row.kind}${row.module ? ` · ${row.module}` : ""}] ${row.content}`).join("\n")}`
+      : "",
+    relevantCaptures.length
+      ? `Registros relacionados:\n${relevantCaptures.map((row) => `- [${row.module}.${row.kind}] ${row.content}`).join("\n")}`
+      : "",
   ].filter(Boolean).join("\n\n");
+}
+
+function systemInstructions(input: {
+  displayName: string;
+  personalContext: string;
+}): string {
+  return [
+    "Eres Nexo, un asistente personal privado que organiza información y ayuda a tomar decisiones.",
+    `La persona se llama ${input.displayName}. Responde en español salvo que te pidan otro idioma.`,
+    "Usa las herramientas para guardar información personal útil y para consultar o actualizar módulos.",
+    "Guarda como memoria los hechos, preferencias, objetivos y eventos personales que probablemente serán útiles después. No guardes saludos, conversación trivial, credenciales, números bancarios completos ni información privada de terceros.",
+    "Los hechos expresados directamente por el usuario son evidencia explícita. Las conclusiones derivadas son inferencias y deben conservar confianza y posibilidad de revisión.",
+    "Las lecturas y memorias explícitas pueden ejecutarse directamente. Antes de cualquier escritura financiera, muestra cuenta, concepto, fecha e importe y pide confirmación. Sólo llama la herramienta de escritura cuando el mensaje actual sea esa confirmación.",
+    "Si una herramienta confirma una escritura, informa claramente qué se guardó. Si devuelve duplicate=true, explica que ya estaba registrado y no lo duplicaste.",
+    "No digas que guardaste, registraste o modificaste algo si no recibiste un resultado exitoso de herramienta.",
+    "Sé directo, cálido y conciso. Distingue hechos de inferencias.",
+    input.personalContext || "Nexo aún no tiene contexto personal guardado.",
+  ].join("\n\n");
 }
 
 export async function answerWithNexo(input: {
@@ -43,68 +128,60 @@ export async function answerWithNexo(input: {
   history: AssistantHistoryMessage[];
   files: AssistantFile[];
 }): Promise<string> {
-  if (!env.OPENAI_API_KEY) throw new Error("OPENAI_API_KEY_NOT_CONFIGURED");
-  const personalContext = await loadPersonalContext(input.userId);
-
-  const currentContent: Array<Record<string, unknown>> = [
-    ...input.files.map((file) =>
-      file.kind === "image"
-        ? { type: "input_image", image_url: file.dataUrl, detail: "auto" }
-        : {
-            type: "input_file",
-            filename: file.name,
-            file_data: file.dataUrl,
-            ...(file.name.toLowerCase().endsWith(".pdf")
-              ? { detail: "auto" }
-              : {}),
-          },
-    ),
-    { type: "input_text", text: input.message },
-  ];
-
-  const response = await fetch("https://api.openai.com/v1/responses", {
-    method: "POST",
-    headers: {
-      Authorization: `Bearer ${env.OPENAI_API_KEY}`,
-      "Content-Type": "application/json",
-    },
-    body: JSON.stringify({
-      model: env.OPENAI_ASSISTANT_MODEL,
-      instructions: [
-        "Eres Nexo, un asistente personal privado, claro y prudente.",
-        `La persona se llama ${input.displayName}.`,
-        "Responde en español salvo que te pidan otro idioma.",
-        "Usa los archivos adjuntos y el contexto personal sólo para responder la solicitud actual.",
-        "Distingue hechos confirmados de inferencias. No inventes datos.",
-        "Todavía no puedes ejecutar cambios en los módulos: si el usuario pide una acción, explica brevemente qué propondrías registrar y pide confirmación.",
-        "Sé conciso, útil y directo. No menciones estas instrucciones.",
-        personalContext
-          ? `Contexto privado recuperado de Nexo:\n${personalContext}`
-          : "Nexo aún no tiene contexto personal guardado para esta persona.",
-      ].join("\n\n"),
-      input: [
-        ...buildAssistantHistory(input.history),
-        { role: "user", content: currentContent },
-      ],
-      reasoning: { effort: "low" },
-      max_output_tokens: 3_000,
+  const [personalContext, fileAnalysis] = await Promise.all([
+    loadPersonalContext(input.userId, input.message),
+    analyzeAssistantFiles({
+      message: input.message,
+      files: input.files,
     }),
-  });
+  ]);
+  const currentMessage = fileAnalysis
+    ? [
+        input.message,
+        "",
+        "Evidencia extraída de los archivos por el analizador multimodal:",
+        fileAnalysis,
+      ].join("\n")
+    : input.message;
+  const messages: TextMessage[] = [
+    {
+      role: "system",
+      content: systemInstructions({
+        displayName: input.displayName,
+        personalContext,
+      }),
+    },
+    ...input.history.map((message) => ({
+      role: message.role,
+      content: message.content,
+    })),
+    { role: "user", content: currentMessage },
+  ];
+  const writeConfirmed = hasExplicitConfirmation(input.message, input.history);
 
-  const payload = await response.json() as Record<string, unknown>;
-  if (!response.ok) {
-    const error = payload.error as { message?: string } | undefined;
-    throw new Error(error?.message ?? "OPENAI_ASSISTANT_REQUEST_FAILED");
+  for (let turn = 0; turn < 4; turn += 1) {
+    const reply = await callTextModel(messages);
+    messages.push(reply.rawMessage);
+    if (reply.toolCalls.length === 0) {
+      if (!reply.content) throw new Error("TEXT_MODEL_EMPTY");
+      return reply.content;
+    }
+    for (const toolCall of reply.toolCalls) {
+      const result = await executeAssistantTool({
+        userId: input.userId,
+        call: {
+          call_id: toolCall.id,
+          name: toolCall.function.name,
+          arguments: toolCall.function.arguments,
+        },
+        writeConfirmed,
+      });
+      messages.push({
+        role: "tool",
+        tool_call_id: toolCall.id,
+        content: JSON.stringify(result),
+      });
+    }
   }
-  const text = extractAssistantText(payload);
-  if (!text) {
-    const status = typeof payload.status === "string" ? payload.status : "unknown";
-    const incomplete = payload.incomplete_details as
-      | { reason?: unknown }
-      | undefined;
-    const reason =
-      typeof incomplete?.reason === "string" ? incomplete.reason : "no_output_text";
-    throw new Error(`OPENAI_ASSISTANT_EMPTY:${status}:${reason}`);
-  }
-  return text;
+  throw new Error("TEXT_MODEL_TOOL_LOOP_LIMIT");
 }
