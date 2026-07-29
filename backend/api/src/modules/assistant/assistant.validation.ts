@@ -22,6 +22,20 @@ export type AssistantHistoryMessage = {
   content: string;
 };
 
+export function buildAssistantHistory(
+  history: AssistantHistoryMessage[],
+): Array<Record<string, unknown>> {
+  return history.map((message) => ({
+    role: message.role,
+    content: [
+      {
+        type: message.role === "assistant" ? "output_text" : "input_text",
+        text: message.content,
+      },
+    ],
+  }));
+}
+
 function fileExtension(name: string): string {
   return name.split(".").pop()?.toLowerCase() ?? "";
 }

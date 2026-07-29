@@ -79,6 +79,26 @@ import {
 } from "./health/health.validation.js";
 import { searchFoodCatalog } from "./meals/meals.catalog.js";
 import { normalizeProgressDays } from "./progress/progress.validation.js";
+import { buildAssistantHistory } from "./assistant/assistant.validation.js";
+
+test("maps assistant history to valid Responses API content types", () => {
+  assert.deepEqual(
+    buildAssistantHistory([
+      { role: "user", content: "Hola" },
+      { role: "assistant", content: "¿Cómo te ayudo?" },
+    ]),
+    [
+      {
+        role: "user",
+        content: [{ type: "input_text", text: "Hola" }],
+      },
+      {
+        role: "assistant",
+        content: [{ type: "output_text", text: "¿Cómo te ayudo?" }],
+      },
+    ],
+  );
+});
 
 test("validates capture input", () => {
   assert.equal(isModuleKey("notes"), true);

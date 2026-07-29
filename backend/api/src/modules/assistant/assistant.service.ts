@@ -1,8 +1,9 @@
 import { env } from "../../config/env.js";
 import { query } from "../../shared/db/database.js";
-import type {
-  AssistantFile,
-  AssistantHistoryMessage,
+import {
+  buildAssistantHistory,
+  type AssistantFile,
+  type AssistantHistoryMessage,
 } from "./assistant.validation.js";
 
 type ContextRow = { content: string };
@@ -99,10 +100,7 @@ export async function answerWithNexo(input: {
           : "Nexo aún no tiene contexto personal guardado para esta persona.",
       ].join("\n\n"),
       input: [
-        ...input.history.map((message) => ({
-          role: message.role,
-          content: [{ type: "input_text", text: message.content }],
-        })),
+        ...buildAssistantHistory(input.history),
         { role: "user", content: currentContent },
       ],
       max_output_tokens: 1_200,
