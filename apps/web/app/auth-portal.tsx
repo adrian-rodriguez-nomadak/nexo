@@ -94,15 +94,15 @@ function Landing() {
       <section className="landing-hero">
         <div className="landing-copy">
           <span className="landing-kicker">
-            Tu sistema operativo personal
+            Tu asistente personal
           </span>
           <h1>
-            Todo lo que haces,
-            <em> en contexto.</em>
+            Pide lo que necesitas.
+            <em> Nexo lo conecta.</em>
           </h1>
           <p>
-            Conecta dinero, tiempo, ideas y bienestar en un espacio privado
-            diseñado para entender tu vida, no para complicarla.
+            Habla con un asistente que entiende tus documentos, tus registros y
+            el contexto que tú decidas conservar.
           </p>
           <div className="landing-actions">
             <Link className="landing-primary-action" href="/register">

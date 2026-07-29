@@ -3,6 +3,7 @@ import type { ModuleKey } from "../captures/captures.validation.js";
 
 export async function createOmiMemory(input: {
   module: ModuleKey;
+  submodule?: string | null;
   content: string;
 }): Promise<boolean> {
   if (!env.OMI_API_KEY) return false;
@@ -18,7 +19,12 @@ export async function createOmiMemory(input: {
       content: input.content,
       category: "interesting",
       visibility: "private",
-      tags: ["nexo", "observer", input.module],
+      tags: [
+        "nexo",
+        "observer",
+        input.module,
+        ...(input.submodule ? [input.submodule] : []),
+      ],
     }),
   });
 

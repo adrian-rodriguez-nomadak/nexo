@@ -24,7 +24,8 @@ La primera base incluye:
 - inicio público, registro e inicio de sesión por correo con datos aislados por
   usuario;
 - API heredada para conservar capturas existentes;
-- pantalla principal "Inicio";
+- asistente web como experiencia principal, con archivos PDF, documentos,
+  presentaciones, hojas de cálculo, texto, código e imágenes;
 - bienvenida personalizada con primeros pasos y resumen semanal;
 - progreso agregado de 7 y 30 días con tendencias y conexiones entre módulos;
 - módulos dedicados de finanzas, eventos, notas, apuestas, comidas, salud y

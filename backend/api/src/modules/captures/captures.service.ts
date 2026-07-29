@@ -6,6 +6,7 @@ import type { ModuleKey } from "./captures.validation.js";
 export type CaptureRecord = {
   id: string;
   module: ModuleKey;
+  submodule: string | null;
   content: string;
   createdAt: string;
   occurredAt: string | null;
@@ -15,6 +16,7 @@ export type CaptureRecord = {
 type CaptureRow = {
   id: string;
   module: ModuleKey;
+  submodule: string | null;
   content: string;
   created_at: Date;
   occurred_at: Date | null;
@@ -25,6 +27,7 @@ function mapCapture(row: CaptureRow): CaptureRecord {
   return {
     id: row.id,
     module: row.module,
+    submodule: row.submodule,
     content: row.content,
     createdAt: row.created_at.toISOString(),
     occurredAt: row.occurred_at?.toISOString() ?? null,
@@ -38,7 +41,7 @@ export async function listCaptures(
 ): Promise<CaptureRecord[]> {
   const result = module
     ? await query<CaptureRow>(
-        `SELECT id, module, content, created_at, occurred_at, amount_cents
+        `SELECT id, module, submodule, content, created_at, occurred_at, amount_cents
          FROM captures
          WHERE nexo_user_id = $1 AND module = $2
          ORDER BY created_at DESC
@@ -46,7 +49,7 @@ export async function listCaptures(
         [userId, module],
       )
     : await query<CaptureRow>(
-        `SELECT id, module, content, created_at, occurred_at, amount_cents
+        `SELECT id, module, submodule, content, created_at, occurred_at, amount_cents
          FROM captures
          WHERE nexo_user_id = $1
          ORDER BY created_at DESC
@@ -60,14 +63,18 @@ export async function listCaptures(
 export async function createCapture(input: {
   userId: string;
   module: ModuleKey;
+  submodule?: string | null;
   content: string;
 }): Promise<CaptureRecord> {
   const id = randomUUID();
   const result = await query<CaptureRow>(
-    `INSERT INTO captures (id, nexo_user_id, module, content, created_at)
-     VALUES ($1, $2, $3, $4, NOW())
-     RETURNING id, module, content, created_at, occurred_at, amount_cents`,
-    [id, input.userId, input.module, input.content],
+    `INSERT INTO captures (
+       id, nexo_user_id, module, submodule, content, created_at
+     )
+     VALUES ($1, $2, $3, $4, $5, NOW())
+     RETURNING
+       id, module, submodule, content, created_at, occurred_at, amount_cents`,
+    [id, input.userId, input.module, input.submodule ?? null, input.content],
   );
 
   return mapCapture(result.rows[0]!);

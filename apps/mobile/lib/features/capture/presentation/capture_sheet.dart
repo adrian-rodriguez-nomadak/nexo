@@ -1,4 +1,7 @@
+import 'dart:typed_data';
+
 import 'package:flutter/material.dart';
+import 'package:image_picker/image_picker.dart';
 
 import '../../../app/theme/nexo_theme.dart';
 import '../../modules/domain/nexo_module.dart';
@@ -8,16 +11,36 @@ class CaptureDraft {
     required this.module,
     required this.text,
     required this.createdAt,
+    this.imageBytes,
+    this.imageName,
+    this.submodule,
   });
+
+  factory CaptureDraft.fromApi(Map<String, dynamic> json) {
+    return CaptureDraft(
+      module: NexoModules.byId(json['module']?.toString()) ?? NexoModules.notes,
+      text: json['content']?.toString() ?? '',
+      createdAt:
+          DateTime.tryParse(json['createdAt']?.toString() ?? '') ??
+          DateTime.now(),
+      submodule: json['submodule']?.toString(),
+    );
+  }
 
   final NexoModule module;
   final String text;
   final DateTime createdAt;
+  final Uint8List? imageBytes;
+  final String? imageName;
+  final String? submodule;
+
+  bool get hasImage => imageBytes != null;
 }
 
 Future<CaptureDraft?> showNexoCaptureSheet(
   BuildContext context, {
   NexoModule? initialModule,
+  List<NexoModule>? allowedModules,
 }) {
   return showModalBottomSheet<CaptureDraft>(
     context: context,
@@ -28,14 +51,18 @@ Future<CaptureDraft?> showNexoCaptureSheet(
     shape: const RoundedRectangleBorder(
       borderRadius: BorderRadius.vertical(top: Radius.circular(30)),
     ),
-    builder: (_) => _CaptureSheet(initialModule: initialModule),
+    builder: (_) => _CaptureSheet(
+      initialModule: initialModule,
+      allowedModules: allowedModules,
+    ),
   );
 }
 
 class _CaptureSheet extends StatefulWidget {
-  const _CaptureSheet({this.initialModule});
+  const _CaptureSheet({this.initialModule, this.allowedModules});
 
   final NexoModule? initialModule;
+  final List<NexoModule>? allowedModules;
 
   @override
   State<_CaptureSheet> createState() => _CaptureSheetState();
@@ -44,11 +71,26 @@ class _CaptureSheet extends StatefulWidget {
 class _CaptureSheetState extends State<_CaptureSheet> {
   late NexoModule _selectedModule;
   final _controller = TextEditingController();
+  final _imagePicker = ImagePicker();
+  Uint8List? _imageBytes;
+  String? _imageName;
+  bool _isPickingImage = false;
+
+  bool get _canSave =>
+      _controller.text.trim().isNotEmpty || _imageBytes != null;
+  List<NexoModule> get _availableModules =>
+      widget.allowedModules?.isNotEmpty == true
+      ? widget.allowedModules!
+      : NexoModules.all;
 
   @override
   void initState() {
     super.initState();
-    _selectedModule = widget.initialModule ?? NexoModules.notes;
+    _selectedModule =
+        widget.initialModule ??
+        (_availableModules.contains(NexoModules.notes)
+            ? NexoModules.notes
+            : _availableModules.first);
     _controller.addListener(_refresh);
   }
 
@@ -64,15 +106,44 @@ class _CaptureSheetState extends State<_CaptureSheet> {
 
   void _save() {
     final text = _controller.text.trim();
-    if (text.isEmpty) return;
+    if (!_canSave) return;
 
     Navigator.of(context).pop(
       CaptureDraft(
         module: _selectedModule,
         text: text,
         createdAt: DateTime.now(),
+        imageBytes: _imageBytes,
+        imageName: _imageName,
       ),
     );
+  }
+
+  Future<void> _pickScreenshot() async {
+    setState(() => _isPickingImage = true);
+    try {
+      final image = await _imagePicker.pickImage(
+        source: ImageSource.gallery,
+        imageQuality: 88,
+      );
+      if (image == null || !mounted) return;
+
+      final bytes = await image.readAsBytes();
+      if (!mounted) return;
+      setState(() {
+        _imageBytes = bytes;
+        _imageName = image.name;
+      });
+    } finally {
+      if (mounted) setState(() => _isPickingImage = false);
+    }
+  }
+
+  void _removeScreenshot() {
+    setState(() {
+      _imageBytes = null;
+      _imageName = null;
+    });
   }
 
   @override
@@ -97,23 +168,46 @@ class _CaptureSheetState extends State<_CaptureSheet> {
           ),
           const SizedBox(height: 24),
           Text(
-            'Cuéntale algo a Nexo',
+            'Captura algo importante',
             style: Theme.of(context).textTheme.headlineMedium,
           ),
           const SizedBox(height: 8),
           Text(
-            'Elige dónde guardarlo. Más adelante Nexo podrá clasificarlo por ti.',
+            'Sube una captura de pantalla o escribe el dato manualmente.',
             style: Theme.of(context).textTheme.bodyMedium,
           ),
+          const SizedBox(height: 18),
+          if (_imageBytes == null)
+            OutlinedButton.icon(
+              key: const Key('pick-screenshot'),
+              onPressed: _isPickingImage ? null : _pickScreenshot,
+              icon: _isPickingImage
+                  ? const SizedBox.square(
+                      dimension: 18,
+                      child: CircularProgressIndicator(strokeWidth: 2),
+                    )
+                  : const Icon(Icons.add_photo_alternate_outlined),
+              label: Text(
+                _isPickingImage
+                    ? 'Abriendo Fotos…'
+                    : 'Seleccionar captura de pantalla',
+              ),
+            )
+          else
+            _ScreenshotPreview(
+              imageBytes: _imageBytes!,
+              imageName: _imageName,
+              onRemove: _removeScreenshot,
+            ),
           const SizedBox(height: 20),
           SizedBox(
             height: 44,
             child: ListView.separated(
               scrollDirection: Axis.horizontal,
-              itemCount: NexoModules.all.length,
+              itemCount: _availableModules.length,
               separatorBuilder: (_, _) => const SizedBox(width: 8),
               itemBuilder: (context, index) {
-                final module = NexoModules.all[index];
+                final module = _availableModules[index];
                 final selected = module.id == _selectedModule.id;
 
                 return ChoiceChip(
@@ -143,11 +237,13 @@ class _CaptureSheetState extends State<_CaptureSheet> {
             key: const Key('capture-input'),
             controller: _controller,
             autofocus: true,
-            minLines: 4,
-            maxLines: 7,
+            minLines: 3,
+            maxLines: 6,
             textCapitalization: TextCapitalization.sentences,
             decoration: InputDecoration(
-              hintText: _selectedModule.prompt,
+              hintText: _imageBytes == null
+                  ? _selectedModule.prompt
+                  : 'Añade contexto para ayudar a Nexo (opcional)',
               alignLabelWithHint: true,
             ),
           ),
@@ -173,9 +269,74 @@ class _CaptureSheetState extends State<_CaptureSheet> {
           const SizedBox(height: 18),
           FilledButton.icon(
             key: const Key('save-capture'),
-            onPressed: _controller.text.trim().isEmpty ? null : _save,
+            onPressed: _canSave ? _save : null,
             icon: const Icon(Icons.arrow_upward_rounded),
             label: const Text('Guardar captura'),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+class _ScreenshotPreview extends StatelessWidget {
+  const _ScreenshotPreview({
+    required this.imageBytes,
+    required this.imageName,
+    required this.onRemove,
+  });
+
+  final Uint8List imageBytes;
+  final String? imageName;
+  final VoidCallback onRemove;
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      key: const Key('screenshot-preview'),
+      padding: const EdgeInsets.all(10),
+      decoration: BoxDecoration(
+        color: NexoColors.surfaceHigh,
+        borderRadius: BorderRadius.circular(20),
+        border: Border.all(color: NexoColors.border),
+      ),
+      child: Column(
+        children: [
+          ClipRRect(
+            borderRadius: BorderRadius.circular(13),
+            child: ConstrainedBox(
+              constraints: const BoxConstraints(maxHeight: 240),
+              child: Image.memory(
+                imageBytes,
+                width: double.infinity,
+                fit: BoxFit.cover,
+              ),
+            ),
+          ),
+          const SizedBox(height: 8),
+          Row(
+            children: [
+              const Icon(
+                Icons.image_outlined,
+                size: 18,
+                color: NexoColors.muted,
+              ),
+              const SizedBox(width: 7),
+              Expanded(
+                child: Text(
+                  imageName ?? 'Captura seleccionada',
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                  style: Theme.of(context).textTheme.bodyMedium,
+                ),
+              ),
+              IconButton(
+                key: const Key('remove-screenshot'),
+                onPressed: onRemove,
+                tooltip: 'Quitar captura',
+                icon: const Icon(Icons.close_rounded),
+              ),
+            ],
           ),
         ],
       ),

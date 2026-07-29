@@ -36,6 +36,8 @@ const statements = [
   "CREATE INDEX IF NOT EXISTS captures_created_at_idx ON captures (created_at DESC)",
   "CREATE INDEX IF NOT EXISTS captures_module_idx ON captures (module)",
   "ALTER TABLE captures ADD COLUMN IF NOT EXISTS nexo_user_id TEXT REFERENCES nexo_users(id) ON DELETE CASCADE",
+  "ALTER TABLE captures ADD COLUMN IF NOT EXISTS submodule TEXT",
+  "CREATE INDEX IF NOT EXISTS captures_module_submodule_idx ON captures (module, submodule)",
   "CREATE INDEX IF NOT EXISTS captures_nexo_user_created_idx ON captures (nexo_user_id, created_at DESC)",
   `
     CREATE TABLE IF NOT EXISTS nexo_events (

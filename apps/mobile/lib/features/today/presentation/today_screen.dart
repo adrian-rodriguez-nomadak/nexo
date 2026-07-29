@@ -2,18 +2,25 @@ import 'package:flutter/material.dart';
 
 import '../../../app/theme/nexo_theme.dart';
 import '../../../shared/presentation/module_card.dart';
+import '../../auth/domain/nexo_session.dart';
 import '../../capture/presentation/capture_sheet.dart';
 import '../../modules/domain/nexo_module.dart';
 
 class TodayScreen extends StatelessWidget {
   const TodayScreen({
     required this.captures,
+    required this.isLoading,
+    required this.user,
+    required this.onSignOut,
     required this.onCapture,
     required this.onOpenModule,
     super.key,
   });
 
   final List<CaptureDraft> captures;
+  final bool isLoading;
+  final NexoUser user;
+  final Future<void> Function() onSignOut;
   final VoidCallback onCapture;
   final ValueChanged<NexoModule> onOpenModule;
 
@@ -27,10 +34,13 @@ class TodayScreen extends StatelessWidget {
             padding: const EdgeInsets.fromLTRB(20, 22, 20, 110),
             sliver: SliverList.list(
               children: [
-                _Header(date: DateTime.now()),
+                _Header(date: DateTime.now(), user: user, onSignOut: onSignOut),
                 const SizedBox(height: 28),
                 _ContextCard(onCapture: onCapture),
-                if (captures.isNotEmpty) ...[
+                if (isLoading) ...[
+                  const SizedBox(height: 24),
+                  const LinearProgressIndicator(),
+                ] else if (captures.isNotEmpty) ...[
                   const SizedBox(height: 28),
                   const _SectionTitle(
                     title: 'Última captura',
@@ -74,9 +84,15 @@ class TodayScreen extends StatelessWidget {
 }
 
 class _Header extends StatelessWidget {
-  const _Header({required this.date});
+  const _Header({
+    required this.date,
+    required this.user,
+    required this.onSignOut,
+  });
 
   final DateTime date;
+  final NexoUser user;
+  final Future<void> Function() onSignOut;
 
   static const _weekdays = [
     'lunes',
@@ -128,18 +144,52 @@ class _Header extends StatelessWidget {
             ],
           ),
         ),
-        Container(
-          width: 44,
-          height: 44,
-          decoration: BoxDecoration(
-            color: NexoColors.surface,
-            borderRadius: BorderRadius.circular(15),
-            border: Border.all(color: NexoColors.border),
+        IconButton(
+          key: const Key('profile-button'),
+          onPressed: () => _showProfile(context),
+          style: IconButton.styleFrom(
+            fixedSize: const Size(48, 48),
+            backgroundColor: NexoColors.surface,
+            side: const BorderSide(color: NexoColors.border),
+            shape: RoundedRectangleBorder(
+              borderRadius: BorderRadius.circular(15),
+            ),
           ),
-          child: const Icon(Icons.person_outline_rounded, size: 21),
+          icon: const Icon(Icons.person_outline_rounded, size: 21),
         ),
       ],
     );
+  }
+
+  Future<void> _showProfile(BuildContext context) async {
+    final shouldSignOut = await showModalBottomSheet<bool>(
+      context: context,
+      backgroundColor: NexoColors.surface,
+      builder: (context) => SafeArea(
+        child: Padding(
+          padding: const EdgeInsets.all(24),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.stretch,
+            children: [
+              Text(
+                user.displayName,
+                style: Theme.of(context).textTheme.titleLarge,
+              ),
+              const SizedBox(height: 4),
+              Text(user.email, style: Theme.of(context).textTheme.bodyMedium),
+              const SizedBox(height: 24),
+              OutlinedButton.icon(
+                onPressed: () => Navigator.pop(context, true),
+                icon: const Icon(Icons.logout_rounded),
+                label: const Text('Cerrar sesión'),
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+    if (shouldSignOut == true) await onSignOut();
   }
 }
 
@@ -205,7 +255,7 @@ class _ContextCard extends StatelessWidget {
               minimumSize: const Size.fromHeight(50),
             ),
             icon: const Icon(Icons.add_rounded),
-            label: const Text('Hacer una captura'),
+            label: const Text('Agregar dato o captura'),
           ),
         ],
       ),
@@ -271,9 +321,21 @@ class _LatestCaptureCard extends StatelessWidget {
                   ),
                   const SizedBox(height: 4),
                   Text(
-                    capture.text,
+                    capture.text.isEmpty ? 'Captura de pantalla' : capture.text,
                     style: Theme.of(context).textTheme.bodyLarge,
                   ),
+                  if (capture.hasImage) ...[
+                    const SizedBox(height: 12),
+                    ClipRRect(
+                      borderRadius: BorderRadius.circular(12),
+                      child: Image.memory(
+                        capture.imageBytes!,
+                        width: double.infinity,
+                        height: 150,
+                        fit: BoxFit.cover,
+                      ),
+                    ),
+                  ],
                 ],
               ),
             ),

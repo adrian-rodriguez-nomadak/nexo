@@ -23,7 +23,7 @@ test("builds the authenticated Nexo dashboard", async () => {
   assert.match(login, /initialView="login"/);
   assert.match(register, /initialView="register"/);
   assert.match(authPortal, /NexoDashboard/);
-  assert.match(authPortal, /Todo lo que haces/);
+  assert.match(authPortal, /Pide lo que necesitas/);
   assert.match(authPortal, /Bienvenido de vuelta/);
   assert.match(authPortal, /Crea tu espacio personal/);
   assert.match(authPortal, /\/api\/auth\/\$\{isRegister \? "register" : "login"\}/);
@@ -261,6 +261,8 @@ test("keeps manual capture prominent in the assistant-first navigation", async (
   assert.match(dashboard, /Asistente/);
   assert.match(dashboard, /Actividad/);
   assert.match(dashboard, /openManualCapture/);
-  assert.match(assistant, /Pregunta con todo tu contexto/);
-  assert.match(assistant, /todavía no envía mensajes/);
+  assert.match(assistant, /Todo empieza con una petición/);
+  assert.match(assistant, /\/api\/assistant\/messages/);
+  assert.match(assistant, /Seleccionar archivos/);
+  assert.match(assistant, /PDF y documentos/);
 });

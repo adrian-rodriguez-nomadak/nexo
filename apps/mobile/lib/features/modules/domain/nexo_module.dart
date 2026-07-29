@@ -83,4 +83,11 @@ abstract final class NexoModules {
   );
 
   static const all = [finances, events, notes, bets, meals, health, gym];
+
+  static NexoModule? byId(String? id) {
+    for (final module in all) {
+      if (module.id == id) return module;
+    }
+    return null;
+  }
 }

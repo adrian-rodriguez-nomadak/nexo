@@ -22,6 +22,11 @@ import {
 import { isValidBetImageDataUrl } from "./bets/bets.image.js";
 import { isValidObserverImageDataUrl } from "./observer/observer.analysis.js";
 import {
+  isObserverSubmodule,
+  normalizeObserverScopes,
+  scopesForModules,
+} from "./observer/observer.scopes.js";
+import {
   isMemoryKind,
   isMemorySensitivity,
   normalizeMemoryConfidence,
@@ -80,6 +85,24 @@ test("validates capture input", () => {
   assert.equal(isModuleKey("unknown"), false);
   assert.equal(normalizeCaptureContent("  Una   idea nueva  "), "Una idea nueva");
   assert.equal(normalizeCaptureContent("x"), null);
+});
+
+test("normalizes observer module and submodule scopes", () => {
+  assert.equal(isObserverSubmodule("finances", "accounts"), true);
+  assert.equal(isObserverSubmodule("finances", "sleep"), false);
+  assert.deepEqual(
+    normalizeObserverScopes([
+      { module: "finances", submodule: "accounts" },
+      { module: "finances", submodule: "accounts" },
+      { module: "health", submodule: "sleep" },
+      { module: "unknown", submodule: "other" },
+    ]),
+    [
+      { module: "finances", submodule: "accounts" },
+      { module: "health", submodule: "sleep" },
+    ],
+  );
+  assert.equal(scopesForModules(["gym"])[1]?.submodule, "strength");
 });
 
 test("validates structured personal memories", () => {

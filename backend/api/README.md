@@ -15,6 +15,15 @@ npm run db:migrate
 npm run dev
 ```
 
+Para vaciar todos los registros de producto y conservar las cuentas y sesiones:
+
+```bash
+npm run build
+npm run db:reset-data -- --yes
+```
+
+El comando requiere `--yes` para evitar borrados accidentales.
+
 La API queda disponible en `http://localhost:3001`.
 
 ## Render

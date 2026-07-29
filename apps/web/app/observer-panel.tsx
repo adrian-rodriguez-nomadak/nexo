@@ -31,6 +31,7 @@ type ObserverPreferences = {
 type ObserverDetection = {
   recognized: boolean;
   module: ObserverModuleKey | null;
+  submodule: string | null;
   summary: string | null;
   content: string | null;
   confidence: number;
@@ -244,6 +245,7 @@ export function ObserverPanel({ sessionToken }: { sessionToken: string }) {
     if (
       !nextDetection.recognized ||
       !nextDetection.module ||
+      !nextDetection.submodule ||
       !nextDetection.content
     ) {
       return;
@@ -253,6 +255,7 @@ export function ObserverPanel({ sessionToken }: { sessionToken: string }) {
       headers: { "content-type": "application/json" },
       body: JSON.stringify({
         module: nextDetection.module,
+        submodule: nextDetection.submodule,
         content: nextDetection.content,
         confidence: nextDetection.confidence,
         userConfirmed,

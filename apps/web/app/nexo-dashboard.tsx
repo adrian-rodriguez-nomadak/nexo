@@ -114,7 +114,7 @@ export function NexoDashboard({
   user: DashboardUser;
 }) {
   const [selectedModule, setSelectedModule] =
-    useState<DashboardView>("welcome");
+    useState<DashboardView>("assistant");
   const [areasOpen, setAreasOpen] = useState(true);
   const [quickAddOpen, setQuickAddOpen] = useState(false);
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
@@ -358,8 +358,8 @@ export function NexoDashboard({
           <ProgressPanel sessionToken={sessionToken} />
         ) : selectedModule === "assistant" ? (
           <AssistantPanel
-            onOpenActivity={() => navigate("observer")}
-            onOpenMemory={() => navigate("memory")}
+            displayName={user.displayName}
+            sessionToken={sessionToken}
           />
         ) : selectedModule === "observer" ? (
           <ObserverPanel sessionToken={sessionToken} />

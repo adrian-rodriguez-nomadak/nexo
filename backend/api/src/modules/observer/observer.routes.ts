@@ -10,6 +10,11 @@ import {
   analyzeObserverFrame,
   isValidObserverImageDataUrl,
 } from "./observer.analysis.js";
+import {
+  isObserverSubmodule,
+  normalizeObserverScopes,
+  scopesForModules,
+} from "./observer.scopes.js";
 import { createCapture } from "../captures/captures.service.js";
 import { createOmiMemory } from "./observer.omi.js";
 import { remember } from "../memories/memories.service.js";
@@ -20,20 +25,25 @@ export const observerRouter = Router();
 observerRouter.post(
   "/analyze",
   asyncHandler(async (request, response) => {
-    const { imageDataUrl, enabledModules } = (request.body ?? {}) as Record<
-      string,
-      unknown
-    >;
+    const { imageDataUrl, enabledModules, enabledScopes } = (
+      request.body ?? {}
+    ) as Record<string, unknown>;
     const normalizedModules = Array.isArray(enabledModules)
       ? [...new Set(enabledModules.filter(isModuleKey))]
       : [];
+    const normalizedScopes = normalizeObserverScopes(enabledScopes);
+    const effectiveScopes =
+      normalizedScopes.length > 0
+        ? normalizedScopes
+        : scopesForModules(normalizedModules as ModuleKey[]);
 
     if (
       !isValidObserverImageDataUrl(imageDataUrl) ||
-      normalizedModules.length === 0
+      effectiveScopes.length === 0
     ) {
       response.status(400).json({
-        error: "Envía una captura JPEG y al menos un módulo autorizado.",
+        error:
+          "Envía una captura JPEG y al menos un módulo o submódulo autorizado.",
       });
       return;
     }
@@ -41,7 +51,7 @@ observerRouter.post(
     try {
       const detection = await analyzeObserverFrame({
         imageDataUrl,
-        enabledModules: normalizedModules as ModuleKey[],
+        enabledScopes: effectiveScopes,
       });
       response.json({ detection });
     } catch (error) {
@@ -62,13 +72,14 @@ observerRouter.post(
 observerRouter.post(
   "/save",
   asyncHandler(async (request, response) => {
-    const { module, content, confidence, userConfirmed } = (
+    const { module, submodule, content, confidence, userConfirmed } = (
       request.body ?? {}
     ) as Record<string, unknown>;
     const normalizedContent = normalizeCaptureContent(content);
     const normalizedConfidence = normalizeMemoryConfidence(confidence);
     if (
       !isModuleKey(module) ||
+      !isObserverSubmodule(module, submodule) ||
       !normalizedContent ||
       normalizedConfidence === null ||
       typeof userConfirmed !== "boolean"
@@ -82,6 +93,7 @@ observerRouter.post(
     const capture = await createCapture({
       userId: request.authUser!.id,
       module,
+      submodule,
       content: normalizedContent,
     });
     const memory = await remember({
@@ -103,6 +115,7 @@ observerRouter.post(
     try {
       omiSynced = await createOmiMemory({
         module,
+        submodule,
         content: normalizedContent,
       });
       if (!omiSynced) {

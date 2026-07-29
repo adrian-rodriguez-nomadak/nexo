@@ -1,6 +1,6 @@
 import 'package:flutter/material.dart';
 
-import 'navigation/nexo_shell.dart';
+import '../features/auth/presentation/auth_gate.dart';
 import 'theme/nexo_theme.dart';
 
 class NexoApp extends StatelessWidget {
@@ -12,7 +12,7 @@ class NexoApp extends StatelessWidget {
       title: 'Nexo',
       debugShowCheckedModeBanner: false,
       theme: NexoTheme.dark(),
-      home: const NexoShell(),
+      home: const AuthGate(),
     );
   }
 }

@@ -11,6 +11,7 @@
     "build": "tsc -p tsconfig.json",
     "start": "node dist/server.js",
     "db:migrate": "node dist/shared/db/migrate.js",
+    "db:reset-data": "node dist/shared/db/reset-data.js",
     "test": "npm run build && node --test dist/**/*.test.js"
   },
   "dependencies": {

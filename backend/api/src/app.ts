@@ -5,6 +5,7 @@ import express, {
 } from "express";
 
 import { env } from "./config/env.js";
+import { assistantRouter } from "./modules/assistant/assistant.routes.js";
 import { authRouter } from "./modules/auth/auth.routes.js";
 import { requireAuth } from "./modules/auth/auth.middleware.js";
 import { betsRouter } from "./modules/bets/bets.routes.js";
@@ -40,7 +41,7 @@ app.use(
     },
   }),
 );
-app.use(express.json({ limit: "8mb" }));
+app.use(express.json({ limit: "28mb" }));
 
 const healthHandler = asyncHandler(async (_request, response) => {
   await query("SELECT 1");
@@ -53,6 +54,7 @@ const healthHandler = asyncHandler(async (_request, response) => {
 
 app.get("/health", healthHandler);
 app.use("/api/auth", authRouter);
+app.use("/api/assistant", requireAuth, assistantRouter);
 app.use("/api/bets", requireAuth, betsRouter);
 app.use("/api/captures", requireAuth, capturesRouter);
 app.use("/api/events", requireAuth, eventsRouter);
