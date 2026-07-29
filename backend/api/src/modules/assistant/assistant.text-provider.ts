@@ -33,17 +33,41 @@ const chatTools = assistantTools.map((tool) => ({
   },
 }));
 
+function textProviderConfig(): {
+  apiKey: string;
+  baseUrl: string;
+  model: string;
+  provider: string;
+} {
+  if (env.NEXO_TEXT_API_KEY) {
+    return {
+      apiKey: env.NEXO_TEXT_API_KEY,
+      baseUrl: env.NEXO_TEXT_API_URL.replace(/\/+$/, ""),
+      model: env.NEXO_TEXT_MODEL,
+      provider: env.NEXO_TEXT_PROVIDER,
+    };
+  }
+  if (env.OPENAI_API_KEY) {
+    return {
+      apiKey: env.OPENAI_API_KEY,
+      baseUrl: "https://api.openai.com/v1",
+      model: env.OPENAI_ASSISTANT_MODEL,
+      provider: "openai",
+    };
+  }
+  throw new Error("NEXO_TEXT_API_KEY_NOT_CONFIGURED");
+}
+
 export async function callTextModel(
   messages: TextMessage[],
 ): Promise<TextModelReply> {
-  if (!env.NEXO_TEXT_API_KEY) throw new Error("NEXO_TEXT_API_KEY_NOT_CONFIGURED");
-  const baseUrl = env.NEXO_TEXT_API_URL.replace(/\/+$/, "");
-  const response = await fetch(`${baseUrl}/chat/completions`, {
+  const provider = textProviderConfig();
+  const response = await fetch(`${provider.baseUrl}/chat/completions`, {
     method: "POST",
     headers: {
-      Authorization: `Bearer ${env.NEXO_TEXT_API_KEY}`,
+      Authorization: `Bearer ${provider.apiKey}`,
       "Content-Type": "application/json",
-      ...(env.NEXO_TEXT_PROVIDER === "openrouter"
+      ...(provider.provider === "openrouter"
         ? {
             "HTTP-Referer": "https://nexo-chi-nine.vercel.app",
             "X-Title": "Nexo",
@@ -51,13 +75,13 @@ export async function callTextModel(
         : {}),
     },
     body: JSON.stringify({
-      model: env.NEXO_TEXT_MODEL,
+      model: provider.model,
       messages,
       tools: chatTools,
       tool_choice: "auto",
       temperature: 0.2,
       max_tokens: 1_200,
-      ...(env.NEXO_TEXT_PROVIDER === "openrouter"
+      ...(provider.provider === "openrouter"
         ? {
             provider: {
               zdr: true,

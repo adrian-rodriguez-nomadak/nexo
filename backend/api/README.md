@@ -53,6 +53,8 @@ Variables requeridas:
 - `NEXO_TEXT_API_URL`, `NEXO_TEXT_API_KEY` y `NEXO_TEXT_MODEL`: proveedor
   económico de conversación y herramientas. La configuración predeterminada
   usa la API compatible con OpenAI de Groq y `llama-3.1-8b-instant`.
+- Si `NEXO_TEXT_API_KEY` no está configurada, el chat reutiliza
+  `OPENAI_API_KEY` y `OPENAI_ASSISTANT_MODEL` como respaldo.
 - `NEXO_TEXT_PROVIDER`: usa `groq` u `openrouter`. Para OpenRouter, Nexo exige
   Zero Data Retention y rechaza proveedores que recolecten datos.
 
