@@ -20,6 +20,14 @@ import {
   resolveBetOdds,
 } from "./bets/bets.validation.js";
 import { isValidBetImageDataUrl } from "./bets/bets.image.js";
+import { isValidObserverImageDataUrl } from "./observer/observer.analysis.js";
+import {
+  isMemoryKind,
+  isMemorySensitivity,
+  normalizeMemoryConfidence,
+  normalizeMemoryContent,
+  normalizeSourceRecordIds,
+} from "./memories/memories.validation.js";
 import {
   isModuleKey,
   normalizeCaptureContent,
@@ -72,6 +80,20 @@ test("validates capture input", () => {
   assert.equal(isModuleKey("unknown"), false);
   assert.equal(normalizeCaptureContent("  Una   idea nueva  "), "Una idea nueva");
   assert.equal(normalizeCaptureContent("x"), null);
+});
+
+test("validates structured personal memories", () => {
+  assert.equal(normalizeMemoryContent("  Prefiere entrenar temprano  "), "Prefiere entrenar temprano");
+  assert.equal(normalizeMemoryContent(""), null);
+  assert.equal(normalizeMemoryConfidence(0.7849), 0.785);
+  assert.equal(normalizeMemoryConfidence(1.2), null);
+  assert.equal(isMemoryKind("preference"), true);
+  assert.equal(isMemoryKind("guess"), false);
+  assert.equal(isMemorySensitivity("restricted"), true);
+  assert.deepEqual(normalizeSourceRecordIds(["one", "one", "two"]), [
+    "one",
+    "two",
+  ]);
 });
 
 test("validates bet input", () => {
@@ -154,6 +176,14 @@ test("validates bet input", () => {
     true,
   );
   assert.equal(isValidBetImageDataUrl("data:text/plain;base64,YWJjZA=="), false);
+  assert.equal(
+    isValidObserverImageDataUrl("data:image/jpeg;base64,YWJjZA=="),
+    true,
+  );
+  assert.equal(
+    isValidObserverImageDataUrl("data:image/png;base64,YWJjZA=="),
+    false,
+  );
   assert.equal(betPayoutCents(10_000, 1.8, "won"), 18_000);
   assert.equal(betPayoutCents(10_000, 1.8, "void"), 10_000);
   assert.equal(betPayoutCents(10_000, 1.8, "lost"), null);

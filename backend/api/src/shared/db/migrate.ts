@@ -291,6 +291,40 @@ const statements = [
     )
   `,
   "CREATE INDEX IF NOT EXISTS nexo_health_entries_user_measured_idx ON nexo_health_entries (nexo_user_id, measured_at DESC)",
+  `
+    CREATE TABLE IF NOT EXISTS nexo_memories (
+      id TEXT PRIMARY KEY,
+      nexo_user_id TEXT NOT NULL
+        REFERENCES nexo_users(id) ON DELETE CASCADE,
+      content TEXT NOT NULL,
+      memory_kind TEXT NOT NULL
+        CHECK (memory_kind IN ('fact', 'event', 'preference', 'goal', 'pattern')),
+      module TEXT,
+      source TEXT NOT NULL
+        CHECK (source IN ('omi', 'observer', 'manual', 'derived')),
+      source_record_ids TEXT[] NOT NULL DEFAULT '{}',
+      confidence NUMERIC(4, 3) NOT NULL
+        CHECK (confidence BETWEEN 0 AND 1),
+      sensitivity TEXT NOT NULL
+        CHECK (sensitivity IN ('normal', 'sensitive', 'restricted')),
+      user_confirmed BOOLEAN NOT NULL DEFAULT FALSE,
+      status TEXT NOT NULL DEFAULT 'active'
+        CHECK (status IN ('active', 'superseded', 'rejected')),
+      fingerprint TEXT NOT NULL,
+      occurred_at TIMESTAMPTZ,
+      valid_until TIMESTAMPTZ,
+      first_seen_at TIMESTAMPTZ NOT NULL,
+      last_seen_at TIMESTAMPTZ NOT NULL,
+      occurrence_count INTEGER NOT NULL DEFAULT 1
+        CHECK (occurrence_count >= 1),
+      created_at TIMESTAMPTZ NOT NULL,
+      updated_at TIMESTAMPTZ NOT NULL,
+      UNIQUE (nexo_user_id, fingerprint)
+    )
+  `,
+  "CREATE INDEX IF NOT EXISTS nexo_memories_user_updated_idx ON nexo_memories (nexo_user_id, status, updated_at DESC)",
+  "CREATE INDEX IF NOT EXISTS nexo_memories_user_kind_idx ON nexo_memories (nexo_user_id, memory_kind)",
+  "CREATE INDEX IF NOT EXISTS nexo_memories_source_records_idx ON nexo_memories USING GIN (source_record_ids)",
 ];
 
 export async function migrate(): Promise<void> {

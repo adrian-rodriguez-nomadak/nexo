@@ -11,9 +11,9 @@ export async function generateMetadata(): Promise<Metadata> {
   const protocol = requestHeaders.get("x-forwarded-proto") ??
     (host.startsWith("localhost") ? "http" : "https");
   const origin = `${protocol}://${host}`;
-  const title = "Nexo — Tu vida, conectada";
+  const title = "Nexo — Tu contexto, tu memoria, tu asistente";
   const description =
-    "Un sistema operativo personal para conectar dinero, tiempo y bienestar.";
+    "Un asistente personal que conecta tus registros, actividad y memoria sin quitarte el control.";
 
   return {
     metadataBase: new URL(origin),
@@ -29,10 +29,10 @@ export async function generateMetadata(): Promise<Metadata> {
       type: "website",
       images: [
         {
-          url: `${origin}/og.png`,
-          width: 1732,
-          height: 908,
-          alt: "Nexo conecta finanzas, eventos, notas, comidas, salud y gimnasio.",
+          url: `${origin}/og-assistant.png`,
+          width: 1730,
+          height: 909,
+          alt: "Nexo conecta tu contexto, memoria y asistente personal.",
         },
       ],
     },
@@ -40,7 +40,7 @@ export async function generateMetadata(): Promise<Metadata> {
       card: "summary_large_image",
       title,
       description,
-      images: [`${origin}/og.png`],
+      images: [`${origin}/og-assistant.png`],
     },
   };
 }

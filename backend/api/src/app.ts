@@ -14,7 +14,9 @@ import { financesRouter } from "./modules/finances/finances.routes.js";
 import { gymRouter } from "./modules/gym/gym.routes.js";
 import { healthRouter } from "./modules/health/health.routes.js";
 import { mealsRouter } from "./modules/meals/meals.routes.js";
+import { memoriesRouter } from "./modules/memories/memories.routes.js";
 import { notesRouter } from "./modules/notes/notes.routes.js";
+import { observerRouter } from "./modules/observer/observer.routes.js";
 import { progressRouter } from "./modules/progress/progress.routes.js";
 import { query } from "./shared/db/database.js";
 import { asyncHandler } from "./shared/http/async-handler.js";
@@ -58,7 +60,9 @@ app.use("/api/finances", requireAuth, financesRouter);
 app.use("/api/gym", requireAuth, gymRouter);
 app.use("/api/health", requireAuth, healthRouter);
 app.use("/api/meals", requireAuth, mealsRouter);
+app.use("/api/memories", requireAuth, memoriesRouter);
 app.use("/api/notes", requireAuth, notesRouter);
+app.use("/api/observer", requireAuth, observerRouter);
 app.use("/api/progress", requireAuth, progressRouter);
 
 const notFoundHandler: RequestHandler = (_request, response) => {

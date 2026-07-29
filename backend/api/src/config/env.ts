@@ -41,6 +41,7 @@ export const env = {
     process.env.AUTH_EXCHANGE_SECRET ?? process.env.JWT_SECRET ?? "",
   OPENAI_API_KEY: process.env.OPENAI_API_KEY ?? "",
   OPENAI_VISION_MODEL: process.env.OPENAI_VISION_MODEL ?? "gpt-5.6-sol",
+  OMI_API_KEY: process.env.OMI_API_KEY ?? "",
 };
 
 export function requireDatabaseUrl(): string {

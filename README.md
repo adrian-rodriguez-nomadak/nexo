@@ -30,6 +30,11 @@ La primera base incluye:
 - módulos dedicados de finanzas, eventos, notas, apuestas, comidas, salud y
   gimnasio;
 - espacio de progreso para futuras relaciones entre módulos.
+- Observador web con pantalla compartida, análisis visual selectivo y permisos
+  independientes por módulo;
+- memoria personal con procedencia, confianza, sensibilidad, confirmación y
+  deduplicación de hechos repetidos;
+- sincronización opcional de registros confirmados con memorias privadas de Omi.
 
 La autenticación web con credenciales está implementada. La aplicación móvil todavía funciona
 como prototipo en memoria y no está sincronizada con el backend.

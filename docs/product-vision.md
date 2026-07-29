@@ -49,3 +49,11 @@ la información que vive dentro de ellos.
 5. Apuestas dependientes de Finanzas, con boletos y límites. **Base web funcional.**
 6. Backend, cuenta y sincronización.
 7. Clasificación asistida y conexiones inteligentes.
+
+## Memoria personal
+
+Nexo separa los registros originales de las memorias e inferencias derivadas.
+Cada memoria conserva su fuente, registros de origen, confianza, sensibilidad,
+vigencia y confirmación. Las detecciones repetidas actualizan la memoria
+existente en vez de multiplicar recuerdos equivalentes. El asistente futuro
+podrá usar este contexto sin presentar una inferencia como si fuera un hecho.

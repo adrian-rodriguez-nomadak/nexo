@@ -17,7 +17,8 @@ test("builds the authenticated Nexo dashboard", async () => {
       access(new URL(".next/BUILD_ID", projectRoot)),
     ]);
 
-  assert.match(layout, /Nexo — Tu vida, conectada/);
+  assert.match(layout, /Nexo — Tu contexto, tu memoria, tu asistente/);
+  assert.match(layout, /og-assistant\.png/);
   assert.match(page, /initialView="home"/);
   assert.match(login, /initialView="login"/);
   assert.match(register, /initialView="register"/);
@@ -205,4 +206,57 @@ test("connects welcome and cross-module progress", async () => {
   assert.match(progress, /Conexiones del periodo/);
   assert.match(progress, /selectDays\(30\)/);
   assert.match(progressData, /`\/api\/progress\?days=\$\{days\}`/);
+});
+
+test("builds the web Observer with browser screen sharing", async () => {
+  const [dashboard, observer] = await Promise.all([
+    readFile(new URL("app/nexo-dashboard.tsx", projectRoot), "utf8"),
+    readFile(new URL("app/observer-panel.tsx", projectRoot), "utf8"),
+  ]);
+
+  assert.match(dashboard, /ObserverPanel/);
+  assert.match(dashboard, /selectedModule === "observer"/);
+  assert.match(dashboard, /Actividad/);
+  assert.match(observer, /navigator\.mediaDevices\.getDisplayMedia/);
+  assert.match(observer, /\/api\/observer\/analyze/);
+  assert.match(observer, /\/api\/observer\/save/);
+  assert.match(observer, /frameSignature/);
+  assert.match(observer, /12_000/);
+  assert.match(observer, /nexo\.observer\.preferences\.v1/);
+  assert.match(observer, /Sólo ingresos, gastos y comprobantes de compra/);
+  assert.match(observer, /speechSynthesis/);
+  assert.match(observer, /Guardar en Finanzas|Guardado en Finanzas/);
+  assert.match(observer, /Confirmar antes de guardar/);
+  assert.match(observer, /Terminar observación/);
+});
+
+test("builds the personal memory review workspace", async () => {
+  const [dashboard, memory] = await Promise.all([
+    readFile(new URL("app/nexo-dashboard.tsx", projectRoot), "utf8"),
+    readFile(new URL("app/memory-panel.tsx", projectRoot), "utf8"),
+  ]);
+
+  assert.match(dashboard, /MemoryPanel/);
+  assert.match(dashboard, /selectedModule === "memory"/);
+  assert.match(memory, /\/api\/memories/);
+  assert.match(memory, /\/review/);
+  assert.match(memory, /Pendientes/);
+  assert.match(memory, /Confirmar/);
+  assert.match(memory, /Rechazar/);
+});
+
+test("keeps manual capture prominent in the assistant-first navigation", async () => {
+  const [dashboard, assistant] = await Promise.all([
+    readFile(new URL("app/nexo-dashboard.tsx", projectRoot), "utf8"),
+    readFile(new URL("app/assistant-panel.tsx", projectRoot), "utf8"),
+  ]);
+
+  assert.match(dashboard, /Agregar manualmente/);
+  assert.match(dashboard, /¿Qué quieres registrar\?/);
+  assert.match(dashboard, /Áreas/);
+  assert.match(dashboard, /Asistente/);
+  assert.match(dashboard, /Actividad/);
+  assert.match(dashboard, /openManualCapture/);
+  assert.match(assistant, /Pregunta con todo tu contexto/);
+  assert.match(assistant, /todavía no envía mensajes/);
 });
