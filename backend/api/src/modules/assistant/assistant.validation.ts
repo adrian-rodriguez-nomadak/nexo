@@ -36,6 +36,32 @@ export function buildAssistantHistory(
   }));
 }
 
+export function extractAssistantText(payload: unknown): string | null {
+  if (typeof payload !== "object" || payload === null) return null;
+  const response = payload as {
+    output?: unknown;
+    output_text?: unknown;
+  };
+  if (typeof response.output_text === "string" && response.output_text.trim()) {
+    return response.output_text.trim();
+  }
+  if (!Array.isArray(response.output)) return null;
+
+  const chunks: string[] = [];
+  for (const item of response.output) {
+    if (typeof item !== "object" || item === null) continue;
+    const content = (item as { content?: unknown }).content;
+    if (!Array.isArray(content)) continue;
+    for (const part of content) {
+      if (typeof part !== "object" || part === null) continue;
+      const value = part as { text?: unknown; refusal?: unknown };
+      if (typeof value.text === "string") chunks.push(value.text);
+      else if (typeof value.refusal === "string") chunks.push(value.refusal);
+    }
+  }
+  return chunks.join("\n").trim() || null;
+}
+
 function fileExtension(name: string): string {
   return name.split(".").pop()?.toLowerCase() ?? "";
 }

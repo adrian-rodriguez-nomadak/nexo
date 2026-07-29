@@ -2,29 +2,12 @@ import { env } from "../../config/env.js";
 import { query } from "../../shared/db/database.js";
 import {
   buildAssistantHistory,
+  extractAssistantText,
   type AssistantFile,
   type AssistantHistoryMessage,
 } from "./assistant.validation.js";
 
 type ContextRow = { content: string };
-
-function extractOutputText(payload: unknown): string | null {
-  if (typeof payload !== "object" || payload === null) return null;
-  const output = (payload as { output?: unknown }).output;
-  if (!Array.isArray(output)) return null;
-  const chunks: string[] = [];
-  for (const item of output) {
-    if (typeof item !== "object" || item === null) continue;
-    const content = (item as { content?: unknown }).content;
-    if (!Array.isArray(content)) continue;
-    for (const part of content) {
-      if (typeof part !== "object" || part === null) continue;
-      const text = (part as { text?: unknown }).text;
-      if (typeof text === "string") chunks.push(text);
-    }
-  }
-  return chunks.join("\n").trim() || null;
-}
 async function loadPersonalContext(userId: string): Promise<string> {
   const [memories, captures] = await Promise.all([
     query<ContextRow>(
@@ -103,7 +86,8 @@ export async function answerWithNexo(input: {
         ...buildAssistantHistory(input.history),
         { role: "user", content: currentContent },
       ],
-      max_output_tokens: 1_200,
+      reasoning: { effort: "low" },
+      max_output_tokens: 3_000,
     }),
   });
 
@@ -112,7 +96,15 @@ export async function answerWithNexo(input: {
     const error = payload.error as { message?: string } | undefined;
     throw new Error(error?.message ?? "OPENAI_ASSISTANT_REQUEST_FAILED");
   }
-  const text = extractOutputText(payload);
-  if (!text) throw new Error("OPENAI_ASSISTANT_EMPTY");
+  const text = extractAssistantText(payload);
+  if (!text) {
+    const status = typeof payload.status === "string" ? payload.status : "unknown";
+    const incomplete = payload.incomplete_details as
+      | { reason?: unknown }
+      | undefined;
+    const reason =
+      typeof incomplete?.reason === "string" ? incomplete.reason : "no_output_text";
+    throw new Error(`OPENAI_ASSISTANT_EMPTY:${status}:${reason}`);
+  }
   return text;
 }

@@ -79,7 +79,10 @@ import {
 } from "./health/health.validation.js";
 import { searchFoodCatalog } from "./meals/meals.catalog.js";
 import { normalizeProgressDays } from "./progress/progress.validation.js";
-import { buildAssistantHistory } from "./assistant/assistant.validation.js";
+import {
+  buildAssistantHistory,
+  extractAssistantText,
+} from "./assistant/assistant.validation.js";
 
 test("maps assistant history to valid Responses API content types", () => {
   assert.deepEqual(
@@ -97,6 +100,25 @@ test("maps assistant history to valid Responses API content types", () => {
         content: [{ type: "output_text", text: "¿Cómo te ayudo?" }],
       },
     ],
+  );
+});
+
+test("extracts visible assistant text from Responses API payloads", () => {
+  assert.equal(
+    extractAssistantText({
+      output: [
+        { type: "reasoning", content: [] },
+        {
+          type: "message",
+          content: [{ type: "output_text", text: "Respuesta final" }],
+        },
+      ],
+    }),
+    "Respuesta final",
+  );
+  assert.equal(
+    extractAssistantText({ output_text: "Respuesta directa" }),
+    "Respuesta directa",
   );
 });
 
