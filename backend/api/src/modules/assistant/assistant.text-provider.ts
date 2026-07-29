@@ -79,8 +79,9 @@ export async function callTextModel(
       messages,
       tools: chatTools,
       tool_choice: "auto",
-      temperature: 0.2,
-      max_tokens: 1_200,
+      ...(provider.provider === "openai"
+        ? { max_completion_tokens: 1_200 }
+        : { max_tokens: 1_200, temperature: 0.2 }),
       ...(provider.provider === "openrouter"
         ? {
             provider: {
