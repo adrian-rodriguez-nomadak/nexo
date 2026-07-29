@@ -80,7 +80,10 @@ export async function callTextModel(
       tools: chatTools,
       tool_choice: "auto",
       ...(provider.provider === "openai"
-        ? { max_completion_tokens: 1_200 }
+        ? {
+            max_completion_tokens: 1_200,
+            reasoning_effort: "none",
+          }
         : { max_tokens: 1_200, temperature: 0.2 }),
       ...(provider.provider === "openrouter"
         ? {
