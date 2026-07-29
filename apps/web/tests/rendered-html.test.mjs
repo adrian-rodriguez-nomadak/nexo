@@ -196,8 +196,8 @@ test("connects welcome and cross-module progress", async () => {
 
   assert.match(dashboard, /WelcomePanel/);
   assert.match(dashboard, /ProgressPanel/);
-  assert.match(dashboard, /setSelectedModule\("welcome"\)/);
-  assert.match(dashboard, /setSelectedModule\("progress"\)/);
+  assert.match(dashboard, /navigate\("welcome"\)/);
+  assert.match(dashboard, /navigate\("progress"\)/);
   assert.doesNotMatch(dashboard, /selectedModule === "all"/);
   assert.match(welcome, /Hola,/);
   assert.match(welcome, /Construye tu punto de partida/);
@@ -252,6 +252,10 @@ test("keeps manual capture prominent in the assistant-first navigation", async (
   ]);
 
   assert.match(dashboard, /Agregar manualmente/);
+  assert.match(dashboard, /mobile-appbar/);
+  assert.match(dashboard, /mobile-add-fab/);
+  assert.match(dashboard, /sidebar-mobile-open/);
+  assert.match(dashboard, /Abrir menú/);
   assert.match(dashboard, /¿Qué quieres registrar\?/);
   assert.match(dashboard, /Áreas/);
   assert.match(dashboard, /Asistente/);

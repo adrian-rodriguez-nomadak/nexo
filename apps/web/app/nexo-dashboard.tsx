@@ -117,18 +117,33 @@ export function NexoDashboard({
     useState<DashboardView>("welcome");
   const [areasOpen, setAreasOpen] = useState(true);
   const [quickAddOpen, setQuickAddOpen] = useState(false);
+  const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
 
   useEffect(() => {
-    if (!quickAddOpen) return;
+    if (!quickAddOpen && !mobileMenuOpen) return;
     function closeOnEscape(event: KeyboardEvent) {
-      if (event.key === "Escape") setQuickAddOpen(false);
+      if (event.key === "Escape") {
+        setQuickAddOpen(false);
+        setMobileMenuOpen(false);
+      }
     }
+    const previousOverflow = document.body.style.overflow;
+    document.body.style.overflow = "hidden";
     window.addEventListener("keydown", closeOnEscape);
-    return () => window.removeEventListener("keydown", closeOnEscape);
-  }, [quickAddOpen]);
+    return () => {
+      document.body.style.overflow = previousOverflow;
+      window.removeEventListener("keydown", closeOnEscape);
+    };
+  }, [mobileMenuOpen, quickAddOpen]);
+
+  function navigate(view: DashboardView): void {
+    setSelectedModule(view);
+    setMobileMenuOpen(false);
+  }
 
   function openManualCapture(module: ModuleKey): void {
     setQuickAddOpen(false);
+    setMobileMenuOpen(false);
     setSelectedModule(module);
   }
 
@@ -143,16 +158,27 @@ export function NexoDashboard({
 
   return (
     <div className="app-shell">
-      <aside className="sidebar">
+      <aside
+        aria-label="Menú de Nexo"
+        className={`sidebar ${mobileMenuOpen ? "sidebar-mobile-open" : ""}`}
+      >
         <div className="brand">
           <span className="brand-mark">N</span>
           <span>Nexo</span>
+          <button
+            aria-label="Cerrar menú"
+            className="mobile-drawer-close"
+            onClick={() => setMobileMenuOpen(false)}
+            type="button"
+          >
+            ×
+          </button>
         </div>
 
         <nav className="main-nav" aria-label="Navegación principal">
           <button
             className={`nav-item ${selectedModule === "welcome" ? "nav-item-active" : ""}`}
-            onClick={() => setSelectedModule("welcome")}
+            onClick={() => navigate("welcome")}
             type="button"
           >
             <span className="nav-symbol">●</span>
@@ -160,7 +186,7 @@ export function NexoDashboard({
           </button>
           <button
             className={`nav-item ${selectedModule === "assistant" ? "nav-item-active" : ""}`}
-            onClick={() => setSelectedModule("assistant")}
+            onClick={() => navigate("assistant")}
             type="button"
           >
             <span className="nav-symbol">✦</span>
@@ -168,7 +194,7 @@ export function NexoDashboard({
           </button>
           <button
             className={`nav-item ${selectedModule === "observer" ? "nav-item-active" : ""}`}
-            onClick={() => setSelectedModule("observer")}
+            onClick={() => navigate("observer")}
             type="button"
           >
             <span className="nav-symbol">◉</span>
@@ -176,7 +202,7 @@ export function NexoDashboard({
           </button>
           <button
             className={`nav-item ${selectedModule === "memory" ? "nav-item-active" : ""}`}
-            onClick={() => setSelectedModule("memory")}
+            onClick={() => navigate("memory")}
             type="button"
           >
             <span className="nav-symbol">✦</span>
@@ -200,7 +226,7 @@ export function NexoDashboard({
                 <button
                   className={`module-nav ${selectedModule === module.key ? "module-nav-active" : ""}`}
                   key={module.key}
-                  onClick={() => setSelectedModule(module.key)}
+                  onClick={() => navigate(module.key)}
                   type="button"
                 >
                   <span
@@ -212,7 +238,7 @@ export function NexoDashboard({
               ))}
               <button
                 className={`module-nav ${selectedModule === "progress" ? "module-nav-active" : ""}`}
-                onClick={() => setSelectedModule("progress")}
+                onClick={() => navigate("progress")}
                 type="button"
               >
                 <span className="module-dot module-dot-all" />
@@ -239,6 +265,40 @@ export function NexoDashboard({
           </div>
         </div>
       </aside>
+
+      {mobileMenuOpen ? (
+        <button
+          aria-label="Cerrar menú"
+          className="mobile-menu-backdrop"
+          onClick={() => setMobileMenuOpen(false)}
+          type="button"
+        />
+      ) : null}
+
+      <header className="mobile-appbar">
+        <button
+          aria-label="Abrir menú"
+          className="mobile-menu-button"
+          onClick={() => setMobileMenuOpen(true)}
+          type="button"
+        >
+          <span />
+          <span />
+          <span />
+        </button>
+        <div className="mobile-brand">
+          <span>N</span>
+          <strong>Nexo</strong>
+        </div>
+        <button
+          aria-label="Abrir menú de usuario"
+          className="mobile-avatar"
+          onClick={() => setMobileMenuOpen(true)}
+          type="button"
+        >
+          {userInitials(user)}
+        </button>
+      </header>
 
       <main className="dashboard">
         <header className="topbar">
@@ -290,16 +350,16 @@ export function NexoDashboard({
         {selectedModule === "welcome" ? (
           <WelcomePanel
             displayName={user.displayName}
-            onOpenModule={(module) => setSelectedModule(module)}
-            onOpenProgress={() => setSelectedModule("progress")}
+            onOpenModule={(module) => navigate(module)}
+            onOpenProgress={() => navigate("progress")}
             sessionToken={sessionToken}
           />
         ) : selectedModule === "progress" ? (
           <ProgressPanel sessionToken={sessionToken} />
         ) : selectedModule === "assistant" ? (
           <AssistantPanel
-            onOpenActivity={() => setSelectedModule("observer")}
-            onOpenMemory={() => setSelectedModule("memory")}
+            onOpenActivity={() => navigate("observer")}
+            onOpenMemory={() => navigate("memory")}
           />
         ) : selectedModule === "observer" ? (
           <ObserverPanel sessionToken={sessionToken} />
@@ -339,6 +399,15 @@ export function NexoDashboard({
           />
         )}
       </main>
+
+      <button
+        aria-label="Agregar información manualmente"
+        className="mobile-add-fab"
+        onClick={() => setQuickAddOpen(true)}
+        type="button"
+      >
+        ＋
+      </button>
 
       {quickAddOpen ? (
         <div
