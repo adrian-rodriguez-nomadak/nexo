@@ -36,15 +36,15 @@ const productModules = [
 ] as const;
 
 function saveBrowserSession(session: BrowserSession): void {
-  window.sessionStorage.setItem(SESSION_STORAGE_KEY, JSON.stringify(session));
+  window.localStorage.setItem(SESSION_STORAGE_KEY, JSON.stringify(session));
 }
 
 function removeBrowserSession(): void {
-  window.sessionStorage.removeItem(SESSION_STORAGE_KEY);
+  window.localStorage.removeItem(SESSION_STORAGE_KEY);
 }
 
 function readBrowserSession(): BrowserSession | null {
-  const serialized = window.sessionStorage.getItem(SESSION_STORAGE_KEY);
+  const serialized = window.localStorage.getItem(SESSION_STORAGE_KEY);
   if (!serialized) return null;
 
   try {
@@ -431,12 +431,18 @@ export function AuthPortal({ initialView }: { initialView: AuthView }) {
         const data = (await response.json()) as {
           user?: AuthUser;
         };
+        if (response.status === 401 || response.status === 403) {
+          removeBrowserSession();
+          return;
+        }
         if (!response.ok || !data.user) throw new Error();
         const restored = { ...saved, user: data.user };
         saveBrowserSession(restored);
         if (active) setSession(restored);
       } catch {
-        removeBrowserSession();
+        // Keep a locally valid session during temporary API or network failures.
+        // Protected requests will still be rejected if the token is truly invalid.
+        if (active) setSession(saved);
       } finally {
         if (active) setIsRestoring(false);
       }

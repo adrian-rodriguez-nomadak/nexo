@@ -27,7 +27,9 @@ test("builds the authenticated Nexo dashboard", async () => {
   assert.match(authPortal, /Crea tu espacio personal/);
   assert.match(authPortal, /\/api\/auth\/\$\{isRegister \? "register" : "login"\}/);
   assert.match(authPortal, /apiFetch\("\/api\/auth\/me"/);
-  assert.match(authPortal, /sessionStorage/);
+  assert.match(authPortal, /localStorage/);
+  assert.doesNotMatch(authPortal, /sessionStorage/);
+  assert.match(authPortal, /response\.status === 401/);
   assert.match(dashboard, /Bienvenido,/);
   assert.match(dashboard, /Tu progreso, en perspectiva\./);
   assert.match(dashboard, /Finanzas/);

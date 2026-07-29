@@ -10,7 +10,7 @@ import { env } from "../../config/env.js";
 import { query } from "../../shared/db/database.js";
 import { hashSessionToken } from "./auth.utils.js";
 
-const SESSION_DURATION_MS = 24 * 60 * 60 * 1000;
+const SESSION_DURATION_MS = 30 * 24 * 60 * 60 * 1000;
 const PASSWORD_KEY_LENGTH = 64;
 const scrypt = promisify(scryptCallback);
 const dummyPasswordSalt = randomBytes(16).toString("hex");
