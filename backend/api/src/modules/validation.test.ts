@@ -170,6 +170,11 @@ test("requires an explicit confirmation after a concrete proposal", () => {
     content: "Registraré un gasto de $500 en BBVA. ¿Confirmas?",
   }];
   assert.equal(hasExplicitConfirmation("confirmo", proposal), true);
+  assert.equal(hasExplicitConfirmation("confirmo registros", proposal), true);
+  assert.equal(
+    hasExplicitConfirmation("confirmo estos datos financieros", proposal),
+    true,
+  );
   assert.equal(hasExplicitConfirmation("regístralo", proposal), true);
   assert.equal(hasExplicitConfirmation("correcto", proposal), true);
   assert.equal(hasExplicitConfirmation("si registrar", proposal), true);

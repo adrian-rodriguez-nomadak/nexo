@@ -194,11 +194,22 @@ export async function answerWithNexo(input: {
     { role: "user", content: currentMessage },
   ];
   const writeConfirmed = hasExplicitConfirmation(input.message, input.history);
+  console.info(JSON.stringify({
+    event: "assistant_confirmation_evaluated",
+    writeConfirmed,
+    historyMessageCount: input.history.length,
+  }));
 
   for (let turn = 0; turn < 4; turn += 1) {
     const reply = await callTextModel(messages);
     messages.push(reply.rawMessage);
     if (reply.toolCalls.length === 0) {
+      console.info(JSON.stringify({
+        event: "assistant_model_reply",
+        turn,
+        writeConfirmed,
+        toolCallCount: 0,
+      }));
       if (!reply.content) throw new Error("TEXT_MODEL_EMPTY");
       return reply.content;
     }
@@ -212,6 +223,14 @@ export async function answerWithNexo(input: {
         },
         writeConfirmed,
       });
+      console.info(JSON.stringify({
+        event: "assistant_tool_result",
+        turn,
+        tool: toolCall.function.name,
+        writeConfirmed,
+        ok: result.ok === true,
+        error: typeof result.error === "string" ? result.error : null,
+      }));
       messages.push({
         role: "tool",
         tool_call_id: toolCall.id,

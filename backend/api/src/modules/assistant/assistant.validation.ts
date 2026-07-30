@@ -32,7 +32,7 @@ function normalizeConfirmationText(value: string): string {
 }
 
 function isExplicitConfirmation(value: string): boolean {
-  return /^(confirmo|confirmado|correcto|si,? (confirmo|registrar|registralo)|registralo|adelante|hazlo|autorizo (?:que se registren|registrar) (?:estos|los) datos(?: financieros)?)[.! ]*$/.test(
+  return /^(confirmo(?: (?:estos|los)? ?(?:datos|registros)(?: financieros)?)?|confirmado|correcto|si,? (confirmo|registrar|registralo)|registralo|adelante|hazlo|autorizo (?:que se registren|registrar) (?:estos|los) datos(?: financieros)?)[.! ]*$/.test(
     normalizeConfirmationText(value),
   );
 }
