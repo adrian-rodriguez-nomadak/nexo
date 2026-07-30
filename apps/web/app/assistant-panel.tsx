@@ -86,6 +86,7 @@ export function AssistantPanel({
   const [messages, setMessages] = useState<ChatMessage[]>([]);
   const [isRestoringHistory, setIsRestoringHistory] = useState(true);
   const [isSending, setIsSending] = useState(false);
+  const [isStartingNewChat, setIsStartingNewChat] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const fileInput = useRef<HTMLInputElement>(null);
   const threadEnd = useRef<HTMLDivElement>(null);
@@ -155,6 +156,39 @@ export function AssistantPanel({
       setFiles((current) => [...current, ...encodedFiles]);
     } catch (caught) {
       setError(caught instanceof Error ? caught.message : "No pude leer los archivos.");
+    }
+  }
+
+  async function startNewChat() {
+    if (
+      messages.length > 0 &&
+      !window.confirm(
+        "¿Iniciar un chat nuevo? Se borrará esta conversación, pero Nexo conservará tus memorias y registros.",
+      )
+    ) {
+      return;
+    }
+    setIsStartingNewChat(true);
+    setError(null);
+    try {
+      const response = await apiFetch("/api/assistant/messages", sessionToken, {
+        method: "DELETE",
+      });
+      const data = (await response.json()) as { error?: string };
+      if (!response.ok) {
+        throw new Error(data.error ?? "No pude iniciar un chat nuevo.");
+      }
+      setMessages([]);
+      setDraft("");
+      setFiles([]);
+    } catch (caught) {
+      setError(
+        caught instanceof Error
+          ? caught.message
+          : "No pude iniciar un chat nuevo.",
+      );
+    } finally {
+      setIsStartingNewChat(false);
     }
   }
 
@@ -230,6 +264,14 @@ export function AssistantPanel({
           </h2>
           <p>Escribe con naturalidad. Nexo se encarga de conectar el contexto.</p>
         </div>
+        <button
+          className="assistant-new-chat"
+          disabled={isSending || isStartingNewChat}
+          onClick={() => void startNewChat()}
+          type="button"
+        >
+          {isStartingNewChat ? "Iniciando…" : "＋ Nuevo chat"}
+        </button>
       </header>
 
       <section className="assistant-conversation assistant-conversation-live">

@@ -1,4 +1,3 @@
-import { query } from "../../shared/db/database.js";
 import { analyzeAssistantFiles } from "./assistant.ingestion.js";
 import {
   callTextModel,
@@ -67,72 +66,8 @@ export function rankContext<T extends ContextRow>(
     .map(({ row }) => row);
 }
 
-async function loadPersonalContext(
-  userId: string,
-  message: string,
-): Promise<string> {
-  const [records, memories, captures] = await Promise.all([
-    query<ContextRow>(
-      `SELECT
-         CONCAT(
-           content,
-           CASE WHEN status IN ('pending', 'completed')
-             THEN ' · estado: ' || status ELSE '' END,
-           CASE WHEN due_at IS NOT NULL
-             THEN ' · fecha: ' || due_at::TEXT ELSE '' END,
-           CASE WHEN cardinality(entities) > 0
-             THEN ' · relacionado con: ' || array_to_string(entities, ', ')
-             ELSE '' END
-         ) AS content,
-         topic AS module,
-         record_kind AS kind,
-         source <> 'derived' AS confirmed,
-         updated_at
-       FROM nexo_context_records
-       WHERE nexo_user_id = $1
-         AND status NOT IN ('cancelled', 'archived')
-       ORDER BY updated_at DESC
-       LIMIT 250`,
-      [userId],
-    ),
-    query<ContextRow>(
-      `SELECT content, module, memory_kind AS kind,
-              user_confirmed AS confirmed, updated_at
-       FROM nexo_memories
-       WHERE nexo_user_id = $1 AND status = 'active'
-       ORDER BY user_confirmed DESC, updated_at DESC
-       LIMIT 200`,
-      [userId],
-    ),
-    query<ContextRow>(
-      `SELECT content, module, COALESCE(submodule, 'record') AS kind,
-              TRUE AS confirmed, created_at AS updated_at
-       FROM captures
-       WHERE nexo_user_id = $1
-       ORDER BY created_at DESC
-       LIMIT 100`,
-      [userId],
-    ),
-  ]);
-  const relevantRecords = rankContext(records.rows, message, 24);
-  const relevantMemories = rankContext(memories.rows, message);
-  const relevantCaptures = rankContext(captures.rows, message, 10);
-  return [
-    relevantRecords.length
-      ? `Contexto personal relevante:\n${relevantRecords.map((row) => `- [${row.module ?? "general"} · ${row.kind}] ${row.content}`).join("\n")}`
-      : "",
-    relevantMemories.length
-      ? `Memorias relevantes:\n${relevantMemories.map((row) => `- [${row.kind}${row.module ? ` · ${row.module}` : ""}] ${row.content}`).join("\n")}`
-      : "",
-    relevantCaptures.length
-      ? `Registros relacionados:\n${relevantCaptures.map((row) => `- [${row.module}.${row.kind}] ${row.content}`).join("\n")}`
-      : "",
-  ].filter(Boolean).join("\n\n");
-}
-
 function systemInstructions(input: {
   displayName: string;
-  personalContext: string;
   timeZone: string;
 }): string {
   return [
@@ -142,7 +77,7 @@ function systemInstructions(input: {
     `La zona horaria de la persona es ${input.timeZone} y ahora es ${new Date().toLocaleString("es-MX", { timeZone: input.timeZone, dateStyle: "full", timeStyle: "long" })}. Interpreta allí fechas relativas como hoy o mañana. Si una fecha sigue siendo ambigua, pregunta antes de guardarla.`,
     "Usa save_context_record para información concreta o accionable: tareas, recordatorios, eventos, notas, decisiones, transacciones, mediciones, documentos y entradas de diario. Elige el tema principal y agrega nombres de personas, proyectos, cuentas, lugares u objetos en entities para conectar el contexto.",
     "Usa save_memory sólo para hechos estables, preferencias, objetivos o patrones que probablemente mejoren conversaciones futuras. No conviertas cada mensaje en memoria y no dupliques un registro como memoria salvo que tenga valor duradero.",
-    "Usa search_personal_context antes de responder consultas que exijan recuperar pendientes, fechas o registros exactos. Para cambiar o completar algo, busca primero su id y luego usa update_context_record.",
+    "No recibes todo el contexto personal automáticamente. Usa search_personal_context sólo cuando la solicitud dependa de recuerdos, preferencias, pendientes, fechas, saldos o registros previos. Haz una búsqueda específica y con el menor límite útil. Para cambiar o completar algo, busca primero su id y luego usa update_context_record.",
     "No guardes saludos, conversación trivial, credenciales, números bancarios completos, secretos ni información privada innecesaria de terceros.",
     "Los hechos expresados directamente por el usuario son evidencia explícita. Las conclusiones derivadas son inferencias y deben conservar confianza y posibilidad de revisión.",
     "Las lecturas, tareas, notas, recordatorios y memorias explícitas pueden guardarse directamente. Antes de una transacción financiera o un registro restringido, muestra los datos concretos y pide confirmación. Sólo ejecuta esa escritura cuando el mensaje actual sea la confirmación.",
@@ -151,7 +86,7 @@ function systemInstructions(input: {
     "En salud, organiza el contexto y ofrece orientación prudente, pero no presentes diagnósticos. Recomienda ayuda profesional o urgente cuando corresponda.",
     "Puedes responder preguntas generales sin herramientas. No inventes datos personales ausentes y pregunta sólo cuando la ambigüedad cambie de forma material el resultado.",
     "Sé directo, cálido y conciso. Distingue hechos de inferencias.",
-    input.personalContext || "Nexo aún no tiene contexto personal guardado.",
+    "El contexto personal persistente está disponible bajo demanda mediante search_personal_context.",
   ].join("\n\n");
 }
 
@@ -163,13 +98,10 @@ export async function answerWithNexo(input: {
   history: AssistantHistoryMessage[];
   files: AssistantFile[];
 }): Promise<string> {
-  const [personalContext, fileAnalysis] = await Promise.all([
-    loadPersonalContext(input.userId, input.message),
-    analyzeAssistantFiles({
-      message: input.message,
-      files: input.files,
-    }),
-  ]);
+  const fileAnalysis = await analyzeAssistantFiles({
+    message: input.message,
+    files: input.files,
+  });
   const currentMessage = fileAnalysis
     ? [
         input.message,
@@ -183,7 +115,6 @@ export async function answerWithNexo(input: {
       role: "system",
       content: systemInstructions({
         displayName: input.displayName,
-        personalContext,
         timeZone: input.timeZone,
       }),
     },

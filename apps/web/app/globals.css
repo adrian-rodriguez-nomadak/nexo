@@ -8089,7 +8089,30 @@ a:focus-visible {
 }
 
 .chat-only-workspace .assistant-live-header {
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr) auto;
   padding: 18px 8px 16px;
+}
+
+.assistant-new-chat {
+  align-self: center;
+  padding: 9px 12px;
+  border: 1px solid rgba(183, 243, 107, 0.24);
+  border-radius: 12px;
+  background: rgba(183, 243, 107, 0.08);
+  color: var(--lime);
+  cursor: pointer;
+  font-size: 9px;
+  font-weight: 800;
+}
+
+.assistant-new-chat:hover {
+  background: rgba(183, 243, 107, 0.14);
+}
+
+.assistant-new-chat:disabled {
+  cursor: default;
+  opacity: 0.55;
 }
 
 .chat-only-workspace .assistant-conversation-live {

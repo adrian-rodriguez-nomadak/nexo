@@ -2,6 +2,7 @@ import { Router } from "express";
 
 import { asyncHandler } from "../../shared/http/async-handler.js";
 import {
+  clearAssistantMessages,
   listAssistantMessages,
   saveAssistantMessage,
 } from "./assistant.history.js";
@@ -20,6 +21,16 @@ assistantRouter.get(
   asyncHandler(async (request, response) => {
     response.json({
       messages: await listAssistantMessages(request.authUser!.id),
+    });
+  }),
+);
+
+assistantRouter.delete(
+  "/messages",
+  asyncHandler(async (request, response) => {
+    response.json({
+      ok: true,
+      deletedMessages: await clearAssistantMessages(request.authUser!.id),
     });
   }),
 );

@@ -38,6 +38,24 @@ type AccountRow = {
   initial_balance_cents: string;
 };
 
+type SearchMemoryRow = {
+  id: string;
+  content: string;
+  kind: string;
+  topic: string | null;
+  confirmed: boolean;
+  updated_at: Date;
+};
+
+type SearchCaptureRow = {
+  id: string;
+  content: string;
+  topic: string;
+  kind: string;
+  occurred_at: Date | null;
+  created_at: Date;
+};
+
 type StatementInput = {
   accountName: string;
   periodStart: string;
@@ -157,7 +175,7 @@ export const assistantTools = [
     type: "function",
     name: "search_personal_context",
     description:
-      "Busca registros personales cuando el usuario pregunta qué tiene pendiente, qué ocurrió, qué sabe Nexo sobre un tema o necesita recuperar información exacta.",
+      "Busca bajo demanda registros, memorias y capturas personales. Úsala sólo si la solicitud depende de información previa; formula una consulta específica y pide el menor límite útil.",
     strict: true,
     parameters: {
       type: "object",
@@ -178,7 +196,7 @@ export const assistantTools = [
           items: { type: "string", enum: contextRecordStatuses },
           maxItems: 5,
         },
-        limit: { type: "integer", minimum: 1, maximum: 50 },
+        limit: { type: "integer", minimum: 1, maximum: 20 },
       },
       additionalProperties: false,
       required: ["query", "topics", "statuses", "limit"],
@@ -570,19 +588,63 @@ export async function executeAssistantTool(input: {
       statuses.length !== value.statuses.length ||
       !Number.isInteger(limit) ||
       limit < 1 ||
-      limit > 50
+      limit > 20
     ) {
       return { ok: false, error: "INVALID_SEARCH" };
     }
-    return {
-      ok: true,
-      records: await searchContextRecords({
+    const selectedTopics = topics.length ? topics : undefined;
+    const [records, memories, captures] = await Promise.all([
+      searchContextRecords({
         userId: input.userId,
         search,
-        topics: topics.length ? topics : undefined,
+        topics: selectedTopics,
         statuses: statuses.length ? statuses : undefined,
         limit,
       }),
+      query<SearchMemoryRow>(
+        `SELECT id, content, memory_kind AS kind, module AS topic,
+                user_confirmed AS confirmed, updated_at
+         FROM nexo_memories
+         WHERE nexo_user_id = $1
+           AND status = 'active'
+           AND ($2::TEXT IS NULL OR content ILIKE '%' || $2 || '%')
+           AND ($3::TEXT[] IS NULL OR module = ANY($3))
+         ORDER BY user_confirmed DESC, updated_at DESC
+         LIMIT $4`,
+        [input.userId, search ?? null, selectedTopics ?? null, limit],
+      ),
+      query<SearchCaptureRow>(
+        `SELECT id, content, module AS topic,
+                COALESCE(submodule, 'record') AS kind,
+                occurred_at, created_at
+         FROM captures
+         WHERE nexo_user_id = $1
+           AND ($2::TEXT IS NULL OR content ILIKE '%' || $2 || '%')
+           AND ($3::TEXT[] IS NULL OR module = ANY($3))
+         ORDER BY created_at DESC
+         LIMIT $4`,
+        [input.userId, search ?? null, selectedTopics ?? null, limit],
+      ),
+    ]);
+    return {
+      ok: true,
+      records,
+      memories: memories.rows.map((memory) => ({
+        id: memory.id,
+        content: memory.content,
+        kind: memory.kind,
+        topic: memory.topic,
+        confirmed: memory.confirmed,
+        updatedAt: memory.updated_at.toISOString(),
+      })),
+      captures: captures.rows.map((capture) => ({
+        id: capture.id,
+        content: capture.content,
+        topic: capture.topic,
+        kind: capture.kind,
+        occurredAt: capture.occurred_at?.toISOString() ?? null,
+        createdAt: capture.created_at.toISOString(),
+      })),
     };
   }
   if (input.call.name === "update_context_record") {

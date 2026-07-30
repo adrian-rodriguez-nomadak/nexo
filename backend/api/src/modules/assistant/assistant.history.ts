@@ -67,3 +67,12 @@ export async function saveAssistantMessage(input: {
   );
   return mapMessage(result.rows[0]!);
 }
+
+export async function clearAssistantMessages(userId: string): Promise<number> {
+  const result = await query(
+    `DELETE FROM nexo_assistant_messages
+     WHERE nexo_user_id = $1`,
+    [userId],
+  );
+  return result.rowCount ?? 0;
+}
