@@ -240,7 +240,7 @@ export const assistantTools = [
     type: "function",
     name: "list_finance_accounts",
     description:
-      "Lista las cuentas financieras del usuario antes de proponer o registrar movimientos.",
+      "Consulta la situación financiera conocida: cuentas del libro contable y saldos, deudas o vencimientos guardados por conversación. Úsala antes de afirmar que no existen cuentas o datos financieros.",
     strict: true,
     parameters: {
       type: "object",
@@ -344,13 +344,21 @@ function normalizeStatement(value: unknown): StatementInput | null {
 }
 
 async function listFinanceAccounts(userId: string) {
-  const result = await query<AccountRow>(
-    `SELECT id, name, type, initial_balance_cents
-     FROM finance_accounts
-     WHERE nexo_user_id = $1
-     ORDER BY created_at`,
-    [userId],
-  );
+  const [result, savedFinancialContext] = await Promise.all([
+    query<AccountRow>(
+      `SELECT id, name, type, initial_balance_cents
+       FROM finance_accounts
+       WHERE nexo_user_id = $1
+       ORDER BY created_at`,
+      [userId],
+    ),
+    searchContextRecords({
+      userId,
+      topics: ["finances"],
+      statuses: ["active", "pending"],
+      limit: 20,
+    }),
+  ]);
   return {
     accounts: result.rows.map((row) => ({
       id: row.id,
@@ -358,6 +366,7 @@ async function listFinanceAccounts(userId: string) {
       type: row.type,
       initialBalanceCents: Number(row.initial_balance_cents),
     })),
+    savedFinancialContext,
   };
 }
 
