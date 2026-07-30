@@ -171,6 +171,7 @@ test("requires an explicit confirmation after a concrete proposal", () => {
   }];
   assert.equal(hasExplicitConfirmation("confirmo", proposal), true);
   assert.equal(hasExplicitConfirmation("regístralo", proposal), true);
+  assert.equal(hasExplicitConfirmation("correcto", proposal), true);
   assert.equal(hasExplicitConfirmation("si registrar", proposal), true);
   assert.equal(
     hasExplicitConfirmation(
@@ -186,6 +187,30 @@ test("requires an explicit confirmation after a concrete proposal", () => {
       "Autorizo registrar estos datos financieros",
       [],
     ),
+    false,
+  );
+  assert.equal(
+    hasExplicitConfirmation("inténtalo de nuevo", [
+      ...proposal,
+      {
+        role: "user",
+        content: "Autorizo registrar estos datos financieros",
+      },
+      {
+        role: "assistant",
+        content:
+          "La herramienta volvió a rechazar la escritura. No se guardó nada.",
+      },
+    ]),
+    true,
+  );
+  assert.equal(
+    hasExplicitConfirmation("inténtalo de nuevo", [
+      {
+        role: "assistant",
+        content: "No se guardó nada por un error.",
+      },
+    ]),
     false,
   );
 });

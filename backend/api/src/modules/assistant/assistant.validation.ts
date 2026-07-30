@@ -22,6 +22,38 @@ export type AssistantHistoryMessage = {
   content: string;
 };
 
+function normalizeConfirmationText(value: string): string {
+  return value
+    .trim()
+    .toLocaleLowerCase("es-MX")
+    .normalize("NFD")
+    .replace(/\p{Diacritic}/gu, "")
+    .replace(/\s+/g, " ");
+}
+
+function isExplicitConfirmation(value: string): boolean {
+  return /^(confirmo|confirmado|correcto|si,? (confirmo|registrar|registralo)|registralo|adelante|hazlo|autorizo (?:que se registren|registrar) (?:estos|los) datos(?: financieros)?)[.! ]*$/.test(
+    normalizeConfirmationText(value),
+  );
+}
+
+function requestsConfirmation(value: string): boolean {
+  return /(confirmas|confirma|quieres que lo registre|puedo registrarlo)/i.test(
+    value,
+  );
+}
+
+function findLastMessageIndex(
+  history: AssistantHistoryMessage[],
+  role: AssistantHistoryMessage["role"],
+  before = history.length,
+): number {
+  for (let index = before - 1; index >= 0; index -= 1) {
+    if (history[index]!.role === role) return index;
+  }
+  return -1;
+}
+
 export function buildAssistantHistory(
   history: AssistantHistoryMessage[],
 ): Array<Record<string, unknown>> {
@@ -66,24 +98,40 @@ export function hasExplicitConfirmation(
   message: string,
   history: AssistantHistoryMessage[],
 ): boolean {
-  const normalized = message
-    .trim()
-    .toLocaleLowerCase("es-MX")
-    .normalize("NFD")
-    .replace(/\p{Diacritic}/gu, "")
-    .replace(/\s+/g, " ");
-  const confirms =
-    /^(confirmo|confirmado|si,? (confirmo|registrar|registralo)|registralo|adelante|hazlo|autorizo (?:que se registren|registrar) (?:estos|los) datos(?: financieros)?)[.! ]*$/.test(
-      normalized,
+  const lastAssistantIndex = findLastMessageIndex(history, "assistant");
+  if (
+    isExplicitConfirmation(message) &&
+    lastAssistantIndex >= 0 &&
+    requestsConfirmation(history[lastAssistantIndex]!.content)
+  ) {
+    return true;
+  }
+
+  const retryRequested =
+    /^(intenta(?:lo)? de nuevo|vuelve a intentar(?:lo)?|reintenta(?:lo)?)[.! ]*$/.test(
+      normalizeConfirmationText(message),
     );
-  const previousAssistant = [...history]
-    .reverse()
-    .find((item) => item.role === "assistant");
-  return confirms && Boolean(
-    previousAssistant &&
-      /(confirmas|confirma|quieres que lo registre|puedo registrarlo)/i.test(
-        previousAssistant.content,
-      ),
+  if (!retryRequested) return false;
+
+  const lastUserIndex = findLastMessageIndex(history, "user");
+  if (lastUserIndex < 0 || !isExplicitConfirmation(history[lastUserIndex]!.content)) {
+    return false;
+  }
+  const proposalIndex = findLastMessageIndex(history, "assistant", lastUserIndex);
+  const proposal = proposalIndex >= 0 ? history[proposalIndex] : undefined;
+  const failedAttempt = history
+    .slice(lastUserIndex + 1)
+    .some(
+      (item) =>
+        item.role === "assistant" &&
+        /(no se guard|a[uú]n no se guard|rechaz|confirmaci[oó]n adicional|volvi[oó] a pedir)/i.test(
+          item.content,
+        ),
+    );
+  return Boolean(
+    proposal &&
+      requestsConfirmation(proposal.content) &&
+      failedAttempt,
   );
 }
 
