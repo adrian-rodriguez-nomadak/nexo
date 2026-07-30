@@ -171,8 +171,23 @@ test("requires an explicit confirmation after a concrete proposal", () => {
   }];
   assert.equal(hasExplicitConfirmation("confirmo", proposal), true);
   assert.equal(hasExplicitConfirmation("regístralo", proposal), true);
+  assert.equal(hasExplicitConfirmation("si registrar", proposal), true);
+  assert.equal(
+    hasExplicitConfirmation(
+      "Autorizo registrar estos datos financieros",
+      proposal,
+    ),
+    true,
+  );
   assert.equal(hasExplicitConfirmation("quizá después", proposal), false);
   assert.equal(hasExplicitConfirmation("confirmo", []), false);
+  assert.equal(
+    hasExplicitConfirmation(
+      "Autorizo registrar estos datos financieros",
+      [],
+    ),
+    false,
+  );
 });
 
 test("validates the browser time zone used for relative dates", () => {

@@ -66,9 +66,14 @@ export function hasExplicitConfirmation(
   message: string,
   history: AssistantHistoryMessage[],
 ): boolean {
-  const normalized = message.trim().toLocaleLowerCase("es-MX");
+  const normalized = message
+    .trim()
+    .toLocaleLowerCase("es-MX")
+    .normalize("NFD")
+    .replace(/\p{Diacritic}/gu, "")
+    .replace(/\s+/g, " ");
   const confirms =
-    /^(confirmo|confirmado|sí,? (confirmo|regístralo|registralo)|regístralo|registralo|adelante|hazlo)[.! ]*$/.test(
+    /^(confirmo|confirmado|si,? (confirmo|registrar|registralo)|registralo|adelante|hazlo|autorizo (?:que se registren|registrar) (?:estos|los) datos(?: financieros)?)[.! ]*$/.test(
       normalized,
     );
   const previousAssistant = [...history]
