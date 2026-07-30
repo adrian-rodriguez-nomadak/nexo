@@ -10,6 +10,7 @@ import {
   normalizeAssistantFiles,
   normalizeAssistantHistory,
   normalizeAssistantMessage,
+  normalizeAssistantTimeZone,
 } from "./assistant.validation.js";
 
 export const assistantRouter = Router();
@@ -46,6 +47,7 @@ assistantRouter.post(
         userId: request.authUser!.id,
         displayName: request.authUser!.displayName,
         message,
+        timeZone: normalizeAssistantTimeZone(body.timeZone),
         history:
           storedHistory.length > 0
             ? storedHistory.map(({ role, content }) => ({ role, content }))

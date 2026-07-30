@@ -71,7 +71,30 @@ async function loadPersonalContext(
   userId: string,
   message: string,
 ): Promise<string> {
-  const [memories, captures] = await Promise.all([
+  const [records, memories, captures] = await Promise.all([
+    query<ContextRow>(
+      `SELECT
+         CONCAT(
+           content,
+           CASE WHEN status IN ('pending', 'completed')
+             THEN ' · estado: ' || status ELSE '' END,
+           CASE WHEN due_at IS NOT NULL
+             THEN ' · fecha: ' || due_at::TEXT ELSE '' END,
+           CASE WHEN cardinality(entities) > 0
+             THEN ' · relacionado con: ' || array_to_string(entities, ', ')
+             ELSE '' END
+         ) AS content,
+         topic AS module,
+         record_kind AS kind,
+         source <> 'derived' AS confirmed,
+         updated_at
+       FROM nexo_context_records
+       WHERE nexo_user_id = $1
+         AND status NOT IN ('cancelled', 'archived')
+       ORDER BY updated_at DESC
+       LIMIT 250`,
+      [userId],
+    ),
     query<ContextRow>(
       `SELECT content, module, memory_kind AS kind,
               user_confirmed AS confirmed, updated_at
@@ -91,9 +114,13 @@ async function loadPersonalContext(
       [userId],
     ),
   ]);
+  const relevantRecords = rankContext(records.rows, message, 24);
   const relevantMemories = rankContext(memories.rows, message);
   const relevantCaptures = rankContext(captures.rows, message, 10);
   return [
+    relevantRecords.length
+      ? `Contexto personal relevante:\n${relevantRecords.map((row) => `- [${row.module ?? "general"} · ${row.kind}] ${row.content}`).join("\n")}`
+      : "",
     relevantMemories.length
       ? `Memorias relevantes:\n${relevantMemories.map((row) => `- [${row.kind}${row.module ? ` · ${row.module}` : ""}] ${row.content}`).join("\n")}`
       : "",
@@ -106,16 +133,23 @@ async function loadPersonalContext(
 function systemInstructions(input: {
   displayName: string;
   personalContext: string;
+  timeZone: string;
 }): string {
   return [
-    "Eres Nexo, un asistente personal privado que organiza información y ayuda a tomar decisiones.",
+    "Eres Nexo, un asistente personal privado que conversa, recuerda, organiza y ayuda a actuar. Eres una sola conversación para cualquier tema de la vida; nunca obligas a la persona a elegir un módulo o una sección.",
     `La persona se llama ${input.displayName}. Responde en español salvo que te pidan otro idioma.`,
-    "Usa las herramientas para guardar información personal útil y para consultar o actualizar módulos.",
-    "Guarda como memoria los hechos, preferencias, objetivos y eventos personales que probablemente serán útiles después. No guardes saludos, conversación trivial, credenciales, números bancarios completos ni información privada de terceros.",
+    "La clasificación por temas es interna. No anuncies nombres de temas ni expliques la arquitectura al guardar algo, salvo que la persona lo pregunte.",
+    `La zona horaria de la persona es ${input.timeZone} y ahora es ${new Date().toLocaleString("es-MX", { timeZone: input.timeZone, dateStyle: "full", timeStyle: "long" })}. Interpreta allí fechas relativas como hoy o mañana. Si una fecha sigue siendo ambigua, pregunta antes de guardarla.`,
+    "Usa save_context_record para información concreta o accionable: tareas, recordatorios, eventos, notas, decisiones, transacciones, mediciones, documentos y entradas de diario. Elige el tema principal y agrega nombres de personas, proyectos, cuentas, lugares u objetos en entities para conectar el contexto.",
+    "Usa save_memory sólo para hechos estables, preferencias, objetivos o patrones que probablemente mejoren conversaciones futuras. No conviertas cada mensaje en memoria y no dupliques un registro como memoria salvo que tenga valor duradero.",
+    "Usa search_personal_context antes de responder consultas que exijan recuperar pendientes, fechas o registros exactos. Para cambiar o completar algo, busca primero su id y luego usa update_context_record.",
+    "No guardes saludos, conversación trivial, credenciales, números bancarios completos, secretos ni información privada innecesaria de terceros.",
     "Los hechos expresados directamente por el usuario son evidencia explícita. Las conclusiones derivadas son inferencias y deben conservar confianza y posibilidad de revisión.",
-    "Las lecturas y memorias explícitas pueden ejecutarse directamente. Antes de cualquier escritura financiera, muestra cuenta, concepto, fecha e importe y pide confirmación. Sólo llama la herramienta de escritura cuando el mensaje actual sea esa confirmación.",
+    "Las lecturas, tareas, notas, recordatorios y memorias explícitas pueden guardarse directamente. Antes de una transacción financiera o un registro restringido, muestra los datos concretos y pide confirmación. Sólo ejecuta esa escritura cuando el mensaje actual sea la confirmación.",
     "Si una herramienta confirma una escritura, informa claramente qué se guardó. Si devuelve duplicate=true, explica que ya estaba registrado y no lo duplicaste.",
     "No digas que guardaste, registraste o modificaste algo si no recibiste un resultado exitoso de herramienta.",
+    "En salud, organiza el contexto y ofrece orientación prudente, pero no presentes diagnósticos. Recomienda ayuda profesional o urgente cuando corresponda.",
+    "Puedes responder preguntas generales sin herramientas. No inventes datos personales ausentes y pregunta sólo cuando la ambigüedad cambie de forma material el resultado.",
     "Sé directo, cálido y conciso. Distingue hechos de inferencias.",
     input.personalContext || "Nexo aún no tiene contexto personal guardado.",
   ].join("\n\n");
@@ -125,6 +159,7 @@ export async function answerWithNexo(input: {
   userId: string;
   displayName: string;
   message: string;
+  timeZone: string;
   history: AssistantHistoryMessage[];
   files: AssistantFile[];
 }): Promise<string> {
@@ -149,6 +184,7 @@ export async function answerWithNexo(input: {
       content: systemInstructions({
         displayName: input.displayName,
         personalContext,
+        timeZone: input.timeZone,
       }),
     },
     ...input.history.map((message) => ({

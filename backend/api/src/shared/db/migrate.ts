@@ -47,6 +47,34 @@ const statements = [
     )
   `,
   "CREATE INDEX IF NOT EXISTS nexo_assistant_messages_user_created_idx ON nexo_assistant_messages (nexo_user_id, created_at DESC)",
+  `
+    CREATE TABLE IF NOT EXISTS nexo_context_records (
+      id TEXT PRIMARY KEY,
+      nexo_user_id TEXT NOT NULL REFERENCES nexo_users(id) ON DELETE CASCADE,
+      topic TEXT NOT NULL,
+      record_kind TEXT NOT NULL,
+      content TEXT NOT NULL,
+      status TEXT NOT NULL DEFAULT 'active'
+        CHECK (status IN ('active', 'pending', 'completed', 'cancelled', 'archived')),
+      entities TEXT[] NOT NULL DEFAULT '{}',
+      sensitivity TEXT NOT NULL DEFAULT 'normal'
+        CHECK (sensitivity IN ('normal', 'sensitive', 'restricted')),
+      confidence NUMERIC(4, 3) NOT NULL DEFAULT 1
+        CHECK (confidence BETWEEN 0 AND 1),
+      source TEXT NOT NULL DEFAULT 'chat'
+        CHECK (source IN ('chat', 'file', 'derived', 'manual')),
+      fingerprint TEXT NOT NULL,
+      occurred_at TIMESTAMPTZ,
+      due_at TIMESTAMPTZ,
+      created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+      updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+      UNIQUE (nexo_user_id, fingerprint)
+    )
+  `,
+  "CREATE INDEX IF NOT EXISTS nexo_context_records_user_updated_idx ON nexo_context_records (nexo_user_id, updated_at DESC)",
+  "CREATE INDEX IF NOT EXISTS nexo_context_records_user_topic_idx ON nexo_context_records (nexo_user_id, topic, status)",
+  "CREATE INDEX IF NOT EXISTS nexo_context_records_user_due_idx ON nexo_context_records (nexo_user_id, due_at) WHERE due_at IS NOT NULL",
+  "CREATE INDEX IF NOT EXISTS nexo_context_records_entities_idx ON nexo_context_records USING GIN (entities)",
   "ALTER TABLE nexo_users ADD COLUMN IF NOT EXISTS password_hash TEXT",
   "ALTER TABLE nexo_users ADD COLUMN IF NOT EXISTS password_salt TEXT",
   "CREATE INDEX IF NOT EXISTS nexo_auth_sessions_user_idx ON nexo_auth_sessions (user_id)",
@@ -361,6 +389,7 @@ const assistantFirstResetId = "20260729_assistant_first_reset";
 const resetTables = [
   "nexo_assistant_actions",
   "nexo_assistant_messages",
+  "nexo_context_records",
   "nexo_bet_selections",
   "nexo_bets",
   "nexo_bet_settings",

@@ -91,6 +91,16 @@ export function normalizeAssistantMessage(value: unknown): string | null {
   return message.length > 0 && message.length <= 8_000 ? message : null;
 }
 
+export function normalizeAssistantTimeZone(value: unknown): string {
+  if (typeof value !== "string" || value.length > 100) return "UTC";
+  try {
+    new Intl.DateTimeFormat("es-MX", { timeZone: value }).format();
+    return value;
+  } catch {
+    return "UTC";
+  }
+}
+
 export function normalizeAssistantHistory(
   value: unknown,
 ): AssistantHistoryMessage[] {

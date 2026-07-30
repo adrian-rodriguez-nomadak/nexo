@@ -26,13 +26,17 @@ type BrowserSession = {
 
 const SESSION_STORAGE_KEY = "nexo.auth.session.v1";
 
-const productModules = [
-  ["$", "Finanzas", "Cuentas, movimientos y decisiones con contexto."],
-  ["23", "Eventos", "Tu agenda y tus recordatorios en un solo lugar."],
-  ["N", "Notas", "Ideas organizadas para encontrarlas cuando importan."],
-  ["C", "Comidas", "Alimentos, macros y costos conectados."],
-  ["+", "Salud", "Tu perfil y tus señales personales a través del tiempo."],
-  ["KG", "Gimnasio", "Sesiones, ejercicios y progreso medible."],
+const lifeTopics = [
+  "Agenda",
+  "Pendientes",
+  "Finanzas",
+  "Personas",
+  "Salud",
+  "Proyectos",
+  "Hábitos",
+  "Ideas",
+  "Viajes",
+  "Hogar",
 ] as const;
 
 function saveBrowserSession(session: BrowserSession): void {
@@ -94,15 +98,15 @@ function Landing() {
       <section className="landing-hero">
         <div className="landing-copy">
           <span className="landing-kicker">
-            Tu asistente personal
+            Una conversación para todo
           </span>
           <h1>
-            Pide lo que necesitas.
-            <em> Nexo lo conecta.</em>
+            Cuéntame tu vida.
+            <em> Yo conecto los puntos.</em>
           </h1>
           <p>
-            Habla con un asistente que entiende tus documentos, tus registros y
-            el contexto que tú decidas conservar.
+            Nexo entiende lo que dices, recuerda lo importante y te ayuda a
+            convertirlo en decisiones, recordatorios y acciones.
           </p>
           <div className="landing-actions">
             <Link className="landing-primary-action" href="/register">
@@ -114,75 +118,76 @@ function Landing() {
             </Link>
           </div>
           <small>
-            Sin costo para comenzar · Tus registros son privados
+            Un solo chat · Memoria bajo tu control · Privado por diseño
           </small>
         </div>
 
-        <div className="landing-preview" aria-label="Vista previa de Nexo">
+        <div className="landing-preview landing-chat-preview" aria-label="Vista previa de una conversación con Nexo">
           <div className="preview-topbar">
             <span>
               <i />
-              Hoy
+              Nexo
             </span>
-            <b>AR</b>
+            <b>Privado</b>
           </div>
-          <div className="preview-balance">
-            <span>Tu día, conectado.</span>
-            <strong>7 módulos</strong>
-            <p>Un solo contexto para tomar mejores decisiones.</p>
+          <div className="preview-chat-thread">
+            <div className="preview-chat-message preview-chat-user">
+              Mañana recuérdame comprar alimento para Milo y aparta $800 del
+              presupuesto de la casa.
+            </div>
+            <div className="preview-chat-message preview-chat-nexo">
+              <span>N</span>
+              <p>
+                Listo. Te lo recordaré mañana. También relacioné el pendiente
+                con Milo, el hogar y tu presupuesto mensual.
+              </p>
+            </div>
+            <div className="preview-chat-message preview-chat-user">
+              ¿Qué más tengo pendiente esta semana?
+            </div>
+            <div className="preview-chat-message preview-chat-nexo">
+              <span>N</span>
+              <p>
+                Tienes la cita del jueves y entregar la propuesta a Ana el
+                viernes. ¿Quieres que prepare tu semana?
+              </p>
+            </div>
           </div>
-          <div className="preview-grid">
-            <article>
-              <span style={{ color: "#78d6a3" }}>$</span>
-              <div>
-                <small>Finanzas</small>
-                <strong>$24,580</strong>
-              </div>
-            </article>
-            <article>
-              <span style={{ color: "#ff7f96" }}>+</span>
-              <div>
-                <small>Salud</small>
-                <strong>7.5 h</strong>
-              </div>
-            </article>
-            <article>
-              <span style={{ color: "#75d8e8" }}>KG</span>
-              <div>
-                <small>Gimnasio</small>
-                <strong>4 sesiones</strong>
-              </div>
-            </article>
-          </div>
-          <div className="preview-activity">
-            <span>Actividad reciente</span>
-            <p>
-              <i style={{ background: "#ff9e75" }}>C</i>
-              Comida registrada
-              <time>14:30</time>
-            </p>
-            <p>
-              <i style={{ background: "#8cb4ff" }}>23</i>
-              Entrenamiento mañana
-              <time>18:00</time>
-            </p>
+          <div className="preview-chat-composer">
+            <span>Escribe lo que tienes en mente…</span>
+            <b>↑</b>
           </div>
         </div>
       </section>
 
-      <section className="landing-modules">
+      <section className="landing-modules landing-conversation-story">
         <div className="landing-section-heading">
-          <span>Una vida no vive en silos</span>
-          <h2>Cada módulo funciona solo. Juntos cuentan tu historia.</h2>
+          <span>Sin menús. Sin clasificar antes de hablar.</span>
+          <h2>Una sola conversación entiende todos tus temas.</h2>
+          <p>
+            Tú hablas con naturalidad. Nexo identifica qué ocurrió, cuándo,
+            con quién se relaciona y qué debería suceder después.
+          </p>
         </div>
-        <div className="landing-module-grid">
-          {productModules.map(([mark, name, description]) => (
-            <article key={name}>
-              <span>{mark}</span>
-              <h3>{name}</h3>
-              <p>{description}</p>
-            </article>
-          ))}
+        <div className="landing-topic-cloud" aria-label="Temas que Nexo puede conectar">
+          {lifeTopics.map((topic) => <span key={topic}>{topic}</span>)}
+        </div>
+        <div className="landing-flow">
+          <article>
+            <span>01</span>
+            <h3>Dilo</h3>
+            <p>Escribe o adjunta lo que acaba de pasar.</p>
+          </article>
+          <article>
+            <span>02</span>
+            <h3>Nexo lo entiende</h3>
+            <p>Detecta intención, fecha, personas y relaciones.</p>
+          </article>
+          <article>
+            <span>03</span>
+            <h3>Úsalo después</h3>
+            <p>Pregunta, actualiza o actúa sin volver a explicar el contexto.</p>
+          </article>
         </div>
       </section>
 
@@ -192,8 +197,8 @@ function Landing() {
           <span>Privado por diseño</span>
           <h2>Tu información te pertenece.</h2>
           <p>
-            Cada cuenta mantiene sus datos separados. Tú decides qué registrar
-            y puedes eliminarlo cuando quieras.
+            Cada conversación está aislada por cuenta. Nexo conserva sólo el
+            contexto útil que tú compartes y distingue hechos de inferencias.
           </p>
         </div>
         <Link href="/register">Empezar ahora →</Link>
@@ -201,7 +206,7 @@ function Landing() {
 
       <footer className="public-footer">
         <Brand />
-        <span>Dinero, tiempo y bienestar conectados.</span>
+        <span>Todo tu contexto. Una conversación.</span>
         <small>© {new Date().getFullYear()} Nexo</small>
       </footer>
     </main>
@@ -285,14 +290,13 @@ function AuthForm({
           </h1>
           <p>
             {isRegister
-              ? "Crea un espacio privado para conectar tus finanzas, agenda, ideas y bienestar."
-              : "Tus registros, decisiones y progreso siguen donde los dejaste."}
+              ? "Crea un chat privado que aprende de lo que decides contarle."
+              : "Tu conversación y el contexto que decidiste conservar siguen aquí."}
           </p>
         </div>
         <blockquote>
           <span>“</span>
-          La claridad aparece cuando dejas de ver cada parte de tu vida por
-          separado.
+          No tienes que organizar tu vida antes de pedir ayuda.
         </blockquote>
       </section>
 

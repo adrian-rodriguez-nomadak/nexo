@@ -2,18 +2,28 @@ import { createHash, randomUUID } from "node:crypto";
 
 import { pool, query } from "../../shared/db/database.js";
 import {
-  createCapture,
-} from "../captures/captures.service.js";
+  createContextRecord,
+  searchContextRecords,
+  updateContextRecord,
+} from "../context/context.service.js";
 import {
-  isModuleKey,
-  type ModuleKey,
-} from "../captures/captures.validation.js";
+  contextRecordKinds,
+  contextRecordStatuses,
+  contextTopics,
+  isContextRecordKind,
+  isContextRecordStatus,
+  isContextTopic,
+  normalizeContextContent,
+  normalizeContextDate,
+  normalizeContextEntities,
+  normalizeContextSearch,
+  type ContextTopic,
+} from "../context/context.validation.js";
 import { remember } from "../memories/memories.service.js";
 import {
   isMemoryKind,
   isMemorySensitivity,
 } from "../memories/memories.validation.js";
-import { isObserverSubmodule } from "../observer/observer.scopes.js";
 
 type ToolCall = {
   call_id: string;
@@ -42,40 +52,44 @@ type StatementInput = {
 export const assistantTools = [
   {
     type: "function",
-    name: "save_personal_record",
+    name: "save_context_record",
     description:
-      "Guarda un registro factual en el área adecuada de Nexo a partir de texto o evidencia de un archivo. Úsala para información útil que no requiera una operación financiera especializada.",
+      "Guarda información accionable de cualquier tema de la vida: tareas, eventos, notas, decisiones, transacciones, mediciones, documentos o entradas de diario. Usa un solo tema principal y conecta personas u objetos mediante entities.",
     strict: true,
     parameters: {
       type: "object",
       properties: {
-        module: {
+        topic: {
           type: "string",
-          enum: [
-            "finances",
-            "events",
-            "notes",
-            "bets",
-            "meals",
-            "health",
-            "gym",
+          enum: contextTopics,
+        },
+        kind: {
+          type: "string",
+          enum: contextRecordKinds,
+        },
+        content: { type: "string", minLength: 2, maxLength: 2_000 },
+        occurredAt: {
+          anyOf: [
+            { type: "string", description: "Fecha y hora ISO 8601" },
+            { type: "null" },
           ],
         },
-        submodule: {
-          type: "string",
-          enum: [
-            "accounts", "transactions", "transfers", "balances",
-            "appointments", "reminders", "reservations", "deadlines",
-            "ideas", "tasks", "references", "lists",
-            "tickets", "results", "bankroll", "limits",
-            "logs", "nutrition", "recipes", "costs",
-            "profile", "sleep", "hydration", "vitals", "symptoms",
-            "workouts", "strength", "cardio", "mobility",
+        dueAt: {
+          anyOf: [
+            { type: "string", description: "Fecha límite ISO 8601" },
+            { type: "null" },
           ],
         },
-        content: { type: "string", minLength: 2, maxLength: 500 },
+        entities: {
+          type: "array",
+          items: { type: "string", minLength: 2, maxLength: 100 },
+          maxItems: 12,
+        },
         confidence: { type: "number", minimum: 0, maximum: 1 },
-        remember: { type: "boolean" },
+        sensitivity: {
+          type: "string",
+          enum: ["normal", "sensitive", "restricted"],
+        },
         evidence: {
           type: "string",
           enum: ["explicit", "inferred"],
@@ -83,11 +97,14 @@ export const assistantTools = [
       },
       additionalProperties: false,
       required: [
-        "module",
-        "submodule",
+        "topic",
+        "kind",
         "content",
+        "occurredAt",
+        "dueAt",
+        "entities",
         "confidence",
-        "remember",
+        "sensitivity",
         "evidence",
       ],
     },
@@ -106,19 +123,11 @@ export const assistantTools = [
           type: "string",
           enum: ["fact", "event", "preference", "goal", "pattern"],
         },
-        module: {
+        topic: {
           anyOf: [
             {
               type: "string",
-              enum: [
-                "finances",
-                "events",
-                "notes",
-                "bets",
-                "meals",
-                "health",
-                "gym",
-              ],
+              enum: contextTopics,
             },
             { type: "null" },
           ],
@@ -137,11 +146,76 @@ export const assistantTools = [
       required: [
         "content",
         "kind",
-        "module",
+        "topic",
         "confidence",
         "sensitivity",
         "evidence",
       ],
+    },
+  },
+  {
+    type: "function",
+    name: "search_personal_context",
+    description:
+      "Busca registros personales cuando el usuario pregunta qué tiene pendiente, qué ocurrió, qué sabe Nexo sobre un tema o necesita recuperar información exacta.",
+    strict: true,
+    parameters: {
+      type: "object",
+      properties: {
+        query: {
+          anyOf: [
+            { type: "string", minLength: 2, maxLength: 300 },
+            { type: "null" },
+          ],
+        },
+        topics: {
+          type: "array",
+          items: { type: "string", enum: contextTopics },
+          maxItems: 6,
+        },
+        statuses: {
+          type: "array",
+          items: { type: "string", enum: contextRecordStatuses },
+          maxItems: 5,
+        },
+        limit: { type: "integer", minimum: 1, maximum: 50 },
+      },
+      additionalProperties: false,
+      required: ["query", "topics", "statuses", "limit"],
+    },
+  },
+  {
+    type: "function",
+    name: "update_context_record",
+    description:
+      "Actualiza un registro recuperado previamente, por ejemplo para completar una tarea, cancelar un recordatorio, cambiar una fecha o corregir su texto. Requiere el id exacto de search_personal_context.",
+    strict: true,
+    parameters: {
+      type: "object",
+      properties: {
+        id: { type: "string", minLength: 1, maxLength: 100 },
+        content: {
+          anyOf: [
+            { type: "string", minLength: 2, maxLength: 2_000 },
+            { type: "null" },
+          ],
+        },
+        status: {
+          anyOf: [
+            { type: "string", enum: contextRecordStatuses },
+            { type: "null" },
+          ],
+        },
+        dueAt: {
+          anyOf: [
+            { type: "string", description: "Nueva fecha ISO 8601" },
+            { type: "null" },
+          ],
+        },
+        changeDueAt: { type: "boolean" },
+      },
+      additionalProperties: false,
+      required: ["id", "content", "status", "dueAt", "changeDueAt"],
     },
   },
   {
@@ -359,7 +433,7 @@ export async function executeAssistantTool(input: {
   call: ToolCall;
   writeConfirmed: boolean;
 }): Promise<Record<string, unknown>> {
-  if (input.call.name === "save_personal_record") {
+  if (input.call.name === "save_context_record") {
     let args: unknown;
     try {
       args = JSON.parse(input.call.arguments);
@@ -370,49 +444,52 @@ export async function executeAssistantTool(input: {
       return { ok: false, error: "INVALID_RECORD" };
     }
     const value = args as Record<string, unknown>;
-    const content = typeof value.content === "string"
-      ? value.content.trim().replace(/\s+/g, " ")
-      : "";
+    const content = normalizeContextContent(value.content);
+    const occurredAt = normalizeContextDate(value.occurredAt);
+    const dueAt = normalizeContextDate(value.dueAt);
+    const entities = normalizeContextEntities(value.entities);
     if (
-      !isModuleKey(value.module) ||
-      !isObserverSubmodule(value.module, value.submodule) ||
-      content.length < 2 ||
-      content.length > 500 ||
+      !isContextTopic(value.topic) ||
+      !isContextRecordKind(value.kind) ||
+      !content ||
+      occurredAt === undefined ||
+      dueAt === undefined ||
+      !entities ||
       typeof value.confidence !== "number" ||
       value.confidence < 0 ||
       value.confidence > 1 ||
-      typeof value.remember !== "boolean" ||
+      !isMemorySensitivity(value.sensitivity) ||
       (value.evidence !== "explicit" && value.evidence !== "inferred")
     ) {
       return { ok: false, error: "INVALID_RECORD" };
     }
-    const capture = await createCapture({
-      userId: input.userId,
-      module: value.module,
-      submodule: value.submodule,
-      content,
-    });
-    if (value.remember) {
-      await remember({
-        userId: input.userId,
-        content,
-        kind: "fact",
-        module: value.module,
-        source: value.evidence === "explicit" ? "manual" : "derived",
-        sourceRecordIds: [capture.id],
-        confidence: value.confidence,
-        sensitivity:
-          value.module === "health" || value.module === "finances"
-            ? "sensitive"
-            : "normal",
-        userConfirmed: value.evidence === "explicit",
-      });
+    const requiresConfirmation =
+      (value.topic === "finances" && value.kind === "transaction") ||
+      value.sensitivity === "restricted";
+    if (requiresConfirmation && !input.writeConfirmed) {
+      return {
+        ok: false,
+        error: "CONFIRMATION_REQUIRED",
+        instruction:
+          "Resume el registro sensible o financiero con sus datos concretos y pide confirmación explícita. No afirmes que se guardó.",
+      };
     }
+    const result = await createContextRecord({
+      userId: input.userId,
+      topic: value.topic,
+      kind: value.kind,
+      content,
+      entities,
+      sensitivity: value.sensitivity,
+      confidence: value.confidence,
+      source: value.evidence === "explicit" ? "chat" : "derived",
+      occurredAt,
+      dueAt,
+    });
     return {
       ok: true,
-      recordId: capture.id,
-      module: capture.module,
-      submodule: capture.submodule,
+      duplicate: result.duplicate,
+      record: result.record,
     };
   }
   if (input.call.name === "save_memory") {
@@ -429,16 +506,16 @@ export async function executeAssistantTool(input: {
     const content = typeof value.content === "string"
       ? value.content.trim().replace(/\s+/g, " ")
       : "";
-    const module: ModuleKey | null = value.module === null
+    const topic: ContextTopic | null = value.topic === null
       ? null
-      : isModuleKey(value.module)
-        ? value.module
+      : isContextTopic(value.topic)
+        ? value.topic
         : null;
     if (
       content.length < 2 ||
       content.length > 500 ||
       !isMemoryKind(value.kind) ||
-      (value.module !== null && module === null) ||
+      (value.topic !== null && topic === null) ||
       typeof value.confidence !== "number" ||
       value.confidence < 0 ||
       value.confidence > 1 ||
@@ -451,7 +528,7 @@ export async function executeAssistantTool(input: {
       userId: input.userId,
       content,
       kind: value.kind,
-      module,
+      module: topic,
       source: value.evidence === "explicit" ? "manual" : "derived",
       sourceRecordIds: [],
       confidence: value.confidence,
@@ -463,6 +540,95 @@ export async function executeAssistantTool(input: {
       memoryId: memory.id,
       confirmed: memory.userConfirmed,
     };
+  }
+  if (input.call.name === "search_personal_context") {
+    let args: unknown;
+    try {
+      args = JSON.parse(input.call.arguments);
+    } catch {
+      return { ok: false, error: "INVALID_TOOL_ARGUMENTS" };
+    }
+    if (typeof args !== "object" || args === null) {
+      return { ok: false, error: "INVALID_SEARCH" };
+    }
+    const value = args as Record<string, unknown>;
+    const search = value.query === null
+      ? undefined
+      : normalizeContextSearch(value.query) ?? undefined;
+    const topics = Array.isArray(value.topics)
+      ? value.topics.filter(isContextTopic)
+      : [];
+    const statuses = Array.isArray(value.statuses)
+      ? value.statuses.filter(isContextRecordStatus)
+      : [];
+    const limit = Number(value.limit);
+    if (
+      (value.query !== null && !search) ||
+      !Array.isArray(value.topics) ||
+      topics.length !== value.topics.length ||
+      !Array.isArray(value.statuses) ||
+      statuses.length !== value.statuses.length ||
+      !Number.isInteger(limit) ||
+      limit < 1 ||
+      limit > 50
+    ) {
+      return { ok: false, error: "INVALID_SEARCH" };
+    }
+    return {
+      ok: true,
+      records: await searchContextRecords({
+        userId: input.userId,
+        search,
+        topics: topics.length ? topics : undefined,
+        statuses: statuses.length ? statuses : undefined,
+        limit,
+      }),
+    };
+  }
+  if (input.call.name === "update_context_record") {
+    let args: unknown;
+    try {
+      args = JSON.parse(input.call.arguments);
+    } catch {
+      return { ok: false, error: "INVALID_TOOL_ARGUMENTS" };
+    }
+    if (typeof args !== "object" || args === null) {
+      return { ok: false, error: "INVALID_UPDATE" };
+    }
+    const value = args as Record<string, unknown>;
+    const id = typeof value.id === "string" ? value.id : "";
+    const content = value.content === null
+      ? undefined
+      : normalizeContextContent(value.content) ?? undefined;
+    const status = value.status === null
+      ? undefined
+      : isContextRecordStatus(value.status)
+        ? value.status
+        : undefined;
+    const dueAt = value.changeDueAt
+      ? normalizeContextDate(value.dueAt)
+      : undefined;
+    if (
+      !id ||
+      id.length > 100 ||
+      (value.content !== null && !content) ||
+      (value.status !== null && !status) ||
+      typeof value.changeDueAt !== "boolean" ||
+      (value.changeDueAt && dueAt === undefined) ||
+      (!content && !status && !value.changeDueAt)
+    ) {
+      return { ok: false, error: "INVALID_UPDATE" };
+    }
+    const record = await updateContextRecord({
+      id,
+      userId: input.userId,
+      content,
+      status,
+      dueAt,
+    });
+    return record
+      ? { ok: true, record }
+      : { ok: false, error: "RECORD_NOT_FOUND" };
   }
   if (input.call.name === "list_finance_accounts") {
     return listFinanceAccounts(input.userId);

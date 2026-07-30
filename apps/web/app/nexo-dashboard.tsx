@@ -42,16 +42,21 @@ export function NexoDashboard({
     <main className="chat-only-app">
       <header className="chat-only-bar">
         <div className="chat-only-brand">
-          <span>N</span>
+          <span aria-hidden="true">N</span>
           <div>
             <strong>Nexo</strong>
-            <small>Tu memoria personal</small>
+            <small>Todo tu contexto, una conversación</small>
           </div>
         </div>
         <div className="chat-only-account">
-          <span className="chat-only-private">⌁ Privado</span>
+          <span className="chat-only-private"><i /> Privado</span>
           <span className="chat-only-user">{userInitials(user)}</span>
-          <button onClick={() => void signOut()} type="button">
+          <button
+            aria-label="Cerrar sesión"
+            onClick={() => void signOut()}
+            title="Cerrar sesión"
+            type="button"
+          >
             Salir
           </button>
         </div>

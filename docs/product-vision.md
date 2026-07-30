@@ -2,72 +2,112 @@
 
 ## Promesa
 
-Nexo ayuda a comprender cómo las decisiones diarias afectan el dinero, el
-tiempo y el bienestar. Su valor no está en acumular módulos, sino en conectar
-la información que vive dentro de ellos.
+Nexo es una sola conversación para organizar la vida. La persona habla con
+naturalidad; Nexo entiende lo que ocurrió, lo relaciona con el contexto
+existente, conserva lo que será útil y ayuda a actuar.
+
+> Cuéntale cualquier cosa a Nexo. Él la entiende, la conecta, la recuerda y te
+> ayuda a actuar.
+
+Finanzas, agenda, tareas, personas, salud, proyectos, hábitos, hogar, viajes e
+ideas son temas que el asistente puede reconocer. No son secciones que el
+usuario deba elegir antes de escribir.
+
+## Experiencia principal
+
+La aplicación es el chat.
+
+1. La persona escribe o adjunta evidencia.
+2. Nexo identifica intención, tema, fecha y entidades relacionadas.
+3. Separa conversación, registro concreto y memoria duradera.
+4. Ejecuta lecturas o escrituras permitidas.
+5. Explica qué hizo y conserva el contexto para recuperarlo después.
+
+Un mensaje puede atravesar varios temas sin que la interfaz cambie:
+
+> “El viernes recuérdame pagarle a Carlos los $500 del hotel.”
+
+Nexo relaciona un recordatorio, una fecha, una persona, una obligación
+financiera y un viaje dentro del mismo contexto.
+
+## Temas comprendidos
+
+- finanzas;
+- calendario y tiempo;
+- tareas y pendientes;
+- personas y relaciones;
+- notas e ideas;
+- proyectos;
+- salud y bienestar;
+- hábitos y rutinas;
+- metas;
+- trabajo y aprendizaje;
+- hogar y compras;
+- viajes y movilidad;
+- alimentación;
+- entretenimiento;
+- documentos;
+- vehículos;
+- diario personal.
+
+Esta taxonomía sirve para organizar internamente, recuperar información y
+aplicar políticas. No determina la navegación del producto.
+
+## Modelo de contexto
+
+Nexo distingue tres capas:
+
+### Conversación
+
+El historial conserva el intercambio visible para mantener continuidad
+inmediata.
+
+### Registros
+
+Representan cosas concretas: tareas, eventos, notas, transacciones,
+recordatorios, mediciones, decisiones o documentos. Cada registro puede tener:
+
+- tema principal;
+- tipo;
+- contenido;
+- estado;
+- fecha de ocurrencia o vencimiento;
+- personas, lugares, proyectos u objetos relacionados;
+- sensibilidad;
+- procedencia y confianza.
+
+### Memorias
+
+Representan contexto duradero como hechos, preferencias, objetivos y patrones.
+Una memoria conserva procedencia, confianza, sensibilidad, vigencia,
+confirmación y deduplicación. Una inferencia nunca se presenta como un hecho
+confirmado.
 
 ## Principios
 
-1. Capturar debe tomar menos tiempo que ordenar.
-2. Nexo no inventa conclusiones cuando aún no existen datos suficientes.
-3. Cada módulo funciona por sí solo, pero mejora al conectarse con otros.
-4. Los datos sensibles son privados por diseño.
-5. El módulo de apuestas prioriza límites, riesgo y juego responsable.
+1. Hablar debe ser más fácil que clasificar.
+2. La interfaz no expone la arquitectura interna.
+3. Nexo no inventa contexto personal ausente.
+4. Cada escritura se confirma con el resultado real de una herramienta.
+5. Las transacciones financieras y los registros restringidos requieren
+   confirmación explícita.
+6. La memoria es selectiva: no todo mensaje merece conservarse.
+7. Los datos sensibles son privados por diseño.
+8. En salud, Nexo organiza y orienta con prudencia; no diagnostica.
+9. La persona puede revisar, corregir y eliminar su información.
 
-## Conexiones funcionales
+## Arquitectura de transición
 
-- **Apuestas × Finanzas:** el stake se registra como gasto; una apuesta ganada
-  registra el cobro completo como ingreso y una apuesta nula devuelve el stake.
-  Todo boleto exige una cuenta y contiene una o más selecciones. Puede
-  capturarse manualmente o importarse desde una imagen para revisión.
-- **Comidas × Finanzas:** el costo opcional de una comida se registra como
-  gasto en la cuenta seleccionada y mantiene ambos módulos sincronizados.
-- **Catálogos abiertos:** Comidas consulta Open Food Facts con wger como
-  respaldo y Gimnasio consulta wger bajo demanda; ambos flujos conservan
-  captura manual.
-- **Salud × hábitos:** Salud conserva un perfil estable y una línea de tiempo
-  de señales personales. El IMC mostrado es una estimación informativa; Nexo
-  organiza contexto y no presenta diagnósticos.
-- **Bienvenida y progreso:** Inicio ayuda a completar el punto de partida y
-  Progreso agrega periodos de 7 o 30 días para hacer visibles la constancia,
-  las tendencias y las conexiones entre módulos.
+El almacén contextual unificado es el nuevo núcleo. Las rutas especializadas
+existentes se conservan temporalmente para compatibilidad y migración de datos,
+pero la web ya no depende de dashboards ni formularios por módulo. Las nuevas
+capacidades se exponen primero como herramientas del asistente.
 
-## Primer recorrido
+## Siguiente evolución
 
-1. La persona conoce la propuesta desde el inicio público.
-2. Crea su cuenta o inicia sesión con correo y contraseña.
-3. Abre Inicio y elige el módulo relacionado con lo que quiere registrar.
-4. Usa el formulario especializado para guardar información completa.
-5. Inicio resume su contexto y Progreso presenta relaciones y tendencias.
-
-## Orden de construcción
-
-1. Shell, bienvenida y navegación.
-2. Persistencia local.
-3. Finanzas, eventos y notas. **Base web funcional.**
-4. Comidas, salud y gimnasio. **Base web funcional.**
-5. Apuestas dependientes de Finanzas, con boletos y límites. **Base web funcional.**
-6. Backend, cuenta y sincronización.
-7. Clasificación asistida y conexiones inteligentes.
-
-## Memoria personal
-
-Nexo separa los registros originales de las memorias e inferencias derivadas.
-Cada memoria conserva su fuente, registros de origen, confianza, sensibilidad,
-vigencia y confirmación. Las detecciones repetidas actualizan la memoria
-existente en vez de multiplicar recuerdos equivalentes. El asistente futuro
-podrá usar este contexto sin presentar una inferencia como si fuera un hecho.
-
-## Asistente como entrada principal
-
-El chat es la entrada principal de Nexo. Texto, fotos y archivos se convierten
-primero en evidencia normalizada; después una capa de políticas decide qué es
-un registro de módulo, qué merece memoria y qué necesita confirmación.
-
-- La IA propone intención, estructura y herramientas.
-- El backend valida permisos, importes, fechas, sensibilidad y duplicados.
-- Las lecturas y memorias explícitas pueden resolverse directamente.
-- Las escrituras sensibles o financieras requieren confirmación.
-- OpenAI se reserva para visión, PDF y análisis complejo.
-- La conversación cotidiana y el uso de herramientas pueden usar un modelo
-  económico o abierto intercambiable.
+1. Confirmar el modelo contextual y migrar registros heredados.
+2. Añadir relaciones explícitas entre entidades.
+3. Incorporar recordatorios ejecutables y calendario externo.
+4. Permitir revisión y borrado de memoria desde la propia conversación.
+5. Añadir voz como entrada principal opcional.
+6. Sincronizar la aplicación móvil con el mismo chat y contexto.

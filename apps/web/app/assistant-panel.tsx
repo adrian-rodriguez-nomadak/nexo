@@ -25,9 +25,10 @@ type EncodedFile = {
 };
 
 const starterQuestions = [
-  "¿Qué recuerdas de mí?",
-  "Guarda que quiero correr un maratón",
-  "Conecta mis hábitos con mis objetivos",
+  "Organiza lo que tengo pendiente esta semana",
+  "Recuerda que quiero correr un maratón",
+  "Gasté $300 en Uber desde mi cuenta BBVA",
+  "Ayúdame a aterrizar una idea nueva",
 ];
 
 const acceptedFiles = [
@@ -83,9 +84,11 @@ export function AssistantPanel({
   const [draft, setDraft] = useState("");
   const [files, setFiles] = useState<EncodedFile[]>([]);
   const [messages, setMessages] = useState<ChatMessage[]>([]);
+  const [isRestoringHistory, setIsRestoringHistory] = useState(true);
   const [isSending, setIsSending] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const fileInput = useRef<HTMLInputElement>(null);
+  const threadEnd = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
     let active = true;
@@ -112,11 +115,21 @@ export function AssistantPanel({
       })
       .catch(() => {
         // El chat sigue disponible aunque falle la restauración del historial.
+      })
+      .finally(() => {
+        if (active) setIsRestoringHistory(false);
       });
     return () => {
       active = false;
     };
   }, [sessionToken]);
+
+  useEffect(() => {
+    threadEnd.current?.scrollIntoView({
+      behavior: messages.length > 1 ? "smooth" : "auto",
+      block: "end",
+    });
+  }, [messages, isSending]);
 
   async function chooseFiles(event: ChangeEvent<HTMLInputElement>) {
     const selected = Array.from(event.target.files ?? []);
@@ -171,20 +184,25 @@ export function AssistantPanel({
         body: JSON.stringify({
           message,
           files: attachedFiles,
+          timeZone: Intl.DateTimeFormat().resolvedOptions().timeZone,
           history: priorMessages.slice(-10).map(({ role, content }) => ({
             role,
             content,
           })),
         }),
       });
-      const data = (await response.json()) as { answer?: string; error?: string };
+      const data = (await response.json()) as {
+        answer?: string;
+        error?: string;
+        assistantMessage?: { id?: string };
+      };
       if (!response.ok || !data.answer) {
         throw new Error(data.error ?? "Nexo no pudo responder.");
       }
       setMessages((current) => [
         ...current,
         {
-          id: crypto.randomUUID(),
+          id: data.assistantMessage?.id ?? crypto.randomUUID(),
           role: "assistant",
           content: data.answer!,
         },
@@ -204,26 +222,43 @@ export function AssistantPanel({
       <header className="assistant-live-header">
         <span className="assistant-presence" aria-hidden="true">N</span>
         <div>
-          <span className="eyebrow">Una conversación para todo</span>
-          <h2>Hola, {displayName.split(/\s+/)[0]}. ¿Qué tienes en mente?</h2>
-          <p>Habla con Nexo para recordar, consultar, organizar o cambiar cualquier cosa.</p>
+          <span className="eyebrow">Tu asistente personal</span>
+          <h2>
+            {messages.length
+              ? "¿Qué hacemos ahora?"
+              : `Hola, ${displayName.split(/\s+/)[0]}. ¿Qué tienes en mente?`}
+          </h2>
+          <p>Escribe con naturalidad. Nexo se encarga de conectar el contexto.</p>
         </div>
       </header>
 
       <section className="assistant-conversation assistant-conversation-live">
         <div className="assistant-thread" aria-live="polite">
-          {messages.length === 0 ? (
+          {isRestoringHistory ? (
+            <div className="assistant-restoring" role="status">
+              <i /><i /><i />
+              <span>Recuperando tu conversación</span>
+            </div>
+          ) : messages.length === 0 ? (
             <div className="assistant-empty-live">
-              <span>✦</span>
-              <h3>Háblame. Yo conecto los puntos.</h3>
+              <div className="assistant-empty-orbit" aria-hidden="true">
+                <i /><i /><i />
+                <span>N</span>
+              </div>
+              <h3>No necesitas ordenar nada primero.</h3>
               <p>
-                Cuéntame decisiones, metas, ideas o momentos. Nexo convierte lo
-                importante en memoria y lo recupera cuando vuelve a ser útil.
+                Cuéntame qué pasó, qué necesitas o qué quieres recordar. Puedo
+                relacionar personas, fechas, dinero, proyectos, hábitos e ideas
+                dentro de la misma conversación.
               </p>
               <div className="assistant-capabilities">
-                <span>Recuerda hechos</span>
-                <span>Conecta patrones</span>
-                <span>Respeta límites</span>
+                <span>Entiende</span>
+                <b>→</b>
+                <span>Conecta</span>
+                <b>→</b>
+                <span>Recuerda</span>
+                <b>→</b>
+                <span>Actúa</span>
               </div>
             </div>
           ) : (
@@ -250,9 +285,10 @@ export function AssistantPanel({
               <div className="assistant-thinking"><i /><i /><i /></div>
             </article>
           ) : null}
+          <div ref={threadEnd} />
         </div>
 
-        {messages.length === 0 ? (
+        {!isRestoringHistory && messages.length === 0 ? (
           <div className="assistant-starters">
             {starterQuestions.map((question) => (
               <button key={question} onClick={() => setDraft(question)} type="button">
@@ -296,7 +332,7 @@ export function AssistantPanel({
             onClick={() => fileInput.current?.click()}
             title="Adjuntar archivos"
             type="button"
-          >＋</button>
+          ><span aria-hidden="true">＋</span></button>
           <textarea
             aria-label="Mensaje para Nexo"
             onChange={(event) => setDraft(event.target.value)}
@@ -306,7 +342,7 @@ export function AssistantPanel({
                 void send();
               }
             }}
-            placeholder="Pídele algo a Nexo…"
+            placeholder="Cuéntale algo a Nexo…"
             rows={2}
             value={draft}
           />
@@ -315,10 +351,10 @@ export function AssistantPanel({
             className="assistant-send"
             disabled={isSending || (!draft.trim() && files.length === 0)}
             type="submit"
-          >↑</button>
+          ><span aria-hidden="true">↑</span></button>
         </form>
         <small className="assistant-file-help">
-          La conversación usa sólo recuerdos relevantes · Tú controlas la memoria
+          Nexo puede equivocarse. Confirma los datos importantes antes de actuar.
         </small>
       </section>
     </section>

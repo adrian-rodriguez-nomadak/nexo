@@ -1,7 +1,7 @@
 import { createHash, randomUUID } from "node:crypto";
 
 import { query } from "../../shared/db/database.js";
-import type { ModuleKey } from "../captures/captures.validation.js";
+import type { ContextTopic } from "../context/context.validation.js";
 import type {
   MemoryKind,
   MemorySensitivity,
@@ -13,7 +13,7 @@ export type NexoMemory = {
   id: string;
   content: string;
   kind: MemoryKind;
-  module: ModuleKey | null;
+  module: ContextTopic | null;
   source: MemorySource;
   sourceRecordIds: string[];
   confidence: number;
@@ -33,7 +33,7 @@ type MemoryRow = {
   id: string;
   content: string;
   memory_kind: MemoryKind;
-  module: ModuleKey | null;
+  module: ContextTopic | null;
   source: MemorySource;
   source_record_ids: string[];
   confidence: string;
@@ -80,7 +80,7 @@ function mapMemory(row: MemoryRow): NexoMemory {
 function memoryFingerprint(input: {
   content: string;
   kind: MemoryKind;
-  module: ModuleKey | null;
+  module: ContextTopic | null;
   source: MemorySource;
 }): string {
   return createHash("sha256")
@@ -94,7 +94,7 @@ export async function remember(input: {
   userId: string;
   content: string;
   kind: MemoryKind;
-  module: ModuleKey | null;
+  module: ContextTopic | null;
   source: MemorySource;
   sourceRecordIds: string[];
   confidence: number;

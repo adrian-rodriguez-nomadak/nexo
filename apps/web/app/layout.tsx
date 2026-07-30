@@ -11,9 +11,9 @@ export async function generateMetadata(): Promise<Metadata> {
   const protocol = requestHeaders.get("x-forwarded-proto") ??
     (host.startsWith("localhost") ? "http" : "https");
   const origin = `${protocol}://${host}`;
-  const title = "Nexo — Tu contexto, tu memoria, tu asistente";
+  const title = "Nexo — Todo tu contexto, una conversación";
   const description =
-    "Un asistente personal que conecta tus registros, actividad y memoria sin quitarte el control.";
+    "Un asistente personal que entiende lo que dices, conecta tu contexto y te ayuda a actuar.";
 
   return {
     metadataBase: new URL(origin),

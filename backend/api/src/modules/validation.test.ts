@@ -83,7 +83,48 @@ import {
   buildAssistantHistory,
   extractAssistantText,
   hasExplicitConfirmation,
+  normalizeAssistantTimeZone,
 } from "./assistant/assistant.validation.js";
+import { assistantTools } from "./assistant/assistant.tools.js";
+import {
+  isContextRecordKind,
+  isContextRecordStatus,
+  isContextTopic,
+  normalizeContextContent,
+  normalizeContextDate,
+  normalizeContextEntities,
+} from "./context/context.validation.js";
+
+test("models life context by topic instead of requiring visible modules", () => {
+  assert.equal(isContextTopic("finances"), true);
+  assert.equal(isContextTopic("people"), true);
+  assert.equal(isContextTopic("travel"), true);
+  assert.equal(isContextTopic("unknown"), false);
+  assert.equal(isContextRecordKind("task"), true);
+  assert.equal(isContextRecordKind("transaction"), true);
+  assert.equal(isContextRecordStatus("completed"), true);
+  assert.equal(
+    normalizeContextContent("  Entregar   propuesta a Ana  "),
+    "Entregar propuesta a Ana",
+  );
+  assert.deepEqual(
+    normalizeContextEntities(["Ana", "Proyecto Nexo", "Ana"]),
+    ["Ana", "Proyecto Nexo"],
+  );
+  assert.match(
+    normalizeContextDate("2026-08-03T10:00:00-06:00") ?? "",
+    /^2026-08-03T16:00:00\.000Z$/,
+  );
+  assert.equal(normalizeContextDate("no es una fecha"), undefined);
+});
+
+test("exposes unified context tools to the conversational assistant", () => {
+  const names: string[] = assistantTools.map((tool) => tool.name);
+  assert.equal(names.includes("save_context_record"), true);
+  assert.equal(names.includes("search_personal_context"), true);
+  assert.equal(names.includes("update_context_record"), true);
+  assert.equal(names.includes("save_personal_record"), false);
+});
 
 test("maps assistant history to valid Responses API content types", () => {
   assert.deepEqual(
@@ -132,6 +173,11 @@ test("requires an explicit confirmation after a concrete proposal", () => {
   assert.equal(hasExplicitConfirmation("regístralo", proposal), true);
   assert.equal(hasExplicitConfirmation("quizá después", proposal), false);
   assert.equal(hasExplicitConfirmation("confirmo", []), false);
+});
+
+test("validates the browser time zone used for relative dates", () => {
+  assert.equal(normalizeAssistantTimeZone("America/Monterrey"), "America/Monterrey");
+  assert.equal(normalizeAssistantTimeZone("Not/A_Timezone"), "UTC");
 });
 
 test("validates capture input", () => {

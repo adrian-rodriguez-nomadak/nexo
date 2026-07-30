@@ -1,7 +1,7 @@
 import {
-  isModuleKey,
-  type ModuleKey,
-} from "../captures/captures.validation.js";
+  isContextTopic,
+  type ContextTopic,
+} from "../context/context.validation.js";
 
 export const memoryKinds = [
   "fact",
@@ -67,8 +67,8 @@ export function normalizeMemoryConfidence(value: unknown): number | null {
   return Math.round(value * 1000) / 1000;
 }
 
-export function normalizeMemoryModule(value: unknown): ModuleKey | null {
-  return isModuleKey(value) ? value : null;
+export function normalizeMemoryModule(value: unknown): ContextTopic | null {
+  return isContextTopic(value) ? value : null;
 }
 
 export function normalizeSourceRecordIds(value: unknown): string[] | null {
