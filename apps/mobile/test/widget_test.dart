@@ -155,4 +155,61 @@ void main() {
     expect(find.text('Escribe un correo válido.'), findsOneWidget);
     expect(find.text('Usa al menos 8 caracteres.'), findsOneWidget);
   });
+
+  testWidgets('renders structured assistant responses', (
+    WidgetTester tester,
+  ) async {
+    final api = testApi(
+      handler: (request) async {
+        if (request.url.path == '/api/captures') {
+          return http.Response(jsonEncode({'captures': []}), 200);
+        }
+        if (request.method == 'GET') {
+          return http.Response(jsonEncode({'messages': []}), 200);
+        }
+        return http.Response(
+          jsonEncode({
+            'answer': 'Este es tu resumen.',
+            'assistantMessage': {
+              'role': 'assistant',
+              'content': 'Este es tu resumen.',
+              'blocks': [
+                {
+                  'type': 'metric_row',
+                  'items': [
+                    {'label': 'Balance', 'value': r'$6,300'},
+                  ],
+                },
+                {
+                  'type': 'bar_chart',
+                  'title': 'Gastos por categoría',
+                  'points': [
+                    {'label': 'Comida', 'value': 1200},
+                    {'label': 'Transporte', 'value': 500},
+                  ],
+                },
+              ],
+            },
+          }),
+          200,
+        );
+      },
+    );
+    await tester.pumpWidget(shellApp(api));
+    await tester.pumpAndSettle();
+
+    await tester.tap(find.text('Nexo'));
+    await tester.pumpAndSettle();
+    await tester.enterText(
+      find.byKey(const Key('assistant-input')),
+      'Resume mis finanzas',
+    );
+    await tester.tap(find.byKey(const Key('assistant-send')));
+    await tester.pumpAndSettle();
+
+    expect(find.text('Este es tu resumen.'), findsOneWidget);
+    expect(find.text('Balance'), findsOneWidget);
+    expect(find.text(r'$6,300'), findsOneWidget);
+    expect(find.text('Gastos por categoría'), findsOneWidget);
+  });
 }

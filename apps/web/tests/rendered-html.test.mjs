@@ -62,14 +62,20 @@ test("keeps private account authentication around the conversation", async () =>
 });
 
 test("includes the assistant-first responsive visual system", async () => {
-  const styles = await readFile(
-    new URL("app/globals.css", projectRoot),
-    "utf8",
-  );
+  const [styles, visuals] = await Promise.all([
+    readFile(new URL("app/globals.css", projectRoot), "utf8"),
+    readFile(new URL("app/assistant-visuals.tsx", projectRoot), "utf8"),
+  ]);
 
   assert.match(styles, /Assistant-first product/);
   assert.match(styles, /\.preview-chat-thread/);
   assert.match(styles, /\.assistant-empty-orbit/);
   assert.match(styles, /\.assistant-composer-live/);
   assert.match(styles, /@media \(max-width: 700px\)/);
+  assert.match(styles, /\.assistant-visuals/);
+  assert.match(visuals, /metric_row/);
+  assert.match(visuals, /data_table/);
+  assert.match(visuals, /bar_chart/);
+  assert.match(visuals, /line_chart/);
+  assert.match(visuals, /<progress/);
 });

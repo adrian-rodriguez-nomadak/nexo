@@ -2,11 +2,13 @@ import { randomUUID } from "node:crypto";
 
 import { query } from "../../shared/db/database.js";
 import type { AssistantHistoryMessage } from "./assistant.validation.js";
+import type { AssistantVisualBlock } from "./assistant.response.js";
 
 export type StoredAssistantMessage = AssistantHistoryMessage & {
   id: string;
   attachments: string[];
   createdAt: string;
+  blocks: AssistantVisualBlock[];
 };
 
 type MessageRow = {
@@ -15,6 +17,7 @@ type MessageRow = {
   content: string;
   attachments: string[];
   created_at: Date;
+  visual_blocks: AssistantVisualBlock[];
 };
 
 function mapMessage(row: MessageRow): StoredAssistantMessage {
@@ -24,6 +27,7 @@ function mapMessage(row: MessageRow): StoredAssistantMessage {
     content: row.content,
     attachments: row.attachments,
     createdAt: row.created_at.toISOString(),
+    blocks: Array.isArray(row.visual_blocks) ? row.visual_blocks : [],
   };
 }
 
@@ -32,9 +36,9 @@ export async function listAssistantMessages(
   limit = 100,
 ): Promise<StoredAssistantMessage[]> {
   const result = await query<MessageRow>(
-    `SELECT id, role, content, attachments, created_at
+    `SELECT id, role, content, attachments, visual_blocks, created_at
      FROM (
-       SELECT id, role, content, attachments, created_at
+       SELECT id, role, content, attachments, visual_blocks, created_at
        FROM nexo_assistant_messages
        WHERE nexo_user_id = $1
        ORDER BY created_at DESC
@@ -51,18 +55,20 @@ export async function saveAssistantMessage(input: {
   role: "user" | "assistant";
   content: string;
   attachments?: string[];
+  visualBlocks?: AssistantVisualBlock[];
 }): Promise<StoredAssistantMessage> {
   const result = await query<MessageRow>(
     `INSERT INTO nexo_assistant_messages (
-       id, nexo_user_id, role, content, attachments
-     ) VALUES ($1, $2, $3, $4, $5)
-     RETURNING id, role, content, attachments, created_at`,
+       id, nexo_user_id, role, content, attachments, visual_blocks
+     ) VALUES ($1, $2, $3, $4, $5, $6)
+     RETURNING id, role, content, attachments, visual_blocks, created_at`,
     [
       randomUUID(),
       input.userId,
       input.role,
       input.content,
       input.attachments ?? [],
+      JSON.stringify(input.visualBlocks ?? []),
     ],
   );
   return mapMessage(result.rows[0]!);

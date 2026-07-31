@@ -9,12 +9,17 @@ import {
 } from "react";
 
 import { apiFetch } from "./api-client";
+import {
+  AssistantVisuals,
+  type AssistantVisualBlock,
+} from "./assistant-visuals";
 
 type ChatMessage = {
   id: string;
   role: "user" | "assistant";
   content: string;
   files?: string[];
+  blocks?: AssistantVisualBlock[];
 };
 
 type EncodedFile = {
@@ -101,6 +106,7 @@ export function AssistantPanel({
             role: "user" | "assistant";
             content: string;
             attachments?: string[];
+            blocks?: AssistantVisualBlock[];
           }>;
         };
         if (active && response.ok && Array.isArray(data.messages)) {
@@ -110,6 +116,7 @@ export function AssistantPanel({
               role: message.role,
               content: message.content,
               files: message.attachments,
+              blocks: message.blocks,
             })),
           );
         }
@@ -229,6 +236,7 @@ export function AssistantPanel({
         answer?: string;
         error?: string;
         assistantMessage?: { id?: string };
+        blocks?: AssistantVisualBlock[];
       };
       if (!response.ok || !data.answer) {
         throw new Error(data.error ?? "Nexo no pudo responder.");
@@ -239,6 +247,7 @@ export function AssistantPanel({
           id: data.assistantMessage?.id ?? crypto.randomUUID(),
           role: "assistant",
           content: data.answer!,
+          blocks: data.blocks,
         },
       ]);
     } catch (caught) {
@@ -317,6 +326,9 @@ export function AssistantPanel({
                     </div>
                   ) : null}
                   <p>{message.content}</p>
+                  {message.role === "assistant" ? (
+                    <AssistantVisuals blocks={message.blocks} />
+                  ) : null}
                 </div>
               </article>
             ))

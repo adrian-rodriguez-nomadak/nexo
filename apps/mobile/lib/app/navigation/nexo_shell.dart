@@ -6,6 +6,7 @@ import 'package:image/image.dart' as image;
 
 import '../../core/network/nexo_api.dart';
 import '../../features/auth/domain/nexo_session.dart';
+import '../../features/assistant/presentation/assistant_screen.dart';
 import '../../features/capture/presentation/capture_sheet.dart';
 import '../../features/modules/domain/nexo_module.dart';
 import '../../features/modules/presentation/module_detail_screen.dart';
@@ -258,13 +259,14 @@ class _NexoShellState extends State<NexoShell> {
         onOpenModule: _openModule,
       ),
       ModulesScreen(onOpenModule: _openModule, onOpenObserver: _openObserver),
+      AssistantScreen(api: widget.api),
       const ProgressScreen(),
     ];
 
     return Scaffold(
       body: IndexedStack(index: _selectedIndex, children: screens),
       bottomNavigationBar: NavigationBar(
-        selectedIndex: _selectedIndex == 2 ? 3 : _selectedIndex,
+        selectedIndex: _selectedIndex < 2 ? _selectedIndex : _selectedIndex + 1,
         onDestinationSelected: (index) {
           if (index == 2) {
             _capture();
@@ -288,6 +290,11 @@ class _NexoShellState extends State<NexoShell> {
             icon: Icon(Icons.add_circle_outline_rounded),
             selectedIcon: Icon(Icons.add_circle_rounded),
             label: 'Capturar',
+          ),
+          NavigationDestination(
+            icon: Icon(Icons.forum_outlined),
+            selectedIcon: Icon(Icons.forum_rounded),
+            label: 'Nexo',
           ),
           NavigationDestination(
             icon: Icon(Icons.insights_outlined),

@@ -54,7 +54,7 @@ assistantRouter.post(
         request.authUser!.id,
         12,
       );
-      const answer = await answerWithNexo({
+      const result = await answerWithNexo({
         userId: request.authUser!.id,
         displayName: request.authUser!.displayName,
         message,
@@ -74,9 +74,10 @@ assistantRouter.post(
       const assistantMessage = await saveAssistantMessage({
         userId: request.authUser!.id,
         role: "assistant",
-        content: answer,
+        content: result.answer,
+        visualBlocks: result.blocks,
       });
-      response.json({ answer, userMessage, assistantMessage });
+      response.json({ answer: result.answer, blocks: result.blocks, userMessage, assistantMessage });
     } catch (error) {
       if (error instanceof Error && error.message === "OPENAI_API_KEY_NOT_CONFIGURED") {
         response.status(503).json({

@@ -43,10 +43,12 @@ const statements = [
       role TEXT NOT NULL CHECK (role IN ('user', 'assistant')),
       content TEXT NOT NULL,
       attachments TEXT[] NOT NULL DEFAULT '{}',
+      visual_blocks JSONB NOT NULL DEFAULT '[]'::jsonb,
       created_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
     )
   `,
   "CREATE INDEX IF NOT EXISTS nexo_assistant_messages_user_created_idx ON nexo_assistant_messages (nexo_user_id, created_at DESC)",
+  "ALTER TABLE nexo_assistant_messages ADD COLUMN IF NOT EXISTS visual_blocks JSONB NOT NULL DEFAULT '[]'::jsonb",
   `
     CREATE TABLE IF NOT EXISTS nexo_context_records (
       id TEXT PRIMARY KEY,

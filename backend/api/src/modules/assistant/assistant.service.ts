@@ -11,6 +11,10 @@ import {
   type AssistantFile,
   type AssistantHistoryMessage,
 } from "./assistant.validation.js";
+import {
+  parseAssistantResponse,
+  type AssistantResponse,
+} from "./assistant.response.js";
 
 type ContextRow = {
   content: string;
@@ -87,6 +91,7 @@ function systemInstructions(input: {
     "En salud, organiza el contexto y ofrece orientación prudente, pero no presentes diagnósticos. Recomienda ayuda profesional o urgente cuando corresponda.",
     "Puedes responder preguntas generales sin herramientas. No inventes datos personales ausentes y pregunta sólo cuando la ambigüedad cambie de forma material el resultado.",
     "Sé directo, cálido y conciso. Distingue hechos de inferencias.",
+    'Tu respuesta final debe ser JSON válido sin bloque Markdown: {"answer":"texto principal","blocks":[]}. Usa blocks sólo cuando datos reales de la conversación o herramientas se entiendan mejor visualmente. Tipos permitidos: metric_row con items [{label,value,detail?}]; data_table con title?, columns y rows; bar_chart o line_chart con title?, points [{label,value}] y unit?; progress con label, value entre 0 y 1 y displayValue?; alert con tone info|warning|success, title? y message. Máximo 5 bloques, 12 filas o puntos. No inventes cifras para llenar una visualización. Si no aporta valor, devuelve blocks vacío.',
     "El contexto personal persistente está disponible bajo demanda mediante search_personal_context.",
   ].join("\n\n");
 }
@@ -98,7 +103,7 @@ export async function answerWithNexo(input: {
   timeZone: string;
   history: AssistantHistoryMessage[];
   files: AssistantFile[];
-}): Promise<string> {
+}): Promise<AssistantResponse> {
   const fileAnalysis = await analyzeAssistantFiles({
     message: input.message,
     files: input.files,
@@ -143,7 +148,7 @@ export async function answerWithNexo(input: {
         toolCallCount: 0,
       }));
       if (!reply.content) throw new Error("TEXT_MODEL_EMPTY");
-      return reply.content;
+      return parseAssistantResponse(reply.content);
     }
     for (const toolCall of reply.toolCalls) {
       const result = await executeAssistantTool({

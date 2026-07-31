@@ -13,7 +13,7 @@
     "db:migrate": "node dist/shared/db/migrate.js",
     "db:seed:clean": "node dist/shared/db/seed-clean-data.js",
     "db:reset-data": "node dist/shared/db/reset-data.js",
-    "test": "npm run build && node --test dist/**/*.test.js"
+    "test": "npm run build && node --test dist/**/*.test.js dist/**/**/*.test.js"
   },
   "dependencies": {
     "cors": "^2.8.5",
